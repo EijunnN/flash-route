@@ -202,7 +202,7 @@
         "Confirmar interfaz muestra claramente configuración de estrictez por pedido",
         "Verificar métricas de optimización incluyen nivel de incumplimiento de ventanas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "6.1",

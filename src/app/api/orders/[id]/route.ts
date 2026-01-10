@@ -1,0 +1,270 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { orders, timeWindowPresets } from "@/db/schema";
+import { updateOrderSchema } from "@/lib/validations/order";
+import { eq, and, } from "drizzle-orm";
+import { withTenantFilter } from "@/db/tenant-aware";
+import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { logUpdate, logDelete } from "@/lib/audit";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
+
+// GET - Single order by ID
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
+    const { id } = await params;
+
+    const result = await db
+      .select({
+        id: orders.id,
+        trackingId: orders.trackingId,
+        customerName: orders.customerName,
+        customerPhone: orders.customerPhone,
+        customerEmail: orders.customerEmail,
+        address: orders.address,
+        latitude: orders.latitude,
+        longitude: orders.longitude,
+        timeWindowPresetId: orders.timeWindowPresetId,
+        strictness: orders.strictness,
+        promisedDate: orders.promisedDate,
+        weightRequired: orders.weightRequired,
+        volumeRequired: orders.volumeRequired,
+        requiredSkills: orders.requiredSkills,
+        notes: orders.notes,
+        status: orders.status,
+        active: orders.active,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        // Include preset details
+        presetStrictness: timeWindowPresets.strictness,
+        presetName: timeWindowPresets.name,
+        presetType: timeWindowPresets.type,
+        presetStartTime: timeWindowPresets.startTime,
+        presetEndTime: timeWindowPresets.endTime,
+        presetExactTime: timeWindowPresets.exactTime,
+        presetToleranceMinutes: timeWindowPresets.toleranceMinutes,
+      })
+      .from(orders)
+      .leftJoin(timeWindowPresets, eq(orders.timeWindowPresetId, timeWindowPresets.id))
+      .where(
+        and(
+          eq(orders.id, id),
+          withTenantFilter(orders, [])
+        )
+      )
+      .limit(1);
+
+    if (result.length === 0) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
+    }
+
+    const order = result[0];
+
+    // Enrich with effective strictness
+    const enrichedOrder = {
+      ...order,
+      effectiveStrictness: order.strictness || order.presetStrictness || "HARD",
+      isStrictnessOverridden: order.strictness !== null && order.strictness !== order.presetStrictness,
+    };
+
+    return NextResponse.json(enrichedOrder);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch order" },
+      { status: 400 }
+    );
+  }
+}
+
+// PATCH - Update order
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
+    const { id } = await params;
+    const body = await request.json();
+    const validatedData = updateOrderSchema.parse(body);
+
+    // Check if order exists and belongs to tenant
+    const context = requireTenantContext();
+    const existing = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.id, id),
+          eq(orders.companyId, context.companyId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
+    }
+
+    // If updating tracking ID, check for uniqueness
+    if (validatedData.trackingId && validatedData.trackingId !== existing[0].trackingId) {
+      const duplicate = await db
+        .select()
+        .from(orders)
+        .where(
+          and(
+            eq(orders.companyId, context.companyId),
+            eq(orders.trackingId, validatedData.trackingId),
+            eq(orders.active, true)
+          )
+        )
+        .limit(1);
+
+      if (duplicate.length > 0) {
+        return NextResponse.json(
+          { error: "An order with this tracking ID already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Validate time window preset if provided
+    if (validatedData.timeWindowPresetId) {
+      const preset = await db
+        .select()
+        .from(timeWindowPresets)
+        .where(
+          and(
+            eq(timeWindowPresets.id, validatedData.timeWindowPresetId),
+            eq(timeWindowPresets.companyId, context.companyId),
+            eq(timeWindowPresets.active, true)
+          )
+        )
+        .limit(1);
+
+      if (preset.length === 0) {
+        return NextResponse.json(
+          { error: "Time window preset not found or inactive" },
+          { status: 404 }
+        );
+      }
+    }
+
+    const [updatedRecord] = await db
+      .update(orders)
+      .set({
+        ...validatedData,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .returning();
+
+    await logUpdate("order", id, {
+      previous: existing[0],
+      new: updatedRecord,
+    });
+
+    return NextResponse.json(updatedRecord);
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: error.message || "Failed to update order" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Soft delete order
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
+    const { id } = await params;
+
+    // Check if order exists and belongs to tenant
+    const context = requireTenantContext();
+    const existing = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.id, id),
+          eq(orders.companyId, context.companyId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
+    }
+
+    // Soft delete by setting active to false
+    const [deletedRecord] = await db
+      .update(orders)
+      .set({
+        active: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .returning();
+
+    await logDelete("order", id, existing[0]);
+
+    return NextResponse.json(deletedRecord);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to delete order" },
+      { status: 500 }
+    );
+  }
+}

@@ -508,9 +508,69 @@ export const timeWindowPresets = pgTable("time_window_presets", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const timeWindowPresetsRelations = relations(timeWindowPresets, ({ one }) => ({
+export const timeWindowPresetsRelations = relations(timeWindowPresets, ({ one, many }) => ({
   company: one(companies, {
     fields: [timeWindowPresets.companyId],
     references: [companies.id],
+  }),
+  orders: many(orders),
+}));
+
+// Order status types
+export const ORDER_STATUS = {
+  PENDING: "PENDING",
+  ASSIGNED: "ASSIGNED",
+  IN_PROGRESS: "IN_PROGRESS",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+} as const;
+
+// Orders for logistics planning
+export const orders = pgTable("orders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  trackingId: varchar("tracking_id", { length: 50 }).notNull(),
+  customerName: varchar("customer_name", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  customerEmail: varchar("customer_email", { length: 255 }),
+  address: text("address").notNull(),
+  latitude: varchar("latitude", { length: 20 }).notNull(),
+  longitude: varchar("longitude", { length: 20 }).notNull(),
+  // Time window configuration
+  timeWindowPresetId: uuid("time_window_preset_id").references(
+    () => timeWindowPresets.id,
+    { onDelete: "set null" }
+  ),
+  strictness: varchar("strictness", { length: 20 })
+    .$type<keyof typeof TIME_WINDOW_STRICTNESS>(), // Allows overriding preset strictness, null means inherit from preset
+  promisedDate: timestamp("promised_date"),
+  // Capacity requirements
+  weightRequired: integer("weight_required"),
+  volumeRequired: integer("volume_required"),
+  // Skill requirements (comma-separated skill codes)
+  requiredSkills: text("required_skills"),
+  // Additional notes
+  notes: text("notes"),
+  // Status and metadata
+  status: varchar("status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof ORDER_STATUS>()
+    .default("PENDING"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const ordersRelations = relations(orders, ({ one }) => ({
+  company: one(companies, {
+    fields: [orders.companyId],
+    references: [companies.id],
+  }),
+  timeWindowPreset: one(timeWindowPresets, {
+    fields: [orders.timeWindowPresetId],
+    references: [timeWindowPresets.id],
   }),
 }));
