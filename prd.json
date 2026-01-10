@@ -61,7 +61,7 @@
         "Validar consulta de vehículos con filtro por flota y conteo por estado",
         "Confirmar endpoint API para obtener todos los vehículos de una flota específica"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "2.3",

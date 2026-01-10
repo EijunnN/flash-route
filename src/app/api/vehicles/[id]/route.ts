@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { vehicles } from "@/db/schema";
+import { vehicles, fleets, vehicleFleetHistory } from "@/db/schema";
 import { updateVehicleSchema } from "@/lib/validations/vehicle";
 import { eq, and, or } from "drizzle-orm";
 import { withTenantFilter, verifyTenantAccess } from "@/db/tenant-aware";
 import { setTenantContext, getTenantContext } from "@/lib/tenant";
 import { logUpdate, logDelete } from "@/lib/audit";
+import {
+  validateVehicleFleetCompatibility,
+  formatCompatibilityResponse,
+} from "@/lib/validations/compatibility";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -124,6 +128,58 @@ export async function PATCH(
       }
     }
 
+    // Fleet change validation and history tracking
+    let compatibilityCheck = null;
+    if (validatedData.fleetId && validatedData.fleetId !== existingVehicle.fleetId) {
+      // Get the new fleet details
+      const [newFleet] = await db
+        .select()
+        .from(fleets)
+        .where(
+          and(
+            eq(fleets.id, validatedData.fleetId),
+            eq(fleets.companyId, tenantCtx.companyId)
+          )
+        )
+        .limit(1);
+
+      if (!newFleet) {
+        return NextResponse.json(
+          { error: "Flota no encontrada" },
+          { status: 404 }
+        );
+      }
+
+      // Validate compatibility
+      const vehicleWithUpdate = { ...existingVehicle, ...validatedData } as Partial<typeof vehicles.$inferSelect>;
+      const compatibilityResult = validateVehicleFleetCompatibility(
+        vehicleWithUpdate,
+        newFleet
+      );
+      compatibilityCheck = formatCompatibilityResponse(compatibilityResult);
+
+      // Check for active planifications (warning only - we'll allow with warning)
+      if (existingVehicle.status === "ASSIGNED") {
+        const hasActivePlanifications = true; // TODO: Check actual planifications table
+        if (hasActivePlanifications) {
+          compatibilityCheck.warnings.push(
+            "El vehículo tiene planificaciones activas. Reasignar puede afectar las rutas asignadas."
+          );
+        }
+      }
+
+      // If not compatible but user allows override with force flag, continue
+      if (!compatibilityResult.compatible && !body.forceAssign) {
+        return NextResponse.json(
+          {
+            error: "El vehículo no es compatible con la flota seleccionada",
+            compatibility: compatibilityCheck,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const updateData: any = { ...validatedData };
     if (validatedData.insuranceExpiry !== undefined) {
       updateData.insuranceExpiry = validatedData.insuranceExpiry ? new Date(validatedData.insuranceExpiry) : null;
@@ -139,13 +195,30 @@ export async function PATCH(
       .where(eq(vehicles.id, id))
       .returning();
 
+    // Record fleet change history if fleet was changed
+    if (validatedData.fleetId && validatedData.fleetId !== existingVehicle.fleetId) {
+      await db.insert(vehicleFleetHistory).values({
+        companyId: tenantCtx.companyId,
+        vehicleId: id,
+        previousFleetId: existingVehicle.fleetId,
+        newFleetId: validatedData.fleetId,
+        userId: tenantCtx.userId,
+        reason: body.reason || null,
+      });
+    }
+
     // Log update
     await logUpdate("vehicle", id, {
       before: existingVehicle,
       after: updatedVehicle,
     });
 
-    return NextResponse.json(updatedVehicle);
+    const response: any = { ...updatedVehicle };
+    if (compatibilityCheck) {
+      response.compatibility = compatibilityCheck;
+    }
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error updating vehicle:", error);
     if (error instanceof Error && error.name === "ZodError") {

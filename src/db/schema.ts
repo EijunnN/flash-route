@@ -142,7 +142,7 @@ export const vehicles = pgTable("vehicles", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const vehiclesRelations = relations(vehicles, ({ one }) => ({
+export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
   company: one(companies, {
     fields: [vehicles.companyId],
     references: [companies.id],
@@ -151,6 +151,7 @@ export const vehiclesRelations = relations(vehicles, ({ one }) => ({
     fields: [vehicles.fleetId],
     references: [fleets.id],
   }),
+  fleetHistory: many(vehicleFleetHistory),
 }));
 
 // Driver status types
@@ -266,5 +267,46 @@ export const driverSkillsRelations = relations(driverSkills, ({ one }) => ({
   skill: one(vehicleSkills, {
     fields: [driverSkills.skillId],
     references: [vehicleSkills.id],
+  }),
+}));
+
+// Vehicle fleet history for tracking fleet changes
+export const vehicleFleetHistory = pgTable("vehicle_fleet_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  vehicleId: uuid("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  previousFleetId: uuid("previous_fleet_id").references(() => fleets.id),
+  newFleetId: uuid("new_fleet_id")
+    .notNull()
+    .references(() => fleets.id, { onDelete: "restrict" }),
+  userId: uuid("user_id").references(() => users.id),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const vehicleFleetHistoryRelations = relations(vehicleFleetHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [vehicleFleetHistory.companyId],
+    references: [companies.id],
+  }),
+  vehicle: one(vehicles, {
+    fields: [vehicleFleetHistory.vehicleId],
+    references: [vehicles.id],
+  }),
+  previousFleet: one(fleets, {
+    fields: [vehicleFleetHistory.previousFleetId],
+    references: [fleets.id],
+  }),
+  newFleet: one(fleets, {
+    fields: [vehicleFleetHistory.newFleetId],
+    references: [fleets.id],
+  }),
+  user: one(users, {
+    fields: [vehicleFleetHistory.userId],
+    references: [users.id],
   }),
 }));

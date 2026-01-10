@@ -1,94 +1,18 @@
 # Progress - Sistema de Gestión Logística
 
-## Completed Stories
+## Completed Features
 
-### Story 1.1: Company Management ✓
-- API CRUD endpoints
-- Validation with Spanish error messages
-- Frontend listing and form page
-- Duplicate detection
+### Story 2.2 - Asignación de Vehículos a Flotas
+- ✅ Added vehicle-fleet compatibility validation based on vehicle type and capacity
+- ✅ Added fleet change history tracking with timestamps and user responsible
+- ✅ Added warnings when reassigning vehicles with active planifications (status ASSIGNED)
+- ✅ Added API endpoint GET /api/fleets/[id]/vehicles to get all vehicles of a specific fleet
+- ✅ Added API endpoint GET /api/fleets/[id]/vehicle-counts to get vehicle counts by status filtered by fleet
 
-### Story 1.2: Multi-Tenant Data Isolation ✓
-- Tenant context with AsyncLocalStorage
-- Automatic filtering by companyId
-- Cross-tenant access prevention
-- Audit logging
+**Files modified:**
+- src/db/schema.ts - Added vehicleFleetHistory table and relations
+- src/lib/validations/compatibility.ts - New file for compatibility validation
+- src/app/api/vehicles/[id]/route.ts - Added compatibility checks and history tracking
+- src/app/api/fleets/[id]/vehicles/route.ts - New endpoint for fleet vehicles
+- src/app/api/fleets/[id]/vehicle-counts/route.ts - New endpoint for vehicle counts by status
 
-### Story 2.1: Fleet Management ✓
-- API CRUD endpoints
-- Fleet type enums and validation
-- Operation hours validation
-- Frontend listing and form
-
-### Story 3.1: Vehicle Registration ✓
-- API CRUD endpoints
-- Vehicle types and capacity validations
-- Insurance/inspection expiry tracking
-- Frontend listing and form
-
-### Story 4.1: Driver Registration ✓
-- API CRUD endpoints
-- License categories and expiry handling
-- Certification tracking
-- Frontend listing and form
-
-### Story 3.3: Vehicle Skills Catalog ✓ (2026-01-10)
-- Database schema: `vehicleSkills` table with categories
-- Validation: `src/lib/validations/vehicle-skill.ts`
-- API endpoints:
-  - GET/POST `/api/vehicle-skills` - List and create skills
-  - PATCH/DELETE `/api/vehicle-skills/[id]` - Update and delete skills
-- Frontend: Complete UI at `/vehicle-skills` with:
-  - Listing table with filtering (category, active status, search)
-  - Create/edit form with validation
-  - Toggle active/inactive functionality
-  - Category badges with color coding
-- Features:
-  - CRUD complete con código único, nombre, categoría, descripción, activo
-  - Categorías: EQUIPMENT, TEMPERATURE, CERTIFICATIONS, SPECIAL
-  - Validación de código con regex (solo mayúsculas, números, guiones)
-  - Eliminación protegida (debe verificarse si está en uso en el futuro)
-  - API permite consultar por categoría y estado activo
-
-### Story 4.2: Driver Skills Management ✓ (2026-01-10)
-- Database schema: `driverSkills` junction table linking drivers to vehicleSkills
-- Validation: `src/lib/validations/driver-skill.ts`
-- API endpoints:
-  - GET/POST `/api/driver-skills` - List and create driver skill assignments
-  - GET/PATCH/DELETE `/api/driver-skills/[id]` - Get, update, and delete assignments
-- Frontend: Complete UI at `/driver-skills` with:
-  - Listing table with filtering (driver, category, active status, expiry status)
-  - Create/edit form with validation
-  - Toggle active/inactive functionality
-  - Color-coded expiry status badges
-  - Category badges with color coding
-- Features:
-  - Asignación de habilidades a conductores con fecha de obtención y vencimiento
-  - Validación de unicidad (mismo conductor-skill)
-  - Filtrado por estado de vencimiento (vigente, próximo a vencer, vencido)
-  - Alertas visuales para habilidades próximas a vencer (< 30 días)
-  - Relaciones many-to-many entre conductores y habilidades
-
-## Files Modified/Created for Story 4.2
-
-### Modified
-- `src/db/schema.ts` - Added driverSkills junction table with relations to drivers and vehicleSkills
-
-### Created
-- `src/lib/validations/driver-skill.ts` - Zod validation schemas
-- `src/app/api/driver-skills/route.ts` - GET/POST endpoints
-- `src/app/api/driver-skills/[id]/route.ts` - GET/PATCH/DELETE endpoints
-- `src/components/driver-skills/driver-skill-form.tsx` - Form component
-- `src/app/driver-skills/page.tsx` - Full management page
-
-## Files Modified/Created for Story 3.3
-
-### Modified
-- `src/db/schema.ts` - Added vehicleSkills table and VEHICLE_SKILL_CATEGORIES
-
-### Created
-- `src/lib/validations/vehicle-skill.ts` - Zod validation schemas
-- `src/app/api/vehicle-skills/route.ts` - GET/POST endpoints
-- `src/app/api/vehicle-skills/[id]/route.ts` - PATCH/DELETE endpoints
-- `src/components/vehicle-skills/vehicle-skill-form.tsx` - Form component
-- `src/app/vehicle-skills/page.tsx` - Full management page
