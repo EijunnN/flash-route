@@ -641,7 +641,9 @@ export const optimizationConfigurations = pgTable("optimization_configurations",
   // Metadata
   status: varchar("status", { length: 50 })
     .notNull()
-    .default("DRAFT"), // DRAFT, CONFIGURED, OPTIMIZING, COMPLETED, FAILED
+    .default("DRAFT"), // DRAFT, CONFIGURED, CONFIRMED
+  confirmedAt: timestamp("confirmed_at"),
+  confirmedBy: uuid("confirmed_by").references(() => users.id),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

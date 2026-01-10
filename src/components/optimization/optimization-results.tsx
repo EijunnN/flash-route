@@ -22,11 +22,13 @@ import {
 import { DriverAssignmentDisplay, AssignmentMetricsCard } from "./driver-assignment-quality";
 import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { AssignmentHistory } from "./assignment-history";
+import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
 
 // Re-export types from optimization-runner
 export type { OptimizationResult, OptimizationRoute, OptimizationStop } from "@/lib/optimization-runner";
 
 interface OptimizationResultsProps {
+  jobId?: string;
   result: {
     routes: Array<{
       routeId: string;
@@ -91,6 +93,7 @@ interface OptimizationResultsProps {
   onReoptimize?: () => void;
   onConfirm?: () => void;
   onReassignDriver?: (routeId: string, vehicleId: string) => void;
+  isPlanConfirmed?: boolean;
 }
 
 // Scroll area component
@@ -363,10 +366,11 @@ function RouteMapPlaceholder() {
   );
 }
 
-export function OptimizationResults({ result, onReoptimize, onConfirm, onReassignDriver }: OptimizationResultsProps) {
+export function OptimizationResults({ result, onReoptimize, onConfirm, onReassignDriver, isPlanConfirmed, jobId }: OptimizationResultsProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">("routes");
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedRouteForAssignment, setSelectedRouteForAssignment] = useState<{
     routeId: string;
     vehicleId: string;
@@ -541,10 +545,16 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
               Reoptimize
             </Button>
           )}
-          {onConfirm && (
-            <Button onClick={onConfirm} disabled={result.unassignedOrders.length > 0}>
+          {onConfirm && jobId && !isPlanConfirmed && (
+            <Button onClick={() => setConfirmDialogOpen(true)} disabled={result.unassignedOrders.length > 0}>
               Confirm Plan
             </Button>
+          )}
+          {isPlanConfirmed && (
+            <Badge variant="default" className="bg-green-600">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Plan Confirmed
+            </Badge>
           )}
         </div>
       </div>
@@ -608,6 +618,21 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
             // Trigger callback to refresh the results
             if (onReassignDriver) {
               onReassignDriver(selectedRouteForAssignment.routeId, selectedRouteForAssignment.vehicleId);
+            }
+          }}
+        />
+      )}
+
+      {/* Plan Confirmation Dialog */}
+      {jobId && (
+        <PlanConfirmationDialog
+          open={confirmDialogOpen}
+          onOpenChange={setConfirmDialogOpen}
+          jobId={jobId}
+          onConfirmed={() => {
+            setConfirmDialogOpen(false);
+            if (onConfirm) {
+              onConfirm();
             }
           }}
         />

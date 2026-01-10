@@ -142,3 +142,121 @@ Implemented comprehensive manual driver assignment system with full audit trail 
 6. ✅ Asignaciones pueden hacerse a rutas sin conductor o cambiar conductor
 7. ✅ API valida restricciones antes de confirmar asignación manual
 
+---
+
+## Story 9.3: Confirmación Final del Plan - COMPLETED
+
+### Implementation Summary
+
+Implemented comprehensive plan confirmation system with validation, safety dialogs, and audit trail:
+
+#### Backend Changes:
+1. **Updated `src/db/schema.ts`**:
+   - Added `confirmedAt` timestamp to `optimizationConfigurations`
+   - Added `confirmedBy` reference to users table
+   - Updated status comment to include CONFIRMED state (DRAFT, CONFIGURED, CONFIRMED)
+
+2. **Created `src/lib/plan-validation.ts`**:
+   - `validatePlanForConfirmation()` - Main validation function
+   - Checks: driver assignments, unassigned orders, assignment quality, time window compliance
+   - Validates driver license and skill expiry
+   - Returns validation result with issues by category and severity
+   - Calculates quality metrics (coverage, compliance, average quality)
+
+3. **Created `src/lib/validations/plan-confirmation.ts`**:
+   - Zod schemas for plan confirmation request
+   - Schema for plan validation request with configurable options
+   - Schema for confirmation status response
+
+4. **Created `GET /api/optimization/jobs/[id]/validate`**:
+   - Validates plan before confirmation
+   - Returns detailed validation results with issues grouped by category and severity
+   - Shows validation summary with counts and metrics
+   - Includes human-readable summary text
+
+5. **Created `POST /api/optimization/jobs/[id]/confirm`**:
+   - Confirms a validated plan
+   - Validates plan before allowing confirmation
+   - Blocks confirmation if there are errors
+   - Requires explicit override for warnings
+   - Updates configuration status to CONFIRMED
+   - Creates audit log entry
+
+6. **Created `GET /api/optimization/jobs/[id]/confirm`**:
+   - Returns confirmation status of a plan
+   - Shows if plan is confirmed, when, and by whom
+
+7. **Added `getTenantContext()` to `src/db/tenant-aware.ts`**:
+   - Non-throwing version of requireTenantContext
+   - Returns null values when context not available
+
+#### Frontend Changes:
+1. **Created `src/components/ui/scroll-area.tsx`**:
+   - Simple scroll area component for use in dialogs
+
+2. **Created `src/components/optimization/plan-confirmation-dialog.tsx`**:
+   - Comprehensive confirmation dialog with validation
+   - Validates plan on open with loading state
+   - Shows validation summary with route and driver statistics
+   - Displays quality metrics with visual progress bars:
+     - Driver Assignment Coverage
+     - Time Window Compliance
+     - Average Assignment Quality
+   - Lists all validation issues with severity indicators
+   - Separate sections for errors (blocking) and warnings
+   - Override warnings checkbox for confirming with warnings
+   - Optional confirmation note for audit purposes
+   - Confirmation button disabled based on validation state
+   - Success callback to refresh UI after confirmation
+
+3. **Updated `src/components/optimization/optimization-results.tsx`**:
+   - Added `jobId` prop to support confirmation API calls
+   - Added `isPlanConfirmed` prop to show confirmation status
+   - Added `confirmDialogOpen` state
+   - Updated Confirm Plan button to open confirmation dialog
+   - Added "Plan Confirmed" badge for confirmed plans
+   - Integrated PlanConfirmationDialog with callbacks
+
+### Features Implemented:
+- ✅ System verifies completeness before allowing confirmation
+- ✅ Validation includes driver assignments, skills, and constraint compliance
+- ✅ Pending conflicts shown clearly with resolution options
+- ✅ Confirmation requires explicit user confirmation with safety dialog
+- ✅ After confirming, plan changes to CONFIRMED status
+- ✅ Modifications can still be made via reassignment process after confirmation
+- ✅ API returns error if confirming incomplete plan
+- ✅ Audit log tracks confirmation with validation summary
+
+### Validation Checks:
+1. **Driver Assignment Coverage**:
+   - All routes must have drivers assigned (configurable)
+   - Missing drivers block confirmation
+
+2. **Assignment Quality**:
+   - Checks for assignment errors (license issues, skill mismatches)
+   - Warns on low quality scores (configurable threshold)
+   - Shows assignment warnings with resolutions
+
+3. **Time Window Compliance**:
+   - Calculates overall compliance rate
+   - Warns if below threshold (configurable)
+   - Lists routes with violations
+
+4. **License & Skill Expiry**:
+   - Blocks confirmation for expired licenses
+   - Warns for licenses expiring soon (configurable days)
+   - Checks driver availability status
+
+5. **Unassigned Orders**:
+   - Blocks confirmation by default (configurable)
+   - Shows reasons for unassigned orders
+
+### Story Steps Verification:
+1. ✅ Sistema verifica completitud antes de permitir confirmación
+2. ✅ Verificación incluye conductor asignado, habilidades y cumplimiento de restricciones
+3. ✅ Conflictos pendientes mostrados claramente con opción de resolver
+4. ✅ Confirmación solicita confirmación explícita con diálogo de seguridad
+5. ✅ Después de confirmar el plan cambia a estado CONFIRMED
+6. ✅ Modificaciones posteriores se hacen mediante proceso de reasignación
+7. ✅ API retorna error si se intenta confirmar plan incompleto
+

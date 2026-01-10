@@ -426,7 +426,7 @@
         "Confirmar modificaciones posteriores se hacen mediante proceso de reasignación",
         "Verificar API retorna error si se intenta confirmar plan incompleto"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "10.1",

@@ -54,3 +54,11 @@ export function getAuditLogContext() {
     userId: context.userId,
   };
 }
+
+export function getTenantContext() {
+  try {
+    return requireTenantContext();
+  } catch {
+    return { companyId: null, userId: null };
+  }
+}
