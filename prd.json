@@ -46,7 +46,7 @@
         "Validar mantenimiento de historial completo de cambios en atributos críticos",
         "Confirmar API permite consultar flotas con filtros por empresa, tipo, estado y fecha"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "2.2",

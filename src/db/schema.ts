@@ -1,8 +1,10 @@
 import {
   boolean,
-  timestamp,
+  integer,
   pgTable,
   text,
+  timestamp,
+  time,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -26,6 +28,7 @@ export const companies = pgTable("companies", {
 
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
+  fleets: many(fleets),
 }));
 
 export const users = pgTable("users", {
@@ -64,3 +67,136 @@ export const auditLogs = pgTable("audit_logs", {
   changes: text("changes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Fleet types
+export const FLEET_TYPES = {
+  HEAVY_LOAD: "HEAVY_LOAD",
+  LIGHT_LOAD: "LIGHT_LOAD",
+  EXPRESS: "EXPRESS",
+  REFRIGERATED: "REFRIGERATED",
+  SPECIAL: "SPECIAL",
+} as const;
+
+export const fleets = pgTable("fleets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 })
+    .notNull()
+    .$type<keyof typeof FLEET_TYPES>(),
+  weightCapacity: integer("weight_capacity").notNull(),
+  volumeCapacity: integer("volume_capacity").notNull(),
+  operationStart: time("operation_start").notNull(),
+  operationEnd: time("operation_end").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const fleetsRelations = relations(fleets, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [fleets.companyId],
+    references: [companies.id],
+  }),
+  vehicles: many(vehicles),
+  drivers: many(drivers),
+}));
+
+// Vehicle status types
+export const VEHICLE_STATUS = {
+  AVAILABLE: "AVAILABLE",
+  IN_MAINTENANCE: "IN_MAINTENANCE",
+  ASSIGNED: "ASSIGNED",
+  INACTIVE: "INACTIVE",
+} as const;
+
+export const vehicles = pgTable("vehicles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  fleetId: uuid("fleet_id")
+    .notNull()
+    .references(() => fleets.id, { onDelete: "restrict" }),
+  plate: varchar("plate", { length: 50 }).notNull(),
+  brand: varchar("brand", { length: 100 }).notNull(),
+  model: varchar("model", { length: 100 }).notNull(),
+  year: integer("year").notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  weightCapacity: integer("weight_capacity").notNull(),
+  volumeCapacity: integer("volume_capacity").notNull(),
+  refrigerated: boolean("refrigerated").notNull().default(false),
+  heated: boolean("heated").notNull().default(false),
+  lifting: boolean("lifting").notNull().default(false),
+  licenseRequired: varchar("license_required", { length: 10 }),
+  insuranceExpiry: timestamp("insurance_expiry"),
+  inspectionExpiry: timestamp("inspection_expiry"),
+  status: varchar("status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof VEHICLE_STATUS>()
+    .default("AVAILABLE"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const vehiclesRelations = relations(vehicles, ({ one }) => ({
+  company: one(companies, {
+    fields: [vehicles.companyId],
+    references: [companies.id],
+  }),
+  fleet: one(fleets, {
+    fields: [vehicles.fleetId],
+    references: [fleets.id],
+  }),
+}));
+
+// Driver status types
+export const DRIVER_STATUS = {
+  AVAILABLE: "AVAILABLE",
+  ASSIGNED: "ASSIGNED",
+  IN_ROUTE: "IN_ROUTE",
+  ON_PAUSE: "ON_PAUSE",
+  COMPLETED: "COMPLETED",
+  UNAVAILABLE: "UNAVAILABLE",
+  ABSENT: "ABSENT",
+} as const;
+
+export const drivers = pgTable("drivers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  fleetId: uuid("fleet_id")
+    .notNull()
+    .references(() => fleets.id, { onDelete: "restrict" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  identification: varchar("identification", { length: 50 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  birthDate: timestamp("birth_date"),
+  photo: text("photo"),
+  licenseNumber: varchar("license_number", { length: 100 }).notNull(),
+  licenseExpiry: timestamp("licence_expiry").notNull(),
+  licenseCategories: varchar("license_categories", { length: 255 }),
+  status: varchar("status", { length: 50 })
+    .notNull()
+    .$type<keyof typeof DRIVER_STATUS>()
+    .default("AVAILABLE"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const driversRelations = relations(drivers, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [drivers.companyId],
+    references: [companies.id],
+  }),
+  fleet: one(fleets, {
+    fields: [drivers.fleetId],
+    references: [fleets.id],
+  }),
+}));

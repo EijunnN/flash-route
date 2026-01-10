@@ -5,7 +5,8 @@
       "Bash(bun run build)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(bun run typecheck:*)"
     ]
   }
 }

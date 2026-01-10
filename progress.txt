@@ -1,37 +1,23 @@
 # Progress - Sistema de Gestión Logística
 
-## Iteration 2
+## Completed
 
-### Completed Features
-
-#### Story 1.1: Creación y Gestión de Companies
-- [x] Verificar que el formulario de creación incluye campos para nombre legal, nombre comercial, correo electrónico, teléfono, dirección fiscal, país, zona horaria, moneda y formato de fecha
-- [x] Validar unicidad del nombre legal antes de permitir la creación
-- [x] Verificar que correos duplicados en otra Company activa sean rechazados
-- [x] Confirmar que cada Company recibe un identificador único automático (UUID)
-- [x] Verificar que la desactivación marca datos como inactivos sin eliminar registros físicamente (soft delete)
-- [x] Confirmar generación de evento de auditoría en creación y modificaciones (audit_logs table)
-- [x] Validar que la API permite consulta de Companies con filtrado por estado, país o fecha
-
-#### Story 1.2: Aislamiento de Datos entre Companies
-- [x] Verificar que cada tabla incluye columna tenantId para identificar Company propietaria (audit_logs updated)
-- [x] Confirmar que todas las consultas incluyen automáticamente filtro por tenantId de sesión (withTenantFilter helper)
-- [x] Validar que endpoints de API rechazan solicitudes a recursos de otro tenant (TenantAccessDeniedError)
-- [x] Verificar que logs de auditoría registran tenant y usuario en cada operación (getAuditLogContext helper)
-- [x] Confirmar que migraciones preservan tenantId de cada registro (schema updated)
-- [x] Validar manejo correcto de cambio de Company de usuario con reasignación de datos (verifyTenantAccess helper)
-
-### Files Created/Modified
-- `src/db/schema.ts` - Added tenantId column to audit_logs table
-- `src/db/tenant-aware.ts` - Tenant isolation helpers (withTenantFilter, verifyTenantAccess, getAuditLogContext)
-- `src/lib/tenant.ts` - AsyncLocalStorage-based tenant context management
-- `src/lib/audit.ts` - Audit log helpers with automatic tenant context
-- `src/middleware.ts` - Next.js middleware for extracting tenant context from headers
-- `src/app/api/companies/route.ts` - Updated with tenant filtering and cross-tenant rejection
-- `src/app/api/companies/[id]/route.ts` - Updated with tenant filtering and cross-tenant rejection
+### Story 2.1: Creación y Configuración de Flotas ✅
+- Added fleets table to database schema with all required fields (name, type, weightCapacity, volumeCapacity, operationStart, operationEnd, active)
+- Added FLEET_TYPES constants (HEAVY_LOAD, LIGHT_LOAD, EXPRESS, REFRIGERATED, SPECIAL)
+- Added vehicles and drivers tables for future stories
+- Created fleet validation schema with Zod (fleetSchema, updateFleetSchema, fleetQuerySchema)
+- Implemented Fleet API routes (GET/POST /api/fleets, GET/PATCH/DELETE /api/fleets/[id])
+- Fleet creation validates uniqueness of name within company
+- Fleet deactivation checks for active vehicles and drivers before allowing
+- All routes enforce tenant isolation via x-company-id header
+- Audit logging for create, update, and delete operations
+- Created FleetForm component with validation
+- Created Fleets management page with list, create, edit, and delete functionality
 
 ### Next Steps
-- Story 2.1: Creación y Configuración de Flotas
+- Story 2.2: Asociación de Vehículos a Flotas
+- Story 2.3: Asociación de Conductores a Flotas
 - Set up database migrations for new schema changes
 - Add authentication and authorization
 

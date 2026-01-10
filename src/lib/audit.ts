@@ -41,10 +41,11 @@ export async function logUpdate(entityType: string, entityId: string, changes: a
   });
 }
 
-export async function logDelete(entityType: string, entityId: string) {
+export async function logDelete(entityType: string, entityId: string, data?: any) {
   return createAuditLog({
     entityType,
     entityId,
     action: "DELETE",
+    changes: data ? JSON.stringify(data) : undefined,
   });
 }
