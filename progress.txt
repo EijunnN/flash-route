@@ -15,9 +15,25 @@
 - Created FleetForm component with validation
 - Created Fleets management page with list, create, edit, and delete functionality
 
+### Story 3.1: Registro de Vehículos con Atributos Completos ✅
+- Created vehicle validation schema with Zod (vehicleSchema, updateVehicleSchema, vehicleQuerySchema)
+- Implemented Vehicle API routes (GET/POST /api/vehicles, GET/PATCH/DELETE /api/vehicles/[id])
+- Vehicle creation validates uniqueness of plate within company
+- Vehicle attributes: plate, brand, model, year, type, weightCapacity, volumeCapacity, refrigerated, heated, lifting, licenseRequired, insuranceExpiry, inspectionExpiry, status
+- Vehicle types: TRUCK, VAN, SEMI_TRUCK, PICKUP, TRAILER, REFRIGERATED_TRUCK
+- Vehicle statuses: AVAILABLE, IN_MAINTENANCE, ASSIGNED, INACTIVE
+- License categories: B, C, C1, CE, D, D1, DE
+- All routes enforce tenant isolation via x-company-id header
+- Audit logging for create, update, and delete operations
+- Created VehicleForm component with validation and fleet selection
+- Created Vehicles management page with list, create, edit, and delete functionality
+- Expiry alerts for insurance and inspection documents (expiring soon within 30 days, expired)
+
 ### Next Steps
 - Story 2.2: Asociación de Vehículos a Flotas
 - Story 2.3: Asociación de Conductores a Flotas
+- Story 3.2: Gestión del Estado Operativo de Vehículos
+- Story 4.1: Registro de Conductores con Información Completa
 - Set up database migrations for new schema changes
 - Add authentication and authorization
 

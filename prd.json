@@ -92,7 +92,7 @@
         "Confirmar mantenimiento de historial de cambios para todos los atributos",
         "Verificar API permite consultar vehículos con filtros por tipo, estado, capacidades y flota"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "3.2",
