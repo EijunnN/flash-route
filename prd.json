@@ -186,7 +186,7 @@
         "Confirmar posibilidad de marcar presets como inactivos sin eliminar",
         "Verificar API permite CRUD completo con filtrado por tipo y estado"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "5.2",

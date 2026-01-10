@@ -472,3 +472,45 @@ export const driverStatusHistoryRelations = relations(driverStatusHistory, ({ on
     references: [users.id],
   }),
 }));
+
+// Time window preset types
+export const TIME_WINDOW_TYPES = {
+  SHIFT: "SHIFT",
+  RANGE: "RANGE",
+  EXACT: "EXACT",
+} as const;
+
+// Time window strictness levels
+export const TIME_WINDOW_STRICTNESS = {
+  HARD: "HARD",
+  SOFT: "SOFT",
+} as const;
+
+export const timeWindowPresets = pgTable("time_window_presets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 20 })
+    .notNull()
+    .$type<keyof typeof TIME_WINDOW_TYPES>(),
+  startTime: time("start_time"),
+  endTime: time("end_time"),
+  exactTime: time("exact_time"),
+  toleranceMinutes: integer("tolerance_minutes"),
+  strictness: varchar("strictness", { length: 20 })
+    .notNull()
+    .$type<keyof typeof TIME_WINDOW_STRICTNESS>()
+    .default("HARD"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const timeWindowPresetsRelations = relations(timeWindowPresets, ({ one }) => ({
+  company: one(companies, {
+    fields: [timeWindowPresets.companyId],
+    references: [companies.id],
+  }),
+}));

@@ -1,0 +1,140 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { timeWindowPresets } from "@/db/schema";
+import {
+  timeWindowPresetSchema,
+  timeWindowPresetQuerySchema,
+} from "@/lib/validations/time-window-preset";
+import { eq, and, desc, like } from "drizzle-orm";
+import { withTenantFilter } from "@/db/tenant-aware";
+import { setTenantContext, requireTenantContext } from "@/lib/tenant";
+import { logCreate, logUpdate, logDelete } from "@/lib/audit";
+
+function extractTenantContext(request: NextRequest) {
+  const companyId = request.headers.get("x-company-id");
+  const userId = request.headers.get("x-user-id");
+  if (!companyId) return null;
+  return { companyId, userId: userId || undefined };
+}
+
+// GET - List with filtering and pagination
+export async function GET(request: NextRequest) {
+  try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
+    const { searchParams } = new URL(request.url);
+    const query = timeWindowPresetQuerySchema.parse(
+      Object.fromEntries(searchParams)
+    );
+
+    const conditions = [];
+
+    if (query.type) {
+      conditions.push(eq(timeWindowPresets.type, query.type));
+    }
+
+    if (query.strictness) {
+      conditions.push(eq(timeWindowPresets.strictness, query.strictness));
+    }
+
+    if (query.active !== undefined) {
+      conditions.push(eq(timeWindowPresets.active, query.active));
+    }
+
+    const whereClause = withTenantFilter(timeWindowPresets, conditions);
+
+    const [data, totalResult] = await Promise.all([
+      db
+        .select()
+        .from(timeWindowPresets)
+        .where(whereClause)
+        .orderBy(desc(timeWindowPresets.createdAt))
+        .limit(query.limit)
+        .offset(query.offset),
+      db
+        .select({ count: timeWindowPresets.id })
+        .from(timeWindowPresets)
+        .where(whereClause),
+    ]);
+
+    return NextResponse.json({
+      data,
+      meta: { total: totalResult.length },
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch time window presets" },
+      { status: 400 }
+    );
+  }
+}
+
+// POST - Create
+export async function POST(request: NextRequest) {
+  try {
+    const tenantCtx = extractTenantContext(request);
+    if (!tenantCtx) {
+      return NextResponse.json(
+        { error: "Missing tenant context" },
+        { status: 401 }
+      );
+    }
+
+    setTenantContext(tenantCtx);
+
+    const body = await request.json();
+    const validatedData = timeWindowPresetSchema.parse(body);
+
+    // Check for uniqueness of name within the company
+    const context = requireTenantContext();
+    const existing = await db
+      .select()
+      .from(timeWindowPresets)
+      .where(
+        and(
+          eq(timeWindowPresets.companyId, context.companyId),
+          eq(timeWindowPresets.name, validatedData.name),
+          eq(timeWindowPresets.active, true)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: "A time window preset with this name already exists" },
+        { status: 409 }
+      );
+    }
+
+    const [newRecord] = await db
+      .insert(timeWindowPresets)
+      .values({
+        ...validatedData,
+        companyId: tenantCtx.companyId,
+      })
+      .returning();
+
+    await logCreate("time_window_preset", newRecord.id, newRecord);
+
+    return NextResponse.json(newRecord, { status: 201 });
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: error.message || "Failed to create time window preset" },
+      { status: 500 }
+    );
+  }
+}

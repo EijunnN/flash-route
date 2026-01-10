@@ -1,46 +1,50 @@
 # Progress - Sistema de Gestión Logística
 
 ## Completed Stories
+- Story 1.1: Companies - Multi-tenant Company Management
+- Story 1.2: Companies - Data Isolation
+- Story 2.1: Fleets - Fleet Creation and Configuration
+- Story 2.2: Fleets - Vehicle-Fleet Association
+- Story 2.3: Fleets - Driver-Fleet Association
+- Story 3.1: Vehicles - Vehicle Registration with Full Attributes
+- Story 3.2: Vehicles - Vehicle Operational Status Management
+- Story 3.3: Vehicles - Vehicle Skills Catalog
+- Story 4.1: Drivers - Driver Registration with Complete Information
+- Story 4.2: Drivers - Driver Skills Management
+- Story 4.3: Drivers - Driver Operational State Management
+- Story 5.1: Time Window Presets - Preset Creation
 
-### Story 4.3 - Driver Operational State Management (Gestión del Estado Operativo de Conductores)
+## Current Implementation: Story 5.1 - Time Window Preset Creation
 
-**Status:** ✅ Completed
+### Database Schema
+- Added `timeWindowPresets` table with fields:
+  - `id`, `companyId`, `name`, `type`
+  - `startTime`, `endTime` (for SHIFT and RANGE types)
+  - `exactTime`, `toleranceMinutes` (for EXACT type)
+  - `strictness` (HARD/SOFT), `active`, timestamps
 
-**Implementation:**
-- Added `driver_status_history` table to database schema with fields for tracking status transitions
-- Added `DRIVER_STATUS_TRANSITIONS` type definition defining valid state transitions
-- Created database migration and applied it successfully
-- Created `/lib/validations/driver-status.ts` with:
-  - `STATUS_DISPLAY_NAMES` for UI display
-  - `STATUS_COLOR_CLASSES` for visual indicators
-  - `validateStatusTransition()` function for transition validation
-  - `requiresActiveRouteCheck()` function for active route validation
-  - Zod schemas for API validation
-- Created API endpoints:
-  - `POST /api/drivers/[id]/status-transition` - Change driver status with validation and history
-  - `GET /api/drivers/[id]/status-history` - Get driver status change history
-  - `GET /api/drivers/status-by-fleet?fleetId=xxx` - Get driver status metrics by fleet
-- Created `/components/drivers/driver-status-modal.tsx` UI component for status changes
-- Created `/components/ui/textarea.tsx` UI component
-- Updated `/app/drivers/page.tsx` with:
-  - Clickable status badges that open the status change modal
-  - Integration with DriverStatusModal component
+### API Endpoints
+- `GET/POST /api/time-window-presets` - List and create presets
+- `GET/PATCH/DELETE /api/time-window-presets/[id]` - Individual preset operations
 
-**API Endpoints:**
-- `POST /api/drivers/[id]/status-transition` - Change driver status
-- `GET /api/drivers/[id]/status-history` - Get status history
-- `GET /api/drivers/status-by-fleet` - Get fleet driver status metrics
+### Validation
+- Zod schemas for create, update, and query operations
+- Type-specific validation (SHIFT, RANGE, EXACT)
+- Time format validation (HH:MM)
+- End time must be after start time validation
+- Unique name validation within company
 
-**Files Modified:**
-- `src/db/schema.ts` - Added driver_status_history table and DRIVER_STATUS_TRANSITIONS
-- `src/lib/validations/driver-status.ts` - New validation module
-- `src/app/api/drivers/[id]/status-transition/route.ts` - New API endpoint
-- `src/app/api/drivers/[id]/status-history/route.ts` - New API endpoint
-- `src/app/api/drivers/status-by-fleet/route.ts` - New API endpoint
-- `src/components/drivers/driver-status-modal.tsx` - New UI component
-- `src/components/ui/textarea.tsx` - New UI component
-- `src/app/drivers/page.tsx` - Updated with status change functionality
+### Frontend
+- Page: `/time-window-presets` - Full CRUD interface
+- Form component with type-specific fields
+- Table display with filtering by type, strictness, and active status
 
-**Migration:**
-- `drizzle/0000_swift_manta.sql` - Applied successfully
-
+### Features Implemented
+1. Support for SHIFT, RANGE, and EXACT time window types
+2. Start/end time definition for SHIFT and RANGE
+3. Exact time with tolerance in minutes for EXACT
+4. Unique descriptive names within company
+5. End time after start time validation
+6. Soft delete (active flag) instead of hard delete
+7. Full CRUD with filtering by type and status
+8. Strictness configuration (HARD/SOFT) for Story 5.2 preparation
