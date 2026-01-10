@@ -201,7 +201,7 @@ export default function OptimizationPage() {
       }
 
       const data = await response.json();
-      router.push(`/optimization/${data.data.id}`);
+      router.push(`/optimization/${data.data.id}/results`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

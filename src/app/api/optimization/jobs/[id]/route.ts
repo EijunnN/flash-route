@@ -16,7 +16,7 @@ function extractTenantContext(request: NextRequest) {
 // GET - Get job status
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
@@ -24,11 +24,12 @@ export async function GET(
   }
 
   setTenantContext(tenantCtx);
+  const { id } = await params;
 
   try {
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
-        eq(optimizationJobs.id, params.id),
+        eq(optimizationJobs.id, id),
         withTenantFilter(optimizationJobs)
       ),
     });
@@ -76,7 +77,7 @@ export async function GET(
 // DELETE - Cancel running job
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const tenantCtx = extractTenantContext(request);
   if (!tenantCtx) {
@@ -84,12 +85,13 @@ export async function DELETE(
   }
 
   setTenantContext(tenantCtx);
+  const { id } = await params;
 
   try {
     // Check if job exists and belongs to tenant
     const job = await db.query.optimizationJobs.findFirst({
       where: and(
-        eq(optimizationJobs.id, params.id),
+        eq(optimizationJobs.id, id),
         withTenantFilter(optimizationJobs)
       ),
     });
@@ -110,7 +112,7 @@ export async function DELETE(
     }
 
     // Attempt to cancel the job
-    const cancelled = await cancelJobQueue(params.id);
+    const cancelled = await cancelJobQueue(id);
 
     if (!cancelled) {
       return NextResponse.json(
@@ -121,7 +123,7 @@ export async function DELETE(
 
     return NextResponse.json({
       data: {
-        id: params.id,
+        id: id,
         status: "CANCELLED",
         message: "Job cancelled successfully",
       },

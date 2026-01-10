@@ -362,7 +362,7 @@
         "Confirmar métricas agregadas muestran resumen de todas las rutas",
         "Verificar API retorna estructura de datos con todas las métricas de resultado"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "8.3",

@@ -117,7 +117,40 @@ export const optimizationConfigQuerySchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0),
 });
 
-export const optimizationConfigUpdateSchema = optimizationConfigSchema.partial();
+// Update schema - all fields optional without refinements that cause issues with .partial()
+export const optimizationConfigUpdateSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  depotLatitude: z.string().min(1).optional(),
+  depotLongitude: z.string().min(1).optional(),
+  depotAddress: z.string().optional(),
+  selectedVehicleIds: z.string().optional(),
+  selectedDriverIds: z.string().optional(),
+  objective: z.enum(OPTIMIZATION_OBJECTIVE_VALUES).optional(),
+  capacityEnabled: z.boolean().optional(),
+  workWindowStart: timeSchema.optional(),
+  workWindowEnd: timeSchema.optional(),
+  serviceTimeMinutes: z.number().int().positive().optional(),
+  timeWindowStrictness: z.enum(TIME_WINDOW_STRICTNESS_VALUES).optional(),
+  penaltyFactor: z.number().int().min(1).max(20).optional(),
+  maxRoutes: z.number().int().positive().optional(),
+  status: z.enum(["DRAFT", "CONFIGURED"]).optional(),
+}).refine(
+  (data) => {
+    // Only validate work window if both are provided
+    if (data.workWindowStart && data.workWindowEnd) {
+      const [startHour, startMin] = data.workWindowStart.split(':').map(Number);
+      const [endHour, endMin] = data.workWindowEnd.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      return endMinutes > startMinutes;
+    }
+    return true;
+  },
+  {
+    message: "Work window end time must be after start time",
+    path: ["workWindowEnd"],
+  }
+);
 
 // Validation for depot location specifically
 export const depotLocationSchema = z.object({

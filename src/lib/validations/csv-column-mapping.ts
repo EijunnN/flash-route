@@ -49,7 +49,16 @@ export const csvColumnMappingTemplateSchema = z.object({
 });
 
 // Update schema (all optional)
-export const updateCsvColumnMappingTemplateSchema = csvColumnMappingTemplateSchema.partial();
+export const updateCsvColumnMappingTemplateSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().optional(),
+  columnMapping: z.record(
+    z.string().min(1),
+    z.enum(CSV_SYSTEM_FIELDS)
+  ).optional(),
+  requiredFields: z.array(z.enum(CSV_SYSTEM_FIELDS)).optional(),
+  active: z.boolean().optional(),
+});
 
 // Column mapping suggestion request schema
 export const columnMappingSuggestionRequestSchema = z.object({

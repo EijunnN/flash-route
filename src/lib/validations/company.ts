@@ -13,8 +13,18 @@ export const companySchema = z.object({
   active: z.boolean().default(true),
 });
 
-export const updateCompanySchema = companySchema.partial().extend({
+export const updateCompanySchema = z.object({
   id: z.string().uuid(),
+  legalName: z.string().min(1).max(255).optional(),
+  commercialName: z.string().min(1).max(255).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  taxAddress: z.string().optional(),
+  country: z.string().length(2).optional(),
+  timezone: z.string().optional(),
+  currency: z.string().length(3).optional(),
+  dateFormat: z.string().optional(),
+  active: z.boolean().optional(),
 });
 
 export const companyQuerySchema = z.object({
