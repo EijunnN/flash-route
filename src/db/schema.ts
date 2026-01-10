@@ -102,6 +102,7 @@ export const fleetsRelations = relations(fleets, ({ one, many }) => ({
   }),
   vehicles: many(vehicles),
   drivers: many(drivers),
+  secondaryDrivers: many(driverSecondaryFleets),
 }));
 
 // Vehicle status types
@@ -202,6 +203,8 @@ export const driversRelations = relations(drivers, ({ one, many }) => ({
     references: [fleets.id],
   }),
   driverSkills: many(driverSkills),
+  availability: many(driverAvailability),
+  secondaryFleets: many(driverSecondaryFleets),
 }));
 
 // Vehicle skill categories
@@ -308,5 +311,79 @@ export const vehicleFleetHistoryRelations = relations(vehicleFleetHistory, ({ on
   user: one(users, {
     fields: [vehicleFleetHistory.userId],
     references: [users.id],
+  }),
+}));
+
+// Days of week
+export const DAYS_OF_WEEK = {
+  MONDAY: "MONDAY",
+  TUESDAY: "TUESDAY",
+  WEDNESDAY: "WEDNESDAY",
+  THURSDAY: "THURSDAY",
+  FRIDAY: "FRIDAY",
+  SATURDAY: "SATURDAY",
+  SUNDAY: "SUNDAY",
+} as const;
+
+// Driver availability by day of week
+export const driverAvailability = pgTable("driver_availability", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "cascade" }),
+  dayOfWeek: varchar("day_of_week", { length: 10 })
+    .notNull()
+    .$type<keyof typeof DAYS_OF_WEEK>(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+  isDayOff: boolean("is_day_off").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const driverAvailabilityRelations = relations(driverAvailability, ({ one }) => ({
+  company: one(companies, {
+    fields: [driverAvailability.companyId],
+    references: [companies.id],
+  }),
+  driver: one(drivers, {
+    fields: [driverAvailability.driverId],
+    references: [drivers.id],
+  }),
+}));
+
+// Secondary fleets for drivers (many-to-many relationship)
+export const driverSecondaryFleets = pgTable("driver_secondary_fleets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "cascade" }),
+  fleetId: uuid("fleet_id")
+    .notNull()
+    .references(() => fleets.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const driverSecondaryFleetsRelations = relations(driverSecondaryFleets, ({ one }) => ({
+  company: one(companies, {
+    fields: [driverSecondaryFleets.companyId],
+    references: [companies.id],
+  }),
+  driver: one(drivers, {
+    fields: [driverSecondaryFleets.driverId],
+    references: [drivers.id],
+  }),
+  fleet: one(fleets, {
+    fields: [driverSecondaryFleets.fleetId],
+    references: [fleets.id],
   }),
 }));

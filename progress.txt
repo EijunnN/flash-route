@@ -1,18 +1,33 @@
 # Progress - Sistema de Gestión Logística
 
-## Completed Features
+## Iteration 1 - 2025-01-10
 
-### Story 2.2 - Asignación de Vehículos a Flotas
-- ✅ Added vehicle-fleet compatibility validation based on vehicle type and capacity
-- ✅ Added fleet change history tracking with timestamps and user responsible
-- ✅ Added warnings when reassigning vehicles with active planifications (status ASSIGNED)
-- ✅ Added API endpoint GET /api/fleets/[id]/vehicles to get all vehicles of a specific fleet
-- ✅ Added API endpoint GET /api/fleets/[id]/vehicle-counts to get vehicle counts by status filtered by fleet
+### Story 2.3 - Asociación de Conductores a Flotas
 
-**Files modified:**
-- src/db/schema.ts - Added vehicleFleetHistory table and relations
-- src/lib/validations/compatibility.ts - New file for compatibility validation
-- src/app/api/vehicles/[id]/route.ts - Added compatibility checks and history tracking
-- src/app/api/fleets/[id]/vehicles/route.ts - New endpoint for fleet vehicles
-- src/app/api/fleets/[id]/vehicle-counts/route.ts - New endpoint for vehicle counts by status
+**Completed Steps:**
+1. ✅ Added driver availability by day of week with time ranges schema (driver_availability table)
+2. ✅ Implemented days off logic with isDayOff boolean field
+3. ✅ Created secondary fleets many-to-many relationship table (driver_secondary_fleets)
+4. ✅ Created API endpoints for driver availability CRUD operations
+5. ✅ Created API endpoint for checking driver availability at specific date/time
+6. ✅ Created API endpoints for secondary fleets CRUD operations
+7. ✅ Created API endpoint for getting available drivers at specific time for a fleet
+
+**New Tables:**
+- `driver_availability`: Stores driver availability by day of week with time ranges and days off
+- `driver_secondary_fleets`: Many-to-many relationship for drivers with secondary fleets
+
+**New API Routes:**
+- `/api/driver-availability` - CRUD for driver availability
+- `/api/driver-availability/[id]` - Individual driver availability operations
+- `/api/driver-availability/check` - POST to check availability at specific time
+- `/api/driver-secondary-fleets` - CRUD for secondary fleets
+- `/api/driver-secondary-fleets/[id]` - Individual secondary fleet operations
+- `/api/drivers/available-at` - GET to find available drivers for fleet at time
+
+**Validation Files:**
+- `src/lib/validations/driver-availability.ts` - Time format validation, day of week helpers
+- `src/lib/validations/driver-secondary-fleet.ts` - Secondary fleet validation
+
+Build passed successfully with all new routes.
 

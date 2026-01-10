@@ -76,7 +76,7 @@
         "Validar consulta de conductores con filtro por flota y disponibilidad actual",
         "Confirmar endpoint API para obtener conductores disponibles en horario específico"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "3.1",
