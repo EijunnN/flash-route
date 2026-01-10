@@ -1,39 +1,44 @@
 # Progress - Sistema de Gestión Logística
 
-## Completed
+## Iteration 1 (2025-01-10)
 
-### Story 2.1: Creación y Configuración de Flotas ✅
-- Added fleets table to database schema with all required fields (name, type, weightCapacity, volumeCapacity, operationStart, operationEnd, active)
-- Added FLEET_TYPES constants (HEAVY_LOAD, LIGHT_LOAD, EXPRESS, REFRIGERATED, SPECIAL)
-- Added vehicles and drivers tables for future stories
-- Created fleet validation schema with Zod (fleetSchema, updateFleetSchema, fleetQuerySchema)
-- Implemented Fleet API routes (GET/POST /api/fleets, GET/PATCH/DELETE /api/fleets/[id])
-- Fleet creation validates uniqueness of name within company
-- Fleet deactivation checks for active vehicles and drivers before allowing
-- All routes enforce tenant isolation via x-company-id header
-- Audit logging for create, update, and delete operations
-- Created FleetForm component with validation
-- Created Fleets management page with list, create, edit, and delete functionality
+### Completed
+- Story 1.1: Company CRUD Management ✓ (previo)
+- Story 1.2: Data Isolation Between Companies ✓ (previo)
+- Story 2.1: Fleet Creation and Configuration ✓ (previo)
+- Story 3.1: Vehicle Registration with Complete Attributes ✓ (previo)
 
-### Story 3.1: Registro de Vehículos con Atributos Completos ✅
-- Created vehicle validation schema with Zod (vehicleSchema, updateVehicleSchema, vehicleQuerySchema)
-- Implemented Vehicle API routes (GET/POST /api/vehicles, GET/PATCH/DELETE /api/vehicles/[id])
-- Vehicle creation validates uniqueness of plate within company
-- Vehicle attributes: plate, brand, model, year, type, weightCapacity, volumeCapacity, refrigerated, heated, lifting, licenseRequired, insuranceExpiry, inspectionExpiry, status
-- Vehicle types: TRUCK, VAN, SEMI_TRUCK, PICKUP, TRAILER, REFRIGERATED_TRUCK
-- Vehicle statuses: AVAILABLE, IN_MAINTENANCE, ASSIGNED, INACTIVE
-- License categories: B, C, C1, CE, D, D1, DE
-- All routes enforce tenant isolation via x-company-id header
-- Audit logging for create, update, and delete operations
-- Created VehicleForm component with validation and fleet selection
-- Created Vehicles management page with list, create, edit, and delete functionality
-- Expiry alerts for insurance and inspection documents (expiring soon within 30 days, expired)
+### Just Completed
+- Story 4.1: Driver Registration with Complete Information ✓
 
-### Next Steps
-- Story 2.2: Asociación de Vehículos a Flotas
-- Story 2.3: Asociación de Conductores a Flotas
-- Story 3.2: Gestión del Estado Operativo de Vehículos
-- Story 4.1: Registro de Conductores con Información Completa
-- Set up database migrations for new schema changes
-- Add authentication and authorization
+#### Implementation Details for Story 4.1:
+1. **Schema Update**: Added `certifications` field to `drivers` table in `src/db/schema.ts`
+2. **Validations**: Created `src/lib/validations/driver.ts` with:
+   - Driver schema with all required fields (name, identification, email, license, etc.)
+   - License category validation (B, C, C1, CE, D, D1, DE)
+   - Helper functions for license expiry checks (isExpiringSoon, isExpired)
+   - Auto-set status to UNAVAILABLE when license is expired
+3. **API Routes**:
+   - `GET /api/drivers` - List with filtering by fleet, status, license status, certifications
+   - `POST /api/drivers` - Create with duplicate identification checking
+   - `GET /api/drivers/[id]` - Get single driver with computed license status
+   - `PATCH /api/drivers/[id]` - Update with validation
+   - `DELETE /api/drivers/[id]` - Soft delete
+4. **UI Components**:
+   - `src/components/drivers/driver-form.tsx` - Form with all driver fields
+   - `src/app/drivers/page.tsx` - Full CRUD interface
+5. **Features**:
+   - Visual alerts for expired/expiring licenses (within 30 days)
+   - Checkbox selection for license categories
+   - Certifications text area
+   - Fleet assignment
+   - Status management (AVAILABLE, ASSIGNED, IN_ROUTE, ON_PAUSE, COMPLETED, UNAVAILABLE, ABSENT)
 
+### Remaining Stories (40)
+- Story 2.2: Vehicle-Fleet Association
+- Story 2.3: Driver-Fleet Association (primary + secondary fleets)
+- Story 3.2: Vehicle Operational State Management
+- Story 3.3: Vehicle Skills Catalog
+- Story 4.2: Driver Skills Management
+- Story 4.3: Driver Operational State Management
+- Stories 5-17: Various modules (Time Windows, Import, Optimization, Monitoring, etc.)

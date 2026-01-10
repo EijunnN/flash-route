@@ -181,6 +181,7 @@ export const drivers = pgTable("drivers", {
   licenseNumber: varchar("license_number", { length: 100 }).notNull(),
   licenseExpiry: timestamp("licence_expiry").notNull(),
   licenseCategories: varchar("license_categories", { length: 255 }),
+  certifications: text("certifications"),
   status: varchar("status", { length: 50 })
     .notNull()
     .$type<keyof typeof DRIVER_STATUS>()

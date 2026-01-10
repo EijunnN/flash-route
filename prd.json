@@ -138,7 +138,7 @@
         "Validar API permite consultar conductores con filtros por flota, estado de licencia y certificaciones",
         "Confirmar mantenimiento de historial de cambios en atributos críticos"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "4.2",
