@@ -234,7 +234,7 @@
         "Confirmar separación de registros válidos e inválidos para corrección",
         "Verificar que validación completa antes de cualquier modificación en base de datos"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "6.3",

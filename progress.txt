@@ -21,3 +21,33 @@
   - Detailed error reporting with row numbers
 - **Status**: ✅ Passes all requirements
 
+#### Story 6.2: Validación de Datos Durante Importación
+- **Implemented**: Enhanced validation with error categorization
+- **Features**:
+  - Error severity levels: critical, warning, info
+  - Error type categorization: required_field, format, range, duplicate, reference, validation
+  - Valid/invalid record separation in response
+  - Error summary statistics (by field, severity, error type)
+  - Required field errors reported as critical with specific messages
+  - Coordinate validation (range checks with specific error messages)
+  - (0, 0) coordinate detection as warning (not blocking)
+  - Duplicate tracking ID detection (within CSV and database)
+  - Email format validation as warning
+  - Numeric field validation (weight, volume must be positive)
+  - Strictness validation (HARD or SOFT only)
+  - Time window preset reference validation
+  - Complete validation BEFORE any database modification
+  - Enhanced API response with validRecords and invalidRecords arrays
+- **API Response Structure**:
+  ```typescript
+  {
+    success, totalRows, validRows, invalidRows, importedRows,
+    errors: CSVValidationError[],
+    validRecords: CSVRecordValidationResult[],
+    invalidRecords: CSVRecordValidationResult[],
+    preview, duplicateTrackingIds,
+    summary: { byField, bySeverity, byErrorType }
+  }
+  ```
+- **Status**: ✅ Passes all requirements
+
