@@ -16,7 +16,7 @@
         "Confirmar generación de evento de auditoría en creación y modificaciones",
         "Validar que la API permite consulta de Companies con filtrado por estado, país o fecha"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "1.2",
@@ -792,6 +792,6 @@
       "Interfaz de Usuario": 4,
       "Rendimiento y Escalabilidad": 3
     },
-    "all_pending": true
+    "all_pending": false
   }
 }

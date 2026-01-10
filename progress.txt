@@ -1,0 +1,39 @@
+# Progress - Sistema de Gestión Logística
+
+## Iteration 1
+
+### Completed Features
+
+#### Story 1.1: Creación y Gestión de Companies
+- [x] Verificar que el formulario de creación incluye campos para nombre legal, nombre comercial, correo electrónico, teléfono, dirección fiscal, país, zona horaria, moneda y formato de fecha
+- [x] Validar unicidad del nombre legal antes de permitir la creación
+- [x] Verificar que correos duplicados en otra Company activa sean rechazados
+- [x] Confirmar que cada Company recibe un identificador único automático (UUID)
+- [x] Verificar que la desactivación marca datos como inactivos sin eliminar registros físicamente (soft delete)
+- [x] Confirmar generación de evento de auditoría en creación y modificaciones (audit_logs table)
+- [x] Validar que la API permite consulta de Companies con filtrado por estado, país o fecha
+
+### Files Created
+- `src/db/schema.ts` - Database schema with companies, users, and audit_logs tables
+- `src/db/index.ts` - Database connection configuration
+- `drizzle.config.ts` - Drizzle ORM configuration
+- `src/lib/validations/company.ts` - Company validation schemas with Zod
+- `src/app/api/companies/route.ts` - GET (list) and POST (create) endpoints
+- `src/app/api/companies/[id]/route.ts` - GET, PATCH, DELETE endpoints for individual companies
+- `src/components/ui/input.tsx` - Input UI component
+- `src/components/ui/label.tsx` - Label UI component
+- `src/components/companies/company-form.tsx` - Company creation/edit form
+- `src/app/companies/page.tsx` - Company management page with list view
+
+### Dependencies Added
+- `drizzle-orm` - Database ORM
+- `postgres` - PostgreSQL driver
+- `drizzle-kit` - Drizzle CLI tools
+- `zod` - Schema validation
+- `@t3-oss/env-nextjs` - Environment variable validation
+- `@radix-ui/react-label` - Label primitive
+
+### Next Steps
+- Story 1.2: Aislamiento de Datos entre Companies (implement tenantId filtering)
+- Set up database migrations
+- Add authentication and authorization

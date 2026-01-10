@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(bun add:*)",
-      "Bash(bun run build)"
+      "Bash(bun run build)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
