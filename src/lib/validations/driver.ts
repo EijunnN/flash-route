@@ -10,7 +10,7 @@ export const DRIVER_STATUS = [
   "ABSENT",
 ] as const;
 
-export const LICENSE_CATEGORIES = ["B", "C", "C1", "CE", "D", "D1", "DE"] as const;
+export const LICENSE_CATEGORIES = ["A", "A1", "A2", "A3", "B", "C", "C1", "CE", "D", "D1", "DE"] as const;
 
 // Helper function to check if date is within 30 days
 const isExpiringSoon = (dateString: string) => {
