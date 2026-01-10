@@ -21,7 +21,8 @@
       "Bash(bunx jq:*)",
       "Bash(node -e:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(wc:*)"
     ]
   }
 }
