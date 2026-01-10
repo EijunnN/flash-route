@@ -50,6 +50,37 @@
   - Eliminación protegida (debe verificarse si está en uso en el futuro)
   - API permite consultar por categoría y estado activo
 
+### Story 4.2: Driver Skills Management ✓ (2026-01-10)
+- Database schema: `driverSkills` junction table linking drivers to vehicleSkills
+- Validation: `src/lib/validations/driver-skill.ts`
+- API endpoints:
+  - GET/POST `/api/driver-skills` - List and create driver skill assignments
+  - GET/PATCH/DELETE `/api/driver-skills/[id]` - Get, update, and delete assignments
+- Frontend: Complete UI at `/driver-skills` with:
+  - Listing table with filtering (driver, category, active status, expiry status)
+  - Create/edit form with validation
+  - Toggle active/inactive functionality
+  - Color-coded expiry status badges
+  - Category badges with color coding
+- Features:
+  - Asignación de habilidades a conductores con fecha de obtención y vencimiento
+  - Validación de unicidad (mismo conductor-skill)
+  - Filtrado por estado de vencimiento (vigente, próximo a vencer, vencido)
+  - Alertas visuales para habilidades próximas a vencer (< 30 días)
+  - Relaciones many-to-many entre conductores y habilidades
+
+## Files Modified/Created for Story 4.2
+
+### Modified
+- `src/db/schema.ts` - Added driverSkills junction table with relations to drivers and vehicleSkills
+
+### Created
+- `src/lib/validations/driver-skill.ts` - Zod validation schemas
+- `src/app/api/driver-skills/route.ts` - GET/POST endpoints
+- `src/app/api/driver-skills/[id]/route.ts` - GET/PATCH/DELETE endpoints
+- `src/components/driver-skills/driver-skill-form.tsx` - Form component
+- `src/app/driver-skills/page.tsx` - Full management page
+
 ## Files Modified/Created for Story 3.3
 
 ### Modified

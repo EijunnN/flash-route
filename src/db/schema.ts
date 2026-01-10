@@ -200,6 +200,7 @@ export const driversRelations = relations(drivers, ({ one, many }) => ({
     fields: [drivers.fleetId],
     references: [fleets.id],
   }),
+  driverSkills: many(driverSkills),
 }));
 
 // Vehicle skill categories
@@ -226,9 +227,44 @@ export const vehicleSkills = pgTable("vehicle_skills", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const vehicleSkillsRelations = relations(vehicleSkills, ({ one }) => ({
+export const vehicleSkillsRelations = relations(vehicleSkills, ({ one, many }) => ({
   company: one(companies, {
     fields: [vehicleSkills.companyId],
     references: [companies.id],
+  }),
+  driverSkills: many(driverSkills),
+}));
+
+// Driver Skills junction table
+export const driverSkills = pgTable("driver_skills", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "cascade" }),
+  skillId: uuid("skill_id")
+    .notNull()
+    .references(() => vehicleSkills.id, { onDelete: "cascade" }),
+  obtainedAt: timestamp("obtained_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const driverSkillsRelations = relations(driverSkills, ({ one }) => ({
+  company: one(companies, {
+    fields: [driverSkills.companyId],
+    references: [companies.id],
+  }),
+  driver: one(drivers, {
+    fields: [driverSkills.driverId],
+    references: [drivers.id],
+  }),
+  skill: one(vehicleSkills, {
+    fields: [driverSkills.skillId],
+    references: [vehicleSkills.id],
   }),
 }));

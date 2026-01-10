@@ -6,7 +6,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npx tsc:*)",
-      "Bash(bun run typecheck:*)"
+      "Bash(bun run typecheck:*)",
+      "Bash(git -C \"C:\\\\Users\\\\vicen\\\\desktop\\\\projects\\\\bun\\\\planeamiento\" log --oneline -10)",
+      "Bash(bun run test)",
+      "Bash(tsc:*)"
     ]
   }
 }
