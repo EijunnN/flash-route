@@ -274,22 +274,6 @@ export default function OptimizationPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="penalty-factor">Penalty Factor: {penaltyFactor}x</Label>
-                <p className="text-sm text-muted-foreground">
-                  Higher values prioritize meeting time windows over efficiency (1-20).
-                </p>
-                <input
-                  id="penalty-factor"
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={penaltyFactor}
-                  onChange={(e) => setPenaltyFactor(Number(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="max-routes">Maximum Routes (optional)</Label>
                 <Input
                   id="max-routes"
@@ -362,7 +346,7 @@ export default function OptimizationPage() {
             <CardHeader>
               <CardTitle>Time Settings</CardTitle>
               <CardDescription>
-                Configure the work window and time window handling.
+                Configure the work window, service time, and time window handling.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -389,6 +373,9 @@ export default function OptimizationPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="service-time">Service Time (minutes)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Time spent at each delivery location. Default is 10 minutes.
+                </p>
                 <Input
                   id="service-time"
                   type="number"
@@ -400,6 +387,9 @@ export default function OptimizationPage() {
 
               <div className="space-y-2">
                 <Label>Time Window Strictness</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose how the optimizer should handle promised delivery times.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {STRICTNESS_OPTIONS.map((option) => (
                     <button
@@ -418,6 +408,29 @@ export default function OptimizationPage() {
                   ))}
                 </div>
               </div>
+
+              {timeWindowStrictness === "SOFT" && (
+                <div className="space-y-2">
+                  <Label htmlFor="penalty-factor">Penalty Factor: {penaltyFactor}x</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Higher values prioritize meeting time windows over route efficiency (1-20).
+                    Used only in SOFT mode to minimize delays.
+                  </p>
+                  <input
+                    id="penalty-factor"
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={penaltyFactor}
+                    onChange={(e) => setPenaltyFactor(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>1x (More efficient)</span>
+                    <span>20x (Stricter compliance)</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

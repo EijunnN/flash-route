@@ -94,7 +94,20 @@ export const optimizationConfigSchema = z.object({
   timeWindowStrictness: z.enum(TIME_WINDOW_STRICTNESS_VALUES).default("SOFT"),
   penaltyFactor: z.number().int().min(1).max(20).default(3),
   maxRoutes: z.number().int().positive().optional(),
-});
+}).refine(
+  (data) => {
+    // Validate that work window end is after start
+    const [startHour, startMin] = data.workWindowStart.split(':').map(Number);
+    const [endHour, endMin] = data.workWindowEnd.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    return endMinutes > startMinutes;
+  },
+  {
+    message: "Work window end time must be after start time",
+    path: ["workWindowEnd"],
+  }
+);
 
 export const optimizationConfigQuerySchema = z.object({
   status: z.string().optional(),

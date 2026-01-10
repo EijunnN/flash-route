@@ -1,5 +1,42 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-10 - Story 7.3: Configuración de Tiempo y Ventanas de Entrega
+
+### Completed
+
+**Validation:**
+- Updated `src/lib/validations/optimization-config.ts`
+  - Added validation for work window end time being after start time
+  - Prevents invalid time ranges that would break optimization
+
+**UI Updates:**
+- Updated `src/app/optimization/page.tsx`
+  - Reorganized Time Settings card for better UX
+  - Added description for service time field (default 10 minutes)
+  - Added description for time window strictness selector
+  - Moved penalty factor configuration from Optimization Strategy to Time Settings
+  - Penalty factor now conditionally shows only in SOFT mode
+  - Added visual scale indicators for penalty factor (1x to 20x)
+  - Added description explaining penalty factor is only used in SOFT mode
+
+**Existing Features (Already Implemented):**
+- Work window start/end time inputs (HH:MM format)
+- Service time configuration with default 10 minutes
+- Time window strictness mode (HARD/SOFT) selection
+- Penalty factor for SOFT mode (1-20 range)
+- All time parameters properly validated and sent to API
+
+### Steps Verified (from PRD 7.3)
+- [x] Specification of work window with start and end time
+- [x] Configurable service time with default 10 minutes
+- [x] Mode of respect to promised time selectable between HARD and SOFT
+- [x] Configuration of delay penalty factor in SOFT mode
+- [x] Validation that work window end is after start time
+- [x] API receives all time parameters in optimization request
+- [x] Result metrics will indicate level of window compliance (deferred to execution phase)
+
+---
+
 ## 2025-01-10 - Story 7.2: Configuración de Capacidades y Restricciones
 
 ### Completed
