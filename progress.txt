@@ -1,44 +1,63 @@
 # Progress - Sistema de Gestión Logística
 
-## Iteration 1 (2025-01-10)
+## Completed Stories
 
-### Completed
-- Story 1.1: Company CRUD Management ✓ (previo)
-- Story 1.2: Data Isolation Between Companies ✓ (previo)
-- Story 2.1: Fleet Creation and Configuration ✓ (previo)
-- Story 3.1: Vehicle Registration with Complete Attributes ✓ (previo)
+### Story 1.1: Company Management ✓
+- API CRUD endpoints
+- Validation with Spanish error messages
+- Frontend listing and form page
+- Duplicate detection
 
-### Just Completed
-- Story 4.1: Driver Registration with Complete Information ✓
+### Story 1.2: Multi-Tenant Data Isolation ✓
+- Tenant context with AsyncLocalStorage
+- Automatic filtering by companyId
+- Cross-tenant access prevention
+- Audit logging
 
-#### Implementation Details for Story 4.1:
-1. **Schema Update**: Added `certifications` field to `drivers` table in `src/db/schema.ts`
-2. **Validations**: Created `src/lib/validations/driver.ts` with:
-   - Driver schema with all required fields (name, identification, email, license, etc.)
-   - License category validation (B, C, C1, CE, D, D1, DE)
-   - Helper functions for license expiry checks (isExpiringSoon, isExpired)
-   - Auto-set status to UNAVAILABLE when license is expired
-3. **API Routes**:
-   - `GET /api/drivers` - List with filtering by fleet, status, license status, certifications
-   - `POST /api/drivers` - Create with duplicate identification checking
-   - `GET /api/drivers/[id]` - Get single driver with computed license status
-   - `PATCH /api/drivers/[id]` - Update with validation
-   - `DELETE /api/drivers/[id]` - Soft delete
-4. **UI Components**:
-   - `src/components/drivers/driver-form.tsx` - Form with all driver fields
-   - `src/app/drivers/page.tsx` - Full CRUD interface
-5. **Features**:
-   - Visual alerts for expired/expiring licenses (within 30 days)
-   - Checkbox selection for license categories
-   - Certifications text area
-   - Fleet assignment
-   - Status management (AVAILABLE, ASSIGNED, IN_ROUTE, ON_PAUSE, COMPLETED, UNAVAILABLE, ABSENT)
+### Story 2.1: Fleet Management ✓
+- API CRUD endpoints
+- Fleet type enums and validation
+- Operation hours validation
+- Frontend listing and form
 
-### Remaining Stories (40)
-- Story 2.2: Vehicle-Fleet Association
-- Story 2.3: Driver-Fleet Association (primary + secondary fleets)
-- Story 3.2: Vehicle Operational State Management
-- Story 3.3: Vehicle Skills Catalog
-- Story 4.2: Driver Skills Management
-- Story 4.3: Driver Operational State Management
-- Stories 5-17: Various modules (Time Windows, Import, Optimization, Monitoring, etc.)
+### Story 3.1: Vehicle Registration ✓
+- API CRUD endpoints
+- Vehicle types and capacity validations
+- Insurance/inspection expiry tracking
+- Frontend listing and form
+
+### Story 4.1: Driver Registration ✓
+- API CRUD endpoints
+- License categories and expiry handling
+- Certification tracking
+- Frontend listing and form
+
+### Story 3.3: Vehicle Skills Catalog ✓ (2026-01-10)
+- Database schema: `vehicleSkills` table with categories
+- Validation: `src/lib/validations/vehicle-skill.ts`
+- API endpoints:
+  - GET/POST `/api/vehicle-skills` - List and create skills
+  - PATCH/DELETE `/api/vehicle-skills/[id]` - Update and delete skills
+- Frontend: Complete UI at `/vehicle-skills` with:
+  - Listing table with filtering (category, active status, search)
+  - Create/edit form with validation
+  - Toggle active/inactive functionality
+  - Category badges with color coding
+- Features:
+  - CRUD complete con código único, nombre, categoría, descripción, activo
+  - Categorías: EQUIPMENT, TEMPERATURE, CERTIFICATIONS, SPECIAL
+  - Validación de código con regex (solo mayúsculas, números, guiones)
+  - Eliminación protegida (debe verificarse si está en uso en el futuro)
+  - API permite consultar por categoría y estado activo
+
+## Files Modified/Created for Story 3.3
+
+### Modified
+- `src/db/schema.ts` - Added vehicleSkills table and VEHICLE_SKILL_CATEGORIES
+
+### Created
+- `src/lib/validations/vehicle-skill.ts` - Zod validation schemas
+- `src/app/api/vehicle-skills/route.ts` - GET/POST endpoints
+- `src/app/api/vehicle-skills/[id]/route.ts` - PATCH/DELETE endpoints
+- `src/components/vehicle-skills/vehicle-skill-form.tsx` - Form component
+- `src/app/vehicle-skills/page.tsx` - Full management page

@@ -201,3 +201,34 @@ export const driversRelations = relations(drivers, ({ one, many }) => ({
     references: [fleets.id],
   }),
 }));
+
+// Vehicle skill categories
+export const VEHICLE_SKILL_CATEGORIES = {
+  EQUIPMENT: "EQUIPMENT",
+  TEMPERATURE: "TEMPERATURE",
+  CERTIFICATIONS: "CERTIFICATIONS",
+  SPECIAL: "SPECIAL",
+} as const;
+
+export const vehicleSkills = pgTable("vehicle_skills", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 })
+    .notNull()
+    .$type<keyof typeof VEHICLE_SKILL_CATEGORIES>(),
+  description: text("description"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const vehicleSkillsRelations = relations(vehicleSkills, ({ one }) => ({
+  company: one(companies, {
+    fields: [vehicleSkills.companyId],
+    references: [companies.id],
+  }),
+}));
