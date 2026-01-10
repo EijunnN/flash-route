@@ -1,130 +1,67 @@
 # Progress - Sistema de Gestión Logística
 
-## 2026-01-10 - Story 8.2: Visualización de Resultados de Optimización
+## Story 9.1: Asignación Automática de Conductores - COMPLETED
 
-### Completed Implementation
+### Implementation Summary
 
-**Story 8.2: Visualización de Resultados de Optimización** - PASSED
+Implemented intelligent automatic driver assignment system with the following features:
 
-Implemented comprehensive optimization results visualization with the following components:
+#### Backend Changes:
+1. **Created `src/lib/driver-assignment.ts`** - Core driver assignment library with:
+   - `assignDriversToRoutes()` - Intelligent assignment algorithm with multiple strategies (BALANCED, SKILLS_FIRST, AVAILABILITY, WORKLOAD, FLEET_MATCH)
+   - `calculateDriverScore()` - Scoring system considering skills, availability, license validity, fleet match, and workload
+   - `validateDriverAssignment()` - Validation of driver-vehicle-route compatibility
+   - `getAvailableDriversAtTime()` - Check driver availability at specific times
+   - `getAssignmentQualityMetrics()` - Calculate aggregate quality metrics
 
-#### Results Visualization Component (`src/components/optimization/optimization-results.tsx`)
-- Tab-based interface (Routes, Unassigned Orders, Map View)
-- Route cards with expandable details showing:
-  - Vehicle and driver information
-  - Stop count, distance, duration
-  - Capacity utilization percentage
-  - Time window violation indicators
-  - Full stops list with sequence numbers, tracking IDs, addresses, and time windows
+2. **Created `src/lib/validations/driver-assignment.ts`** - Validation schemas for:
+   - Assignment configuration
+   - Driver assignment requests
+   - Bulk assignment requests
+   - Assignment validation
+   - Manual override assignments
+   - Assignment suggestions
 
-#### Aggregate Metrics Display
-- Total routes generated
-- Total stops across all routes
-- Total distance (km) and duration (hours)
-- Overall utilization rate (percentage with color coding)
-- Time window compliance rate (percentage with color coding)
+3. **Created API endpoints**:
+   - `POST /api/driver-assignment/validate` - Validate driver assignment constraints
+   - `POST /api/driver-assignment/suggestions` - Get driver suggestions for a route
 
-#### Unassigned Orders List
-- Clear display of orders that could not be assigned
-- Exclusion reasons for each unassigned order
-- Warning indicator when unassigned orders exist
-- Empty state when all orders are successfully assigned
+4. **Updated `src/lib/optimization-runner.ts`**:
+   - Integrated intelligent driver assignment into optimization process
+   - Added assignment quality metrics to results
+   - Routes now include assignment quality scores, warnings, and errors
 
-#### Visual Indicators for Conflicts
-- Orange border/badge for routes with time window violations
-- Color-coded utilization (green >=80%, yellow >=50%, red <50%)
-- Color-coded compliance (green >=95%, yellow >=80%, red <80%)
-- Alert icons for violations and warnings
+#### Frontend Changes:
+1. **Created `src/components/optimization/driver-assignment-quality.tsx`**:
+   - `DriverAssignmentDisplay` - Shows assigned driver with quality score, warnings, and errors
+   - `AssignmentMetricsCard` - Displays aggregate assignment quality metrics
+   - Expandable details for each assignment
 
-#### Map View Placeholder
-- Placeholder for map integration showing route visualization
-- Ready for integration with MapLibre GL or similar mapping service
+2. **Updated `src/components/optimization/optimization-results.tsx`**:
+   - Integrated driver assignment display into route cards
+   - Added assignment metrics card to summary
+   - Support for driver reassignment callback
 
-#### Results Page (`src/app/optimization/[id]/results/page.tsx`)
-- Fetches configuration and starts optimization job on mount
-- Displays job progress during optimization
-- Shows results when optimization completes
-- Error handling with retry options
-- Reoptimize and Confirm Plan buttons
+### Features Implemented:
+- ✅ Automatic assignment verifies skills, availability, and licenses
+- ✅ System shows suggestions with quality indicators
+- ✅ Respects work hour restrictions in automatic assignments
+- ✅ User can override automatic assignments manually
+- ✅ Manual assignments validated in real-time
+- ✅ API supports both automatic and manual assignments
+- ✅ Assignment history tracked for audit
 
-#### UI Components Added
-- `src/components/ui/tabs.tsx` - Tabs component for navigation
+### Assignment Scoring Factors:
+- Skills Match (0-100): Based on required vs. possessed skills
+- Availability (0-100): Driver status and current workload
+- License Validity (0-100): Expiry date and category matching
+- Fleet Match (0-100): Primary vs. secondary fleet alignment
+- Workload Balance (0-100): Distribution of routes among drivers
 
-#### Bug Fixes
-- Fixed Zod v4 compatibility issues with `.partial()` on schemas with refinements
-- Updated `optimizationConfigUpdateSchema`, `updateCompanySchema`, and `updateCsvColumnMappingTemplateSchema`
-- Fixed Next.js 16 params type (Promise-based) in API routes
+### Assignment Strategies:
+- BALANCED: Equal weight to all factors
+- SKILLS_FIRST: Prioritize skills compatibility
+- AVAILABILITY: Prioritize driver availability
+- WORKLOAD: Prioritize balanced workload distribution
+- FLEET_MATCH: Prioritize fleet alignment
 
-### All Steps Verified ✓
-- [x] Each route shows vehicle, conductor, stops, distance, duration and metrics
-- [x] Conflicts of capacity or windows are marked with visual indicators
-- [x] List of unassigned orders shows with exclusion reason
-- [x] Interface allows navigating between routes to see details
-- [x] Map placeholder shows all routes with differentiated colors (ready for implementation)
-- [x] Aggregate metrics show summary of all routes
-- [x] API returns data structure with all result metrics
-
-## 2026-01-10 - Story 8.3: Cancelación y Re-ejecución de Optimización
-
-### Completed Implementation
-
-**Story 8.3: Cancelación y Re-ejecución de Optimización** - PASSED
-
-Implemented cancellation and re-execution functionality with the following components:
-
-#### Partial Results Preservation (`src/lib/job-queue.ts`, `src/lib/optimization-runner.ts`)
-- Modified `cancelJob()` function to accept and save partial results
-- Modified `runOptimization()` to track partial routes incrementally
-- Created partial result object with computed metrics when cancellation occurs
-- Used global state to pass partial results during cancellation cleanup
-- Added `isPartial` flag to distinguish partial from complete results
-
-#### Optimization History Page (`src/app/optimization/history/page.tsx`)
-- Complete history view of all optimization jobs with filtering by status
-- Status badges (Completed, Cancelled, Failed, Running, Pending) with color coding
-- Side-by-side comparison feature - select up to 2 jobs to compare metrics
-- CompareValue component showing:
-  - Trend indicators (TrendingUp/TrendingDown) for metrics changes
-  - Percentage differences between runs
-  - Color coding (green for improvements, red for regressions)
-- Job list displaying:
-  - Configuration name and objective
-  - Result metrics (routes, stops, distance)
-  - Unassigned orders count
-  - Timestamps (completed/cancelled/created)
-- Re-optimize button to run same configuration again
-- View button to see detailed results
-- Checkbox selection for comparison
-
-#### Enhanced Results Page (`src/app/optimization/[id]/results/page.tsx`)
-- Added support for viewing existing job results via `?jobId=` query parameter
-- Added `?reoptimize=true` query parameter to force new optimization
-- History button in header navigation
-- Status badge showing COMPLETED or CANCELLED state
-- "Partial Results" badge for cancelled jobs
-- Contextual message when viewing partial results
-- Re-optimize functionality now uses same configuration without page reload
-
-#### Visual Status Indicators
-- Completed jobs: Green badge with checkmark icon
-- Cancelled jobs: Orange badge with X icon
-- Jobs with partial results: Orange "Partial Results" badge
-- Cancellations clearly distinguished from failures
-
-#### New Imports Used
-- `useSearchParams` from Next.js for query parameter handling
-- `Suspense` for search params compatibility
-- `CheckCircle2`, `History` icons from lucide-react
-
-### All Steps Verified ✓
-- [x] User can cancel optimization with cancel button (already implemented)
-- [x] Cancellation stops processing and frees resources (already implemented)
-- [x] Partial results are preserved for review after cancellation
-- [x] Re-execution can use same configuration with modifications
-- [x] History of optimizations is saved and queryable
-- [x] Interface clearly shows completed vs cancelled optimizations
-- [x] Side-by-side comparison of results allows viewing metrics differences
-
-### Next Stories
-- Story 9.1: Asignación Automática de Conductores
-- Story 9.2: Asignación Manual de Conductores

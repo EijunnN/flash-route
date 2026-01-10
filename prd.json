@@ -394,7 +394,7 @@
         "Confirmar API permite ejecutar asignación automática o recibir asignaciones manuales",
         "Verificar registro de historial de asignaciones para auditoría"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "9.2",

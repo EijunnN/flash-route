@@ -14,6 +14,13 @@ import {
 import { db } from "@/db";
 import { optimizationConfigurations, orders, vehicles, drivers, optimizationJobs } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
+import {
+  assignDriversToRoutes,
+  type DriverAssignmentRequest,
+  DEFAULT_ASSIGNMENT_CONFIG,
+  getAssignmentQualityMetrics,
+  type DriverAssignmentResult,
+} from "./driver-assignment";
 
 // Optimization result types
 export interface OptimizationStop {
@@ -43,6 +50,11 @@ export interface OptimizationRoute {
   totalVolume: number;
   utilizationPercentage: number;
   timeWindowViolations: number;
+  assignmentQuality?: {
+    score: number;
+    warnings: string[];
+    errors: string[];
+  };
 }
 
 export interface OptimizationResult {
@@ -59,6 +71,16 @@ export interface OptimizationResult {
     totalStops: number;
     utilizationRate: number;
     timeWindowComplianceRate: number;
+  };
+  assignmentMetrics?: {
+    totalAssignments: number;
+    assignmentsWithWarnings: number;
+    assignmentsWithErrors: number;
+    averageScore: number;
+    skillCoverage: number;
+    licenseCompliance: number;
+    fleetAlignment: number;
+    workloadBalance: number;
   };
   summary: {
     optimizedAt: string;
@@ -203,16 +225,15 @@ export async function runOptimization(
     reason: string;
   }> = [];
 
-  // Simple round-robin assignment for demonstration
+  // Prepare route assignments for intelligent driver assignment
   let orderIndex = 0;
   const maxStopsPerRoute = Math.ceil(pendingOrders.length / selectedVehicles.length) || 1;
+  const routeAssignments: DriverAssignmentRequest[] = [];
+  const assignedDrivers = new Map<string, string>();
 
+  // Build route assignments
   for (const vehicle of selectedVehicles) {
     checkAbort();
-
-    const driver = selectedDrivers.find(
-      (d) => d.fleetId === vehicle.fleetId
-    ) || selectedDrivers[orderIndex % selectedDrivers.length];
 
     const routeStops: OptimizationStop[] = [];
 
@@ -242,12 +263,23 @@ export async function runOptimization(
     }
 
     if (routeStops.length > 0) {
-      const newRoute = {
+      // Store route stops for assignment
+      routeAssignments.push({
+        companyId: input.companyId,
+        vehicleId: vehicle.id,
+        routeStops: routeStops.map(s => ({
+          orderId: s.orderId,
+          promisedDate: s.timeWindow?.start ? new Date(s.timeWindow.start) : undefined,
+        })),
+        candidateDriverIds: selectedDrivers.map(d => d.id),
+        assignedDrivers,
+      });
+
+      // Create route with placeholder driver (will be updated after assignment)
+      const newRoute: OptimizationRoute = {
         routeId: `route-${vehicle.id}-${Date.now()}`,
         vehicleId: vehicle.id,
         vehiclePlate: vehicle.plate,
-        driverId: driver?.id,
-        driverName: driver?.name,
         stops: routeStops,
         totalDistance: Math.round(Math.random() * 50000 + 10000), // Mock distance in meters
         totalDuration: Math.round(Math.random() * 14400 + 3600), // Mock duration in seconds
@@ -259,6 +291,30 @@ export async function runOptimization(
       routes.push(newRoute);
       // Update partial results tracking
       partialRoutes = [...routes];
+    }
+  }
+
+  // Perform intelligent driver assignment
+  checkAbort();
+  const driverAssignments = await assignDriversToRoutes(
+    routeAssignments,
+    {
+      ...DEFAULT_ASSIGNMENT_CONFIG,
+      strategy: (config?.objective as any) || "BALANCED",
+    }
+  );
+
+  // Update routes with assigned drivers
+  for (const route of routes) {
+    const assignment = driverAssignments.get(route.vehicleId);
+    if (assignment) {
+      route.driverId = assignment.driverId;
+      route.driverName = assignment.driverName;
+      route.assignmentQuality = {
+        score: assignment.score.score,
+        warnings: assignment.score.warnings,
+        errors: assignment.score.errors,
+      };
     }
   }
 
@@ -296,6 +352,30 @@ export async function runOptimization(
       ? ((totalStops - timeWindowViolations) / totalStops) * 100
       : 100;
 
+  // Calculate assignment quality metrics
+  const assignmentResults: DriverAssignmentResult[] = routes
+    .filter((r) => r.assignmentQuality)
+    .map((r) => ({
+      driverId: r.driverId!,
+      driverName: r.driverName!,
+      score: {
+        driverId: r.driverId!,
+        score: r.assignmentQuality!.score,
+        factors: {
+          skillsMatch: 100, // Placeholder - not tracked per route
+          availability: 100,
+          licenseValid: 100,
+          fleetMatch: 100,
+          workload: 100,
+        },
+        warnings: r.assignmentQuality!.warnings,
+        errors: r.assignmentQuality!.errors,
+      },
+      isManualOverride: false,
+    }));
+
+  const assignmentMetrics = await getAssignmentQualityMetrics(assignmentResults);
+
   const result: OptimizationResult = {
     routes,
     unassignedOrders,
@@ -307,6 +387,7 @@ export async function runOptimization(
       utilizationRate: Math.round(utilizationRate),
       timeWindowComplianceRate: Math.round(timeWindowComplianceRate),
     },
+    assignmentMetrics,
     summary: {
       optimizedAt: new Date().toISOString(),
       objective: config.objective,

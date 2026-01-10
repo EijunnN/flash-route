@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { DriverAssignmentDisplay, AssignmentMetricsCard } from "./driver-assignment-quality";
 
 // Re-export types from optimization-runner
 export type { OptimizationResult, OptimizationRoute, OptimizationStop } from "@/lib/optimization-runner";
@@ -50,6 +51,11 @@ interface OptimizationResultsProps {
       totalVolume: number;
       utilizationPercentage: number;
       timeWindowViolations: number;
+      assignmentQuality?: {
+        score: number;
+        warnings: string[];
+        errors: string[];
+      };
     }>;
     unassignedOrders: Array<{
       orderId: string;
@@ -64,6 +70,16 @@ interface OptimizationResultsProps {
       utilizationRate: number;
       timeWindowComplianceRate: number;
     };
+    assignmentMetrics?: {
+      totalAssignments: number;
+      assignmentsWithWarnings: number;
+      assignmentsWithErrors: number;
+      averageScore: number;
+      skillCoverage: number;
+      licenseCompliance: number;
+      fleetAlignment: number;
+      workloadBalance: number;
+    };
     summary: {
       optimizedAt: string;
       objective: string;
@@ -72,6 +88,7 @@ interface OptimizationResultsProps {
   };
   onReoptimize?: () => void;
   onConfirm?: () => void;
+  onReassignDriver?: (routeId: string, vehicleId: string) => void;
 }
 
 // Scroll area component
@@ -121,10 +138,12 @@ function RouteCard({
   route,
   isSelected,
   onToggle,
+  onReassignDriver,
 }: {
   route: OptimizationResultsProps["result"]["routes"][number];
   isSelected: boolean;
   onToggle: () => void;
+  onReassignDriver?: (routeId: string, vehicleId: string) => void;
 }) {
   const formatDistance = (meters: number) => {
     if (meters < 1000) return `${meters}m`;
@@ -226,6 +245,14 @@ function RouteCard({
               )}
             </div>
           )}
+
+          {/* Driver Assignment Quality */}
+          <div className="mb-4">
+            <DriverAssignmentDisplay
+              route={route}
+              onReassignDriver={onReassignDriver}
+            />
+          </div>
 
           {/* Stops List */}
           <ScrollArea className="border rounded-lg">
@@ -334,7 +361,7 @@ function RouteMapPlaceholder() {
   );
 }
 
-export function OptimizationResults({ result, onReoptimize, onConfirm }: OptimizationResultsProps) {
+export function OptimizationResults({ result, onReoptimize, onConfirm, onReassignDriver }: OptimizationResultsProps) {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"routes" | "unassigned" | "map">("routes");
 
@@ -408,6 +435,11 @@ export function OptimizationResults({ result, onReoptimize, onConfirm }: Optimiz
         </CardContent>
       </Card>
 
+      {/* Assignment Quality Metrics */}
+      {result.assignmentMetrics && (
+        <AssignmentMetricsCard metrics={result.assignmentMetrics} />
+      )}
+
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid w-full grid-cols-3">
@@ -438,6 +470,7 @@ export function OptimizationResults({ result, onReoptimize, onConfirm }: Optimiz
                   onToggle={() =>
                     setSelectedRouteId(selectedRouteId === route.routeId ? null : route.routeId)
                   }
+                  onReassignDriver={onReassignDriver}
                 />
               ))}
             </div>
