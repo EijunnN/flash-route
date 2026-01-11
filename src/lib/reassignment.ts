@@ -12,6 +12,10 @@ import {
   reassignmentsHistory,
 } from "@/db/schema";
 import { eq, and, inArray, sql, lt, gte, desc } from "drizzle-orm";
+import {
+  calculateRouteDistance,
+  calculateDistanceFromRouteStop,
+} from "./geospatial";
 
 /**
  * Reassignment strategy options
@@ -91,6 +95,8 @@ export interface AffectedRoute {
     orderId: string;
     sequence: number;
     address: string;
+    latitude: string;
+    longitude: string;
     status: string;
     timeWindowStart: Date | null;
     timeWindowEnd: Date | null;
@@ -152,6 +158,8 @@ export async function getAffectedRoutesForAbsentDriver(
       orderId: stop.orderId,
       sequence: stop.sequence,
       address: stop.address,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
       status: stop.status,
       timeWindowStart: stop.timeWindowStart,
       timeWindowEnd: stop.timeWindowEnd,
@@ -442,18 +450,45 @@ export async function calculateReassignmentImpact(
     );
   }
 
-  // Calculate current distance/time for replacement driver
-  const currentDistance = currentDriverStops.length * 2000; // 2km per stop average
-  const currentTime = currentDriverStops.length * 15 * 60; // 15 min per stop
+  // Calculate current distance/time for replacement driver using PostGIS
+  let currentDistance = 0;
+  let currentTime = 0;
 
-  // Calculate additional distance and time with percentage
-  const additionalDistanceAbs = stopsToReassign * 2000; // 2km per stop average
+  if (currentDriverStops.length > 0) {
+    // Sort stops by sequence and calculate actual route distance
+    const sortedStops = [...currentDriverStops].sort((a, b) => a.sequence - b.sequence);
+    const currentRouteResult = await calculateRouteDistance(
+      sortedStops.map((s) => ({
+        latitude: parseFloat(s.latitude),
+        longitude: parseFloat(s.longitude),
+      })),
+    );
+    currentDistance = currentRouteResult.distanceMeters;
+    currentTime = currentRouteResult.durationSeconds;
+  }
+
+  // Calculate additional distance for stops to reassign using PostGIS
+  let additionalDistanceAbs = 0;
+  let additionalTimeAbs = 0;
+
+  if (stopsToReassign > 0) {
+    // Sort stops by sequence and calculate route distance
+    const sortedStops = [...pendingStops].sort((a, b) => a.sequence - b.sequence);
+    const reassignRouteResult = await calculateRouteDistance(
+      sortedStops.map((s) => ({
+        latitude: parseFloat(s.latitude),
+        longitude: parseFloat(s.longitude),
+      })),
+    );
+    additionalDistanceAbs = reassignRouteResult.distanceMeters;
+    additionalTimeAbs = reassignRouteResult.durationSeconds;
+  }
+
   const additionalDistancePct =
     currentDistance > 0
       ? Math.round((additionalDistanceAbs / currentDistance) * 100)
       : 100;
 
-  const additionalTimeAbs = stopsToReassign * 15 * 60; // 15 min per stop
   const additionalTimePct =
     currentTime > 0
       ? Math.round((additionalTimeAbs / currentTime) * 100)

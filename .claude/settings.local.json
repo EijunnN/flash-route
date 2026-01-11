@@ -25,7 +25,8 @@
       "Bash(wc:*)",
       "Bash(bun biome:*)",
       "Bash(bun test:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx drizzle-kit generate:*)"
     ]
   }
 }

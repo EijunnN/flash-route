@@ -730,7 +730,7 @@
         "Confirmar planes de ejecución analizados para identificar cuellos de botella",
         "Verificar estadísticas de tabla se mantienen actualizadas"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "17.2",

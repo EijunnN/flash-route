@@ -6,6 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { orderSchema } from "@/lib/validations/order";
 import { csvImportWithMappingSchema } from "@/lib/validations/csv-column-mapping";
 import { suggestColumnMapping, mapCSVRow } from "@/lib/csv-column-mapping";
+import { batchInsertOrders, updateTableStatistics } from "@/lib/batch-operations";
 import { z } from "zod";
 
 // CSV import request schema (updated to support templates)
@@ -747,30 +748,51 @@ export async function POST(request: NextRequest) {
     const importErrors: CSVValidationError[] = [];
 
     if (validRecords.length > 0 && criticalErrors.length === 0) {
-      // Batch insert valid orders
+      // Use optimized batch insert for large datasets (Story 17.1)
       try {
-        const recordsToInsert = orderDataList.map((data) => ({
-          companyId: context.companyId,
-          trackingId: String(data.trackingId),
-          customerName: data.customerName ? String(data.customerName) : null,
-          customerPhone: data.customerPhone ? String(data.customerPhone) : null,
-          customerEmail: data.customerEmail ? String(data.customerEmail) : null,
-          address: String(data.address),
-          latitude: String(data.latitude),
-          longitude: String(data.longitude),
-          timeWindowPresetId: data.timeWindowPresetId || null,
-          strictness: (data.strictness === "HARD" || data.strictness === "SOFT" ? data.strictness : null) as "HARD" | "SOFT" | null,
-          promisedDate: data.promisedDate ? new Date(data.promisedDate) : null,
-          weightRequired: data.weightRequired ? parseInt(String(data.weightRequired), 10) : null,
-          volumeRequired: data.volumeRequired ? parseInt(String(data.volumeRequired), 10) : null,
-          requiredSkills: data.requiredSkills ? String(data.requiredSkills) : null,
-          notes: data.notes ? String(data.notes) : null,
-          status: "PENDING" as const,
-          active: true,
-        }));
+        const batchResult = await batchInsertOrders(
+          orderDataList.map((data) => ({
+            trackingId: String(data.trackingId),
+            customerName: data.customerName ? String(data.customerName) : null,
+            customerPhone: data.customerPhone ? String(data.customerPhone) : null,
+            customerEmail: data.customerEmail ? String(data.customerEmail) : null,
+            address: String(data.address),
+            latitude: String(data.latitude),
+            longitude: String(data.longitude),
+            timeWindowPresetId: data.timeWindowPresetId || null,
+            strictness: (data.strictness === "HARD" || data.strictness === "SOFT" ? data.strictness : null) as "HARD" | "SOFT" | null,
+            promisedDate: data.promisedDate ? new Date(data.promisedDate) : null,
+            weightRequired: data.weightRequired ? parseInt(String(data.weightRequired), 10) : null,
+            volumeRequired: data.volumeRequired ? parseInt(String(data.volumeRequired), 10) : null,
+            requiredSkills: data.requiredSkills ? String(data.requiredSkills) : null,
+            notes: data.notes ? String(data.notes) : null,
+          })),
+          context.companyId,
+          {
+            batchSize: 500, // Optimized for PostgreSQL
+            timeout: 300000, // 5 minutes timeout
+          }
+        );
 
-        const inserted = await db.insert(orders).values(recordsToInsert).returning();
-        importedCount = inserted.length;
+        importedCount = batchResult.inserted;
+
+        // Add batch errors to import errors
+        if (batchResult.errors.length > 0) {
+          for (const err of batchResult.errors) {
+            importErrors.push(createValidationError(
+              0,
+              "batch",
+              `Batch ${err.batch}: ${err.error}`,
+              "critical",
+              ERROR_TYPES.VALIDATION
+            ));
+          }
+        }
+
+        // Update table statistics for improved query performance (Story 17.1)
+        if (batchResult.inserted > 100) {
+          await updateTableStatistics("orders");
+        }
       } catch (error) {
         importErrors.push(createValidationError(
           0,

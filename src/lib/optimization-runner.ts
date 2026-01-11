@@ -21,6 +21,11 @@ import {
   getAssignmentQualityMetrics,
   type DriverAssignmentResult,
 } from "./driver-assignment";
+import {
+  calculateRouteDistance,
+  calculateDistanceMatrix,
+  type Coordinates,
+} from "./geospatial";
 
 // Optimization result types
 export interface OptimizationStop {
@@ -275,17 +280,47 @@ export async function runOptimization(
         assignedDrivers,
       });
 
-      // Create route with placeholder driver (will be updated after assignment)
+      // Calculate real route distance using PostGIS (Story 17.1)
+      const depotCoords: Coordinates = {
+        latitude: parseFloat(config.depotLatitude),
+        longitude: parseFloat(config.depotLongitude),
+      };
+
+      // Build route coordinates: depot -> all stops -> depot
+      const routeCoordinates: Coordinates[] = [
+        depotCoords,
+        ...routeStops.map(stop => ({
+          latitude: parseFloat(stop.latitude),
+          longitude: parseFloat(stop.longitude),
+        })),
+        depotCoords, // Return to depot
+      ];
+
+      // Calculate actual distance using PostGIS
+      const routeDistanceResult = await calculateRouteDistance(routeCoordinates);
+
+      // Calculate total weight and volume from orders
+      const routeOrderIds = routeStops.map(s => s.orderId);
+      const routeOrders = pendingOrders.filter(o => routeOrderIds.includes(o.id));
+      const totalWeight = routeOrders.reduce((sum, o) => sum + (o.weightRequired || 0), 0);
+      const totalVolume = routeOrders.reduce((sum, o) => sum + (o.volumeRequired || 0), 0);
+
+      // Create route with real distances from PostGIS
       const newRoute: OptimizationRoute = {
         routeId: `route-${vehicle.id}-${Date.now()}`,
         vehicleId: vehicle.id,
         vehiclePlate: vehicle.plate,
         stops: routeStops,
-        totalDistance: Math.round(Math.random() * 50000 + 10000), // Mock distance in meters
-        totalDuration: Math.round(Math.random() * 14400 + 3600), // Mock duration in seconds
-        totalWeight: routeStops.length * 100, // Mock weight
-        totalVolume: routeStops.length * 50, // Mock volume
-        utilizationPercentage: Math.round((routeStops.length / maxStopsPerRoute) * 100),
+        totalDistance: routeDistanceResult.distanceMeters, // Real distance from PostGIS
+        totalDuration: routeDistanceResult.durationSeconds, // Estimated duration based on distance
+        totalWeight,
+        totalVolume,
+        utilizationPercentage: Math.round(
+          Math.max(
+            (totalWeight / vehicle.weightCapacity) * 100,
+            (totalVolume / vehicle.volumeCapacity) * 100
+          ) || (routeStops.length / maxStopsPerRoute) * 100
+        ),
         timeWindowViolations: 0,
       };
       routes.push(newRoute);

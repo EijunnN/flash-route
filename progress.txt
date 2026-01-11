@@ -1,5 +1,52 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-11 - Story 17.1: Optimización de Consultas Geoespaciales
+
+### Completed Steps:
+1. **PostGIS Extension** - Created migration to enable PostGIS in PostgreSQL
+2. **Geography Columns** - Added `location` geography columns to orders, optimization_configurations, and route_stops tables
+3. **GIST Indexes** - Created GIST indexes on all geography columns for fast spatial queries
+4. **Composite Indexes** - Added company_id + location composite indexes for common query patterns
+5. **Auto-Update Triggers** - Implemented triggers to automatically populate geography columns from lat/long
+6. **Geospatial Utilities** - Created `src/lib/geospatial.ts` with PostGIS-based distance calculations:
+   - `calculateDistance()` - Point-to-point distance using ST_Distance
+   - `calculateDistanceWithDuration()` - Distance + estimated travel time
+   - `calculateRouteDistance()` - Total route distance through multiple stops
+   - `calculateDistanceMatrix()` - Cached distance matrix for optimization
+   - `findNearbyOrders()` - Spatial query using ST_DWithin
+   - `batchCalculateDistances()` - Efficient batch processing in single query
+7. **Batch Operations** - Created `src/lib/batch-operations.ts` with:
+   - `batchInsertOrders()` - Optimized chunked insertion with progress tracking
+   - `batchInsertRouteStops()` - Same for route stops
+   - `updateTableStatistics()` - ANALYZE tables after large inserts
+   - Configurable batch size (default 500) and timeout (5 minutes)
+8. **Real Distance Calculations** - Updated optimization-runner to use PostGIS for actual route distances
+9. **Reassignment Improvements** - Updated reassignment.ts to use real PostGIS distance calculations
+10. **Import Route Optimization** - Integrated batch operations into CSV import endpoint
+
+### Files Created:
+- `drizzle/0004_postgis_support.sql` - PostGIS migration with indexes and triggers
+- `src/lib/geospatial.ts` - PostGIS-based geospatial utilities
+- `src/lib/batch-operations.ts` - Optimized batch insert operations
+
+### Files Modified:
+- `drizzle/meta/_journal.json` - Added PostGIS migration entry
+- `src/lib/optimization-runner.ts` - Real distance calculations with PostGIS
+- `src/lib/reassignment.ts` - Real distance calculations for reassignments
+- `src/app/api/orders/import/route.ts` - Optimized batch imports
+
+### Technical Notes:
+- All distance calculations use SRID 4326 (WGS84) for proper geographic coordinates
+- Geography type automatically handles spherical distance calculations
+- Distance matrix results are cached in Redis for 24 hours
+- Batch operations process in chunks of 500 records to avoid memory issues
+- Triggers maintain backward compatibility with existing lat/long columns
+
+### Build Status:
+✅ Build successful - All TypeScript checks passing - 100% typed
+
+---
+
 ## 2025-01-11 - Story 17.2: Caché de Datos con Redis
 
 ### Completed Steps:
