@@ -708,6 +708,7 @@ export const optimizationJobsRelations = relations(optimizationJobs, ({ one, man
     references: [optimizationConfigurations.id],
   }),
   routeStops: many(routeStops),
+  outputHistory: many(outputHistory),
 }));
 
 // Alert severity levels
@@ -1034,6 +1035,62 @@ export const reassignmentsHistoryRelations = relations(reassignmentsHistory, ({ 
   }),
   executedByUser: one(users, {
     fields: [reassignmentsHistory.executedBy],
+    references: [users.id],
+  }),
+}));
+
+// Output format types
+export const OUTPUT_FORMAT = {
+  JSON: "JSON",
+  CSV: "CSV",
+  PDF: "PDF",
+} as const;
+
+// Output generation status types
+export const OUTPUT_STATUS = {
+  PENDING: "PENDING",
+  GENERATED: "GENERATED",
+  FAILED: "FAILED",
+} as const;
+
+// Output history - tracks generated output files for route plans
+export const outputHistory = pgTable("output_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  jobId: uuid("job_id")
+    .notNull()
+    .references(() => optimizationJobs.id, { onDelete: "cascade" }),
+  generatedBy: uuid("generated_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  format: varchar("format", { length: 10 })
+    .notNull()
+    .$type<keyof typeof OUTPUT_FORMAT>()
+    .default("JSON"),
+  status: varchar("status", { length: 20 })
+    .notNull()
+    .$type<keyof typeof OUTPUT_STATUS>()
+    .default("PENDING"),
+  fileUrl: text("file_url"), // URL to generated file (if stored externally)
+  error: text("error"), // Error message if generation failed
+  metadata: jsonb("metadata"), // Additional metadata about the output
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const outputHistoryRelations = relations(outputHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [outputHistory.companyId],
+    references: [companies.id],
+  }),
+  job: one(optimizationJobs, {
+    fields: [outputHistory.jobId],
+    references: [optimizationJobs.id],
+  }),
+  user: one(users, {
+    fields: [outputHistory.generatedBy],
     references: [users.id],
   }),
 }));

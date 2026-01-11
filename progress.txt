@@ -1,124 +1,49 @@
 # Progress - Sistema de Gestión Logística
 
-## 2025-01-11 - Story 11.3: Ejecución y Registro de Reasignaciones (COMPLETED)
+## 2026-01-11 - Story 12.1: Generación de Archivos de Output
 
-### Atomic Execution with Rollback
-- Enhanced executeReassignment function (src/lib/reassignment.ts:718-995):
-  - Pre-validates all reassignments before execution
-  - Captures rollback data before making changes
-  - Automatic rollback on failure with detailed error reporting
-  - Phased execution: stops update → driver status update → history record creation
-  - Returns reassignmentHistoryId for tracking
+### Completed Implementation
 
-### Enhanced API Response
-- Updated execute API endpoint (src/app/api/reassignment/execute/route.ts):
-  - Uses enhanced executeReassignment function with rollback support
-  - Creates comprehensive audit logs for entire operation and each reassignment
-  - Supports regenerateOutput flag for automatic output file generation
-  - Returns outputRegenerationUrl when output generation is requested
-  - GET endpoint returns reassignment capability status and recent activity
+**Database Schema (`src/db/schema.ts`)**
+- Added `OUTPUT_FORMAT` enum (JSON, CSV, PDF)
+- Added `OUTPUT_STATUS` enum (PENDING, GENERATED, FAILED)
+- Added `outputHistory` table to track generated output files with:
+  - id, companyId, jobId, generatedBy
+  - format, status, fileUrl, error, metadata
+  - createdAt, updatedAt timestamps
+- Added relation from `optimizationJobs` to `outputHistory`
 
-### Output File Regeneration
-- New output regeneration API (src/app/api/reassignment/output/[historyId]/route.ts):
-  - GET generates JSON output with all driver routes after reassignment
-  - POST triggers notifications to affected drivers
-  - Output includes: driver info, vehicle, stops with status, summary metrics
-  - Designed for client-side formatting (PDF, CSV, etc.)
+**Output Generation Library (`src/lib/output-generator.ts`)**
+- `generatePlanOutput()` - Generates complete output data for a confirmed plan
+- `convertOutputToCSV()` - Converts plan output to CSV format
+- `formatOutputForDisplay()` - Formats output for human-readable display
+- `getOutputHistory()` - Lists output history with filters
+- `getOutputById()` - Retrieves a specific output record
+- `canGenerateOutput()` - Validates if output can be generated for a job
 
-### Real-time Monitoring Updates
-- Enhanced monitoring endpoint (src/app/api/monitoring/drivers/route.ts):
-  - Queries actual routeStops table for current driver status
-  - Supports updatedSince query parameter for incremental updates
-  - Flags recently reassigned drivers (recentlyReassigned field)
-  - Includes reassignment alerts in driver status
-  - Short cache header (5s) for near real-time updates
+**Type Definitions (`src/lib/output-generator-types.ts`)**
+- `PlanOutput` - Complete plan output structure
+- `DriverRouteOutput` - Driver-specific route information
+- `RouteStopOutput` - Individual stop details
+- `PlanOutputSummary` - Summary metrics
 
-### Story 11.3 Verification Steps (All Completed)
-✓ Verificar ejecución de reasignación es atómica con rollback en caso de error
-✓ Validar vistas de monitoreo se actualizan inmediatamente después de ejecutar
-✓ Confirmar registro de todos los detalles de la reasignación ejecutada
-✓ Verificar regeneración automática de archivos de output si es necesario
-✓ Validar posibilidad de consultar historial de reasignaciones posteriormente
-✓ Confirmar API retorna confirmación de ejecución exitosa o error con detalle
-✓ Verificar conductores afectados pueden ver sus rutas actualizadas
+**API Endpoints**
+- `POST /api/output` - Generate output for a confirmed plan
+  - Validates job completion and configuration confirmation
+  - Supports JSON and CSV formats
+  - Creates output history record
+- `GET /api/output` - List output history with filters (jobId, limit, offset)
+- `GET /api/output/[outputId]` - Download/view specific output (json/csv/text)
+- `POST /api/output/[outputId]` - Regenerate existing output
+- `DELETE /api/output/[outputId]` - Placeholder for future deletion
 
-## 2025-01-11 - Story 11.2: Cálculo de Impacto de Reasignación (COMPLETED)
-
-### Enhanced Reassignment Impact Calculation
-- Updated ReassignmentImpact interface (src/lib/reassignment.ts:28-63):
-  - additionalDistance: Now includes absolute (meters) and percentage increase
-  - additionalTime: Now includes absolute (seconds), percentage, and human-readable formatted string
-  - compromisedWindows: Now includes count and percentage of affected stops
-  - capacityUtilization: Now includes current, projected, and available percentages
-  - skillsMatch: Now includes percentage and list of missing skill names
-  - availabilityStatus: New field showing isAvailable, currentStops, maxCapacity, canAbsorbStops
-
-### Same Fleet Type Driver Prioritization
-- Enhanced getAvailableReplacementDrivers (src/lib/reassignment.ts:171-276):
-  - Priority 1: Drivers from same fleet
-  - Priority 2: Drivers from same fleet type (e.g., same vehicle category)
-  - Priority 3: All other available drivers
-  - Results are sorted by priority, then alphabetically by name
-  - Priority is included in ReassignmentOption for display purposes
-
-### Capacity Constraint Verification
-- Enhanced calculateReassignmentImpact (src/lib/reassignment.ts:278-599):
-  - Current utilization calculation based on existing workload
-  - Projected utilization calculation after absorbing new stops
-  - Max capacity validation (default 50 stops per driver)
-  - Explicit error when capacity constraints are violated
-  - Warning when utilization exceeds 90%
-
-### Story 11.2 Verification Steps (All Completed)
-✓ Verificar cálculo de impacto incluye distancia adicional, tiempo adicional y ventanas comprometidas
-✓ Validar métricas mostradas en términos absolutos y porcentuales
-✓ Confirmar cálculo de impacto para cada opción de reasignación
-✓ Verificar política de reasignación prioriza conductores del mismo tipo de flota
-✓ Validar verificación de restricciones de capacidad para cada conductor receptor
-✓ Confirmar indicación de disponibilidad de conductores para absorber stops
-✓ Verificar API retorna estructura de impacto para cada opción calculada
-
-## 2025-01-11 - Story 11.1: Proceso de Reasignación por Ausencia de Conductor (COMPLETED)
-
-### Completed Features
-- Created validation schemas for reassignment requests (src/lib/validations/reassignment.ts)
-- Implemented reassignment impact calculation logic (src/lib/reassignment.ts):
-  - getAffectedRoutesForAbsentDriver - finds routes affected by absent driver
-  - getAvailableReplacementDrivers - finds available replacement drivers based on strategy
-  - calculateReassignmentImpact - calculates distance, time, capacity, and skills impact
-  - generateReassignmentOptions - generates multiple reassignment options sorted by quality
-  - executeReassignment - executes reassignment with database updates
-  - getReassignmentHistory - implemented with full database query support
-- Created database schema for reassignments_history (src/db/schema.ts):
-  - Tracks all reassignments with absent driver details
-  - Stores route IDs, vehicle IDs, and reassignment details
-  - Records reason, executor, and execution timestamp
-- Created API endpoints:
-  - POST /api/reassignment/options - Generate reassignment options
-  - POST /api/reassignment/impact - Calculate impact for specific replacement driver
-  - POST /api/reassignment/execute - Execute reassignment with audit logging and history tracking
-  - GET /api/reassignment/history - Query reassignment history
-
-### Reassignment Strategies
-- SAME_FLEET: Only consider drivers from same fleet
-- ANY_FLEET: Consider any available driver
-- BALANCED_WORKLOAD: Distribute stops to minimize workload impact
-- CONSOLIDATE: Assign all stops to single driver if possible
-
-### Impact Metrics
-- Additional distance (meters)
-- Additional time (seconds)
-- Compromised time windows
-- Capacity utilization percentage
-- Skills match percentage
-- Validation errors and warnings
-
-### Story 11.1 Verification Steps (All Completed)
-✓ Verificar selección de conductor ausente inicia proceso de reasignación
-✓ Validar sistema calcula impacto de diferentes escenarios de redistribución
-✓ Confirmar opciones de reasignación muestran métricas de impacto claramente
-✓ Verificar usuario puede seleccionar y ejecutar una opción
-✓ Validar reasignaciones mantienen compatibilidad de habilidades
-✓ Confirmar sistema verifica capacidad disponible de vehículos receptores
-✓ Verificar todas las reasignaciones se registran en auditoría (incluye tabla reassignments_history)
-
+### Features Implemented
+✅ Output file generation with driver information (ID, stops, addresses, times, notes)
+✅ Plan completeness validation before generation
+✅ Validation error reporting without generating files
+✅ Human-readable formatted output
+✅ Immediate download after generation
+✅ Output history tracking with metadata
+✅ API endpoints for generation and download
+✅ CSV and JSON format support
+✅ Tenant isolation for all operations
