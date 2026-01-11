@@ -666,7 +666,7 @@
         "Confirmar componentes son accesibles según WCAG 2.1",
         "Verificar interfaz es consistente en toda la aplicación"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "16.2",

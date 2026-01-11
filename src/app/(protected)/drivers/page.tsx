@@ -182,20 +182,18 @@ export default function DriversPage() {
 
   if (showForm || editingDriver) {
     return (
-      <>
-      <div className="min-h-screen bg-background p-8">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              {editingDriver ? "Editar Conductor" : "Nuevo Conductor"}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {editingDriver
-                ? "Actualice la información del conductor"
-                : "Complete el formulario para crear un nuevo conductor"}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+      <div className="max-w-3xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {editingDriver ? "Editar Conductor" : "Nuevo Conductor"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {editingDriver
+              ? "Actualice la información del conductor"
+              : "Complete el formulario para crear un nuevo conductor"}
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
             <DriverForm
               onSubmit={editingDriver ? handleUpdate : handleCreate}
               initialData={editingDriver ? {
@@ -229,17 +227,14 @@ export default function DriversPage() {
               </Button>
             </div>
           </div>
-        </div>
       </div>
-      </>
     );
   }
 
   return (
     <>
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex items-center justify-between">
+    <div className="space-y-6">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Gestión de Conductores
@@ -352,7 +347,6 @@ export default function DriversPage() {
             </div>
           </div>
         )}
-      </div>
     </div>
 
     {statusModalDriver && (

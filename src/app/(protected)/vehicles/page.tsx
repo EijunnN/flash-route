@@ -254,8 +254,7 @@ export default function VehiclesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="space-y-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
@@ -400,7 +399,6 @@ export default function VehiclesPage() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Status Change Modal */}
       {statusModalVehicle && (

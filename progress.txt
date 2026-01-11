@@ -1,82 +1,15 @@
-# Progress - Sistema de Gestión Logística
+﻿# Progress - Sistema de Gestion Logistica
 
-## 2025-01-11 - Story 17.1: Optimización de Consultas Geoespaciales
+## Story 16.1: Componentes UI Base
 
-### Completed Steps:
-1. **PostGIS Extension** - Created migration to enable PostGIS in PostgreSQL
-2. **Geography Columns** - Added `location` geography columns to orders, optimization_configurations, and route_stops tables
-3. **GIST Indexes** - Created GIST indexes on all geography columns for fast spatial queries
-4. **Composite Indexes** - Added company_id + location composite indexes for common query patterns
-5. **Auto-Update Triggers** - Implemented triggers to automatically populate geography columns from lat/long
-6. **Geospatial Utilities** - Created `src/lib/geospatial.ts` with PostGIS-based distance calculations:
-   - `calculateDistance()` - Point-to-point distance using ST_Distance
-   - `calculateDistanceWithDuration()` - Distance + estimated travel time
-   - `calculateRouteDistance()` - Total route distance through multiple stops
-   - `calculateDistanceMatrix()` - Cached distance matrix for optimization
-   - `findNearbyOrders()` - Spatial query using ST_DWithin
-   - `batchCalculateDistances()` - Efficient batch processing in single query
-7. **Batch Operations** - Created `src/lib/batch-operations.ts` with:
-   - `batchInsertOrders()` - Optimized chunked insertion with progress tracking
-   - `batchInsertRouteStops()` - Same for route stops
-   - `updateTableStatistics()` - ANALYZE tables after large inserts
-   - Configurable batch size (default 500) and timeout (5 minutes)
-8. **Real Distance Calculations** - Updated optimization-runner to use PostGIS for actual route distances
-9. **Reassignment Improvements** - Updated reassignment.ts to use real PostGIS distance calculations
-10. **Import Route Optimization** - Integrated batch operations into CSV import endpoint
+**Fecha**: 2026-01-11
 
-### Files Created:
-- `drizzle/0004_postgis_support.sql` - PostGIS migration with indexes and triggers
-- `src/lib/geospatial.ts` - PostGIS-based geospatial utilities
-- `src/lib/batch-operations.ts` - Optimized batch insert operations
+### Implementado:
 
-### Files Modified:
-- `drizzle/meta/_journal.json` - Added PostGIS migration entry
-- `src/lib/optimization-runner.ts` - Real distance calculations with PostGIS
-- `src/lib/reassignment.ts` - Real distance calculations for reassignments
-- `src/app/api/orders/import/route.ts` - Optimized batch imports
+1. Layout Principal con Navegacion (Sidebar, Header, AppShell)
+2. Pagina de Login con validacion en tiempo real
+3. Dashboard Principal con metricas
+4. Proteccion de Rutas (Proxy actualizado)
+5. Route Group (protected) con layout compartido
 
-### Technical Notes:
-- All distance calculations use SRID 4326 (WGS84) for proper geographic coordinates
-- Geography type automatically handles spherical distance calculations
-- Distance matrix results are cached in Redis for 24 hours
-- Batch operations process in chunks of 500 records to avoid memory issues
-- Triggers maintain backward compatibility with existing lat/long columns
-
-### Build Status:
-✅ Build successful - All TypeScript checks passing - 100% typed
-
----
-
-## 2025-01-11 - Story 17.2: Caché de Datos con Redis
-
-### Completed Steps:
-1. **Redis Configuration** - Extended existing Redis infrastructure (from Story 15.1) to support data caching beyond sessions
-2. **Cache Key Versioning** - Implemented versioned cache keys (v1) for granular invalidation when data structures change
-3. **TTL Configuration** - Defined separate TTL values for different data types:
-   - Geocoding: 30 days (addresses rarely change)
-   - Reference data: 1 hour (skills, presets, rules)
-   - User data: 15 minutes (profiles, permissions)
-   - Operational data: 5 minutes (fleets, vehicles, drivers)
-   - Planning data: 2 minutes (orders, routes)
-   - Real-time data: 30 seconds (monitoring)
-   - Metrics: 1 minute
-   - Optimization results: 10 minutes
-4. **Geocoding Cache** - Implemented with long TTL for address lookups
-5. **Redis Failure Handling** - Added `withRedisFallback()` wrapper that gracefully handles Redis failures
-6. **Cache Metrics Monitoring** - Implemented hit/miss/delete/error counters and `getCacheHitRate()`
-7. **Admin API** - Created `/api/admin/cache` endpoint for:
-   - GET cache statistics
-   - DELETE all cache (admin only)
-   - POST warmup for company
-
-### Files Created:
-- `src/lib/cache.ts` - Core caching layer with typed APIs for all data types
-- `src/app/api/admin/cache/route.ts` - Cache management API
-
-### Files Modified:
-- `.env.example` - Added cache TTL configuration documentation
-- `src/lib/authorization.ts` - Added CACHE entity type and WARMUP/DELETE_ALL actions
-
-### Build Status:
-✅ Build successful - All TypeScript checks passing
-
+### Build Status: Exitoso

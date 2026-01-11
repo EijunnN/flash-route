@@ -4,96 +4,115 @@ import { setTenantContext } from "./lib/tenant";
 import { verifyToken, extractTokenFromAuthHeader } from "./lib/auth";
 import { AUTH_ERRORS } from "./lib/validations/auth";
 
-/**
- * Routes that don't require authentication
- */
-const PUBLIC_ROUTES = [
+const PUBLIC_API_ROUTES = [
   "/api/auth/login",
   "/api/auth/refresh",
   "/api/health",
   "/api/docs",
 ];
 
-/**
- * Routes that only check authentication but don't enforce it (optional auth)
- */
+const PUBLIC_PAGE_ROUTES = ["/login"];
+
 const OPTIONAL_AUTH_ROUTES = [
   "/api/monitoring/summary",
   "/api/monitoring/geojson",
 ];
 
-/**
- * Check if a route is public
- */
-function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+function isPublicApiRoute(pathname: string): boolean {
+  return PUBLIC_API_ROUTES.some((route) => pathname.startsWith(route));
 }
 
-/**
- * Check if a route has optional authentication
- */
+function isPublicPageRoute(pathname: string): boolean {
+  return PUBLIC_PAGE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 function isOptionalAuthRoute(pathname: string): boolean {
   return OPTIONAL_AUTH_ROUTES.some((route) => pathname.startsWith(route));
+}
+
+function isApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api/");
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip authentication for public routes
-  const isPublic = isPublicRoute(pathname);
-  const isOptionalAuth = isOptionalAuthRoute(pathname);
+  // Handle public page routes
+  if (isPublicPageRoute(pathname)) {
+    return NextResponse.next();
+  }
 
-  // Extract and verify JWT token (skip for public routes)
-  let payload = null;
-  const authHeader = request.headers.get("authorization");
+  // Handle API routes
+  if (isApiRoute(pathname)) {
+    const isPublic = isPublicApiRoute(pathname);
+    const isOptionalAuth = isOptionalAuthRoute(pathname);
 
-  if (!isPublic && authHeader) {
-    const token = extractTokenFromAuthHeader(authHeader);
-    if (token) {
-      payload = await verifyToken(token);
+    let payload = null;
+    const authHeader = request.headers.get("authorization");
+
+    if (!isPublic && authHeader) {
+      const token = extractTokenFromAuthHeader(authHeader);
+      if (token) {
+        payload = await verifyToken(token);
+      }
     }
+
+    if (!isPublic && !isOptionalAuth && !payload) {
+      return NextResponse.json(
+        { error: AUTH_ERRORS.UNAUTHORIZED },
+        { status: 401 }
+      );
+    }
+
+    let companyId = request.headers.get("x-company-id");
+    let userId = request.headers.get("x-user-id");
+
+    if (payload && payload.type === "access") {
+      companyId = payload.companyId;
+      userId = payload.userId;
+    }
+
+    if (companyId) {
+      setTenantContext({
+        companyId,
+        userId: userId || undefined,
+      });
+    }
+
+    const response = NextResponse.next();
+
+    if (payload && payload.type === "access") {
+      response.headers.set("x-user-id", payload.userId);
+      response.headers.set("x-user-email", payload.email);
+      response.headers.set("x-user-role", payload.role);
+      response.headers.set("x-company-id", payload.companyId);
+    }
+
+    return response;
   }
 
-  // For protected routes, require authentication
-  if (!isPublic && !isOptionalAuth && !payload) {
-    return NextResponse.json(
-      { error: AUTH_ERRORS.UNAUTHORIZED },
-      { status: 401 }
-    );
+  // Handle protected page routes - check access_token cookie
+  const accessToken = request.cookies.get("access_token")?.value;
+
+  if (!accessToken) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Set tenant context from JWT or headers
-  let companyId = request.headers.get("x-company-id");
-  let userId = request.headers.get("x-user-id");
-
-  // If JWT payload exists, use it for context
-  if (payload && payload.type === "access") {
-    companyId = payload.companyId;
-    userId = payload.userId;
+  // Optionally verify the token for page routes
+  const payload = await verifyToken(accessToken);
+  if (!payload) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (companyId) {
-    setTenantContext({
-      companyId,
-      userId: userId || undefined,
-    });
-  }
-
-  // Create response and add user context headers
-  const response = NextResponse.next();
-
-  if (payload && payload.type === "access") {
-    response.headers.set("x-user-id", payload.userId);
-    response.headers.set("x-user-email", payload.email);
-    response.headers.set("x-user-role", payload.role);
-    response.headers.set("x-company-id", payload.companyId);
-  }
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    "/api/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
