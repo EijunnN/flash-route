@@ -48,12 +48,21 @@ export async function proxy(request: NextRequest) {
     const isOptionalAuth = isOptionalAuthRoute(pathname);
 
     let payload = null;
+    
+    // Try to get token from Authorization header first
     const authHeader = request.headers.get("authorization");
-
-    if (!isPublic && authHeader) {
+    if (authHeader) {
       const token = extractTokenFromAuthHeader(authHeader);
       if (token) {
         payload = await verifyToken(token);
+      }
+    }
+    
+    // If no Authorization header, try cookie (for browser requests)
+    if (!payload) {
+      const accessToken = request.cookies.get("access_token")?.value;
+      if (accessToken) {
+        payload = await verifyToken(accessToken);
       }
     }
 
