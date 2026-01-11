@@ -1,98 +1,55 @@
 # Progress - Sistema de Gestión Logística
 
-## 2026-01-11 - Story 12.1: Generación de Archivos de Output
+## Completed Stories
 
-### Completed Implementation
+### Story 14.1 - Sistema de Autenticación con JWT (Security)
+- Implemented JWT authentication system using jose library
+- Created login endpoint (/api/auth/login) with rate limiting
+- Created logout endpoint (/api/auth/logout) to clear auth cookies
+- Created refresh token endpoint (/api/auth/refresh) for token renewal
+- Created /api/auth/me endpoint to get current user info
+- Added password hashing utilities with bcryptjs
+- Implemented rate limiting for auth endpoints (5 requests per minute)
+- Updated proxy.ts to verify JWT tokens on protected routes
+- Added role-based permission system (PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA)
+- Configured JWT_SECRET environment variable
 
-**Database Schema (`src/db/schema.ts`)**
-- Added `OUTPUT_FORMAT` enum (JSON, CSV, PDF)
-- Added `OUTPUT_STATUS` enum (PENDING, GENERATED, FAILED)
-- Added `outputHistory` table to track generated output files with:
-  - id, companyId, jobId, generatedBy
-  - format, status, fileUrl, error, metadata
-  - createdAt, updatedAt timestamps
-- Added relation from `optimizationJobs` to `outputHistory`
+### Previously Completed (Stories 1.1 - 12.2)
+- Multi-tenant company management
+- Fleet, vehicle, and driver management
+- Time window configuration
+- Order import with CSV
+- Optimization engine with async job processing
+- Driver assignment (manual and automatic)
+- Real-time monitoring dashboard
+- Reassignment system for absent drivers
+- Output generation and plan metrics
 
-**Output Generation Library (`src/lib/output-generator.ts`)**
-- `generatePlanOutput()` - Generates complete output data for a confirmed plan
-- `convertOutputToCSV()` - Converts plan output to CSV format
-- `formatOutputForDisplay()` - Formats output for human-readable display
-- `getOutputHistory()` - Lists output history with filters
-- `getOutputById()` - Retrieves a specific output record
-- `canGenerateOutput()` - Validates if output can be generated for a job
+## Next Priority Stories
 
-**Type Definitions (`src/lib/output-generator-types.ts`)**
-- `PlanOutput` - Complete plan output structure
-- `DriverRouteOutput` - Driver-specific route information
-- `RouteStopOutput` - Individual stop details
-- `PlanOutputSummary` - Summary metrics
+### Story 14.2 - Control de Acceso Basado en Roles (Security)
+- Verify roles predefinidos: PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA
+- Validate each rol has permisos específicos definidos
+- Confirm permisos granulares a nivel de entidad y acción
+- Verify acceso a datos filtrado por Company del usuario
+- Validar acciones sensibles requieren confirmación adicional
+- Confirm registro de quién ejecutó cada acción sensible
+- Verificar API verifica permisos antes de ejecutar operaciones
 
-**API Endpoints**
-- `POST /api/output` - Generate output for a confirmed plan
-  - Validates job completion and configuration confirmation
-  - Supports JSON and CSV formats
-  - Creates output history record
-- `GET /api/output` - List output history with filters (jobId, limit, offset)
-- `GET /api/output/[outputId]` - Download/view specific output (json/csv/text)
-- `POST /api/output/[outputId]` - Regenerate existing output
-- `DELETE /api/output/[outputId]` - Placeholder for future deletion
+### Story 15.1 - Gestión de Sesiones con Redis (Security)
+- Verify sesiones almacenadas en Redis con TTL configurado
+- Validar actividad del usuario renueva TTL de la sesión
+- Confirm sesiones expiradas se invalidan automáticamente
+- Verificar API verifica validez de sesión en cada request
+- Validar administradores pueden invalidar sesiones de usuarios
+- Confirm invalidación global puede aplicarse a todos los usuarios
+- Verificar tokens de refresco se invalidan cuando la sesión se revoca
 
-### Features Implemented
-✅ Output file generation with driver information (ID, stops, addresses, times, notes)
-✅ Plan completeness validation before generation
-✅ Validation error reporting without generating files
-✅ Human-readable formatted output
-✅ Immediate download after generation
-✅ Output history tracking with metadata
-✅ API endpoints for generation and download
-✅ CSV and JSON format support
-✅ Tenant isolation for all operations
-
----
-
-## 2026-01-11 - Story 12.2: Métricas de Resumen del Plan
-
-### Completed Implementation
-
-**Database Schema (`src/db/schema.ts`)**
-- Added `planMetrics` table to store summary metrics for confirmed optimization plans with:
-  - Route summary metrics: totalRoutes, totalStops, totalDistance, totalDuration
-  - Capacity utilization: averageUtilizationRate, maxUtilizationRate, minUtilizationRate
-  - Time window metrics: timeWindowComplianceRate, totalTimeWindowViolations
-  - Driver assignment metrics: driverAssignmentCoverage, averageAssignmentQuality
-  - Assignment details: assignmentsWithWarnings, assignmentsWithErrors
-  - Quality metrics: skillCoverage, licenseCompliance, fleetAlignment, workloadBalance
-  - Unassigned orders count
-  - Trend comparison: comparedToJobId, distance/duration/compliance change percentages
-  - Metadata: objective, processingTimeMs, createdAt
-- Added relation from `optimizationJobs` to `planMetrics`
-
-**Plan Metrics Library (`src/lib/plan-metrics.ts`)**
-- `calculatePlanMetrics()` - Calculates metrics from optimization result and validation
-- `findPreviousJobForComparison()` - Finds previous job for trend comparison
-- `calculateComparisonMetrics()` - Calculates percentage changes vs previous session
-- `savePlanMetrics()` - Saves metrics to database with comparison data
-- `getPlanMetrics()` - Retrieves metrics for a specific job
-- `getHistoricalMetrics()` - Gets historical metrics for trends with pagination
-- `getMetricsSummaryStats()` - Gets aggregate statistics for company
-
-**API Endpoints**
-- `POST /api/optimization/jobs/[id]/confirm` - Updated to generate and store metrics on confirmation
-  - Automatically calculates metrics when plan is confirmed
-  - Compares against previous session for trend analysis
-  - Returns metrics in response body
-- `GET /api/optimization/jobs/[id]/metrics` - Retrieve metrics for a specific job
-  - Supports includeHistorical query parameter
-  - Supports includeSummary query parameter for company stats
-- `GET /api/metrics/history` - Retrieve historical metrics for the company
-  - Supports pagination (limit, offset)
-  - Supports includeSummary query parameter
-
-### Features Implemented
-✅ Automatic metrics generation on plan confirmation
-✅ Storage of metrics with planning session
-✅ Historical metrics retrieval with pagination
-✅ Comparison metrics between sessions (distance/duration/compliance changes)
-✅ Summary statistics for company-wide trends
-✅ API endpoints for metrics retrieval
-✅ Tenant isolation for all operations
+### Story 13.1 - API RESTful de Gestión (Functional)
+- Verificar API sigue convenciones REST para operaciones CRUD
+- Validar endpoints usan métodos HTTP apropiados: GET, POST, PUT, PATCH, DELETE
+- Confirmar paginación soporta limit y offset con total count
+- Verificar filtrado usa operadores estándar en query params
+- Validar errores retornan código HTTP apropiado con detalle de validación
+- Confirmar documentación de API disponible en formato OpenAPI
+- Verificar autenticación usa tokens JWT en headers Authorization

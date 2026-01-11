@@ -23,7 +23,8 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run build:*)",
       "Bash(wc:*)",
-      "Bash(bun biome:*)"
+      "Bash(bun biome:*)",
+      "Bash(bun test:*)"
     ]
   }
 }

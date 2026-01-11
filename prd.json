@@ -618,7 +618,7 @@
         "Confirmar tokens inválidos retornan error descriptivo",
         "Verificar rate limiting aplicado a endpoints de autenticación"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "14.2",
