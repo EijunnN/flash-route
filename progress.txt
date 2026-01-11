@@ -1,6 +1,6 @@
 # Progress - Sistema de Gestión Logística
 
-## 2025-01-11 - Story 11.1: Proceso de Reasignación por Ausencia de Conductor
+## 2025-01-11 - Story 11.1: Proceso de Reasignación por Ausencia de Conductor (COMPLETED)
 
 ### Completed Features
 - Created validation schemas for reassignment requests (src/lib/validations/reassignment.ts)
@@ -10,11 +10,15 @@
   - calculateReassignmentImpact - calculates distance, time, capacity, and skills impact
   - generateReassignmentOptions - generates multiple reassignment options sorted by quality
   - executeReassignment - executes reassignment with database updates
-  - getReassignmentHistory - placeholder for history tracking
+  - getReassignmentHistory - implemented with full database query support
+- Created database schema for reassignments_history (src/db/schema.ts):
+  - Tracks all reassignments with absent driver details
+  - Stores route IDs, vehicle IDs, and reassignment details
+  - Records reason, executor, and execution timestamp
 - Created API endpoints:
   - POST /api/reassignment/options - Generate reassignment options
   - POST /api/reassignment/impact - Calculate impact for specific replacement driver
-  - POST /api/reassignment/execute - Execute reassignment with audit logging
+  - POST /api/reassignment/execute - Execute reassignment with audit logging and history tracking
   - GET /api/reassignment/history - Query reassignment history
 
 ### Reassignment Strategies
@@ -30,4 +34,13 @@
 - Capacity utilization percentage
 - Skills match percentage
 - Validation errors and warnings
+
+### Story 11.1 Verification Steps (All Completed)
+✓ Verificar selección de conductor ausente inicia proceso de reasignación
+✓ Validar sistema calcula impacto de diferentes escenarios de redistribución
+✓ Confirmar opciones de reasignación muestran métricas de impacto claramente
+✓ Verificar usuario puede seleccionar y ejecutar una opción
+✓ Validar reasignaciones mantienen compatibilidad de habilidades
+✓ Confirmar sistema verifica capacidad disponible de vehículos receptores
+✓ Verificar todas las reasignaciones se registran en auditoría (incluye tabla reassignments_history)
 

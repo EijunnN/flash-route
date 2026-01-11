@@ -490,7 +490,7 @@
         "Confirmar sistema verifica capacidad disponible de vehículos receptores",
         "Verificar todas las reasignaciones se registran en auditoría"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "11.2",

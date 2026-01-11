@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { drivers, routeStops, optimizationJobs } from "@/db/schema";
+import {
+  drivers,
+  routeStops,
+  optimizationJobs,
+  reassignmentsHistory,
+} from "@/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { setTenantContext } from "@/lib/tenant";
 import { createAuditLog } from "@/lib/audit";
@@ -33,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!tenantCtx) {
       return NextResponse.json(
         { error: "Missing tenant context" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
           error: "Validation failed",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (data.companyId !== tenantCtx.companyId) {
       return NextResponse.json(
         { error: "Company ID mismatch" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -67,14 +72,14 @@ export async function POST(request: NextRequest) {
     const absentDriver = await db.query.drivers.findFirst({
       where: and(
         eq(drivers.id, data.absentDriverId),
-        eq(drivers.companyId, tenantCtx.companyId)
+        eq(drivers.companyId, tenantCtx.companyId),
       ),
     });
 
     if (!absentDriver) {
       return NextResponse.json(
         { error: "Absent driver not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -89,7 +94,7 @@ export async function POST(request: NextRequest) {
       const replacementDriver = await db.query.drivers.findFirst({
         where: and(
           eq(drivers.id, reassignment.toDriverId),
-          eq(drivers.companyId, tenantCtx.companyId)
+          eq(drivers.companyId, tenantCtx.companyId),
         ),
       });
 
@@ -99,8 +104,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate the driver is available
-      if (replacementDriver.status === "UNAVAILABLE" || replacementDriver.status === "ABSENT") {
-        errors.push(`Replacement driver ${replacementDriver.name} is not available`);
+      if (
+        replacementDriver.status === "UNAVAILABLE" ||
+        replacementDriver.status === "ABSENT"
+      ) {
+        errors.push(
+          `Replacement driver ${replacementDriver.name} is not available`,
+        );
         continue;
       }
 
@@ -109,35 +119,38 @@ export async function POST(request: NextRequest) {
         tenantCtx.companyId,
         data.absentDriverId,
         reassignment.toDriverId,
-        data.jobId
+        data.jobId,
       );
 
       if (!impact.isValid) {
         errors.push(
-          `Invalid reassignment to ${replacementDriver.name}: ${impact.errors.join(", ")}`
+          `Invalid reassignment to ${replacementDriver.name}: ${impact.errors.join(", ")}`,
         );
         continue;
       }
 
       if (impact.warnings.length > 0) {
         warnings.push(
-          `Reassigning to ${replacementDriver.name}: ${impact.warnings.join(", ")}`
+          `Reassigning to ${replacementDriver.name}: ${impact.warnings.join(", ")}`,
         );
       }
 
       // Update all stops for this route
-      const updateResult = await db.update(routeStops)
+      const updateResult = await db
+        .update(routeStops)
         .set({
           driverId: reassignment.toDriverId,
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(routeStops.companyId, tenantCtx.companyId),
-          eq(routeStops.routeId, reassignment.routeId),
-          eq(routeStops.vehicleId, reassignment.vehicleId),
-          eq(routeStops.driverId, data.absentDriverId),
-          inArray(routeStops.id, reassignment.stopIds)
-        ))
+        .where(
+          and(
+            eq(routeStops.companyId, tenantCtx.companyId),
+            eq(routeStops.routeId, reassignment.routeId),
+            eq(routeStops.vehicleId, reassignment.vehicleId),
+            eq(routeStops.driverId, data.absentDriverId),
+            inArray(routeStops.id, reassignment.stopIds),
+          ),
+        )
         .returning();
 
       totalReassignedStops += updateResult.length;
@@ -148,12 +161,16 @@ export async function POST(request: NextRequest) {
         where: and(
           eq(routeStops.companyId, tenantCtx.companyId),
           eq(routeStops.driverId, reassignment.toDriverId),
-          eq(routeStops.status, "IN_PROGRESS")
+          eq(routeStops.status, "IN_PROGRESS"),
         ),
       });
 
-      if (hasInProgressStops.length > 0 && replacementDriver.status === "AVAILABLE") {
-        await db.update(drivers)
+      if (
+        hasInProgressStops.length > 0 &&
+        replacementDriver.status === "AVAILABLE"
+      ) {
+        await db
+          .update(drivers)
           .set({
             status: "IN_ROUTE",
             updatedAt: new Date(),
@@ -167,12 +184,13 @@ export async function POST(request: NextRequest) {
       where: and(
         eq(routeStops.companyId, tenantCtx.companyId),
         eq(routeStops.driverId, data.absentDriverId),
-        sql`(${routeStops.status} = 'PENDING' OR ${routeStops.status} = 'IN_PROGRESS')`
+        sql`(${routeStops.status} = 'PENDING' OR ${routeStops.status} = 'IN_PROGRESS')`,
       ),
     });
 
     if (remainingStops.length === 0 && absentDriver.status === "ABSENT") {
-      await db.update(drivers)
+      await db
+        .update(drivers)
         .set({
           status: "UNAVAILABLE",
           updatedAt: new Date(),
@@ -206,21 +224,63 @@ export async function POST(request: NextRequest) {
 
     const success = errors.length === 0;
 
-    return NextResponse.json({
-      data: {
-        success,
-        reassignedStops: totalReassignedStops,
-        reassignedRoutes: totalReassignedRoutes,
-        errors,
-        warnings,
-      },
-      meta: {
+    // Create reassignment history entry
+    if (success) {
+      const reassignmentsDetails = [];
+      for (const reassignment of data.reassignments) {
+        const replacementDriver = await db.query.drivers.findFirst({
+          where: eq(drivers.id, reassignment.toDriverId),
+        });
+
+        if (replacementDriver) {
+          reassignmentsDetails.push({
+            driverId: reassignment.toDriverId,
+            driverName: replacementDriver.name,
+            stopIds: reassignment.stopIds,
+            stopCount: reassignment.stopIds.length,
+            vehicleId: reassignment.vehicleId,
+            routeId: reassignment.routeId,
+          });
+        }
+      }
+
+      const routeIds = [...new Set(data.reassignments.map((r) => r.routeId))];
+      const vehicleIds = [
+        ...new Set(data.reassignments.map((r) => r.vehicleId)),
+      ];
+
+      await db.insert(reassignmentsHistory).values({
+        companyId: tenantCtx.companyId,
+        jobId: data.jobId || null,
         absentDriverId: data.absentDriverId,
         absentDriverName: absentDriver.name,
-        executedAt: new Date().toISOString(),
-        executedBy: data.userId,
+        routeIds: JSON.stringify(routeIds),
+        vehicleIds: JSON.stringify(vehicleIds),
+        reassignments: JSON.stringify(reassignmentsDetails),
+        reason: data.reason || null,
+        executedBy: data.userId || null,
+        executedAt: new Date(),
+      });
+    }
+
+    return NextResponse.json(
+      {
+        data: {
+          success,
+          reassignedStops: totalReassignedStops,
+          reassignedRoutes: totalReassignedRoutes,
+          errors,
+          warnings,
+        },
+        meta: {
+          absentDriverId: data.absentDriverId,
+          absentDriverName: absentDriver.name,
+          executedAt: new Date().toISOString(),
+          executedBy: data.userId,
+        },
       },
-    }, { status: success ? 200 : 207 });
+      { status: success ? 200 : 207 },
+    );
   } catch (error) {
     console.error("Error executing reassignment:", error);
     return NextResponse.json(
@@ -228,7 +288,7 @@ export async function POST(request: NextRequest) {
         error: "Error executing reassignment",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

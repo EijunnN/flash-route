@@ -1,15 +1,26 @@
 import { db } from "@/db";
-import { drivers, routeStops, optimizationJobs, vehicles, fleets, driverSkills, vehicleSkills, driverAvailability, orders } from "@/db/schema";
+import {
+  drivers,
+  routeStops,
+  optimizationJobs,
+  vehicles,
+  fleets,
+  driverSkills,
+  vehicleSkills,
+  driverAvailability,
+  orders,
+  reassignmentsHistory,
+} from "@/db/schema";
 import { eq, and, inArray, sql, lt, gte, desc } from "drizzle-orm";
 
 /**
  * Reassignment strategy options
  */
 export type ReassignmentStrategy =
-  | "SAME_FLEET"           // Only consider drivers from same fleet
-  | "ANY_FLEET"            // Consider any available driver
-  | "BALANCED_WORKLOAD"    // Distribute stops to minimize workload impact
-  | "CONSOLIDATE";         // Assign all stops to single driver if possible
+  | "SAME_FLEET" // Only consider drivers from same fleet
+  | "ANY_FLEET" // Consider any available driver
+  | "BALANCED_WORKLOAD" // Distribute stops to minimize workload impact
+  | "CONSOLIDATE"; // Assign all stops to single driver if possible
 
 /**
  * Reassignment impact metrics
@@ -18,11 +29,11 @@ export interface ReassignmentImpact {
   replacementDriverId: string;
   replacementDriverName: string;
   stopsCount: number;
-  additionalDistance: number;      // meters
-  additionalTime: number;          // seconds
-  compromisedWindows: number;      // count of time windows that may be missed
-  capacityUtilization: number;     // percentage
-  skillsMatch: number;             // percentage
+  additionalDistance: number; // meters
+  additionalTime: number; // seconds
+  compromisedWindows: number; // count of time windows that may be missed
+  capacityUtilization: number; // percentage
+  skillsMatch: number; // percentage
   isValid: boolean;
   errors: string[];
   warnings: string[];
@@ -72,11 +83,11 @@ export interface AffectedRoute {
 export async function getAffectedRoutesForAbsentDriver(
   companyId: string,
   absentDriverId: string,
-  jobId?: string
+  jobId?: string,
 ): Promise<AffectedRoute[]> {
   const conditions = and(
     eq(routeStops.companyId, companyId),
-    eq(routeStops.driverId, absentDriverId)
+    eq(routeStops.driverId, absentDriverId),
   );
 
   // Filter by specific job if provided
@@ -142,13 +153,15 @@ export async function getAvailableReplacementDrivers(
   absentDriverId: string,
   strategy: ReassignmentStrategy = "SAME_FLEET",
   jobId?: string,
-  limit: number = 10
-): Promise<Array<{ id: string; name: string; fleetId: string; fleetName: string }>> {
+  limit: number = 10,
+): Promise<
+  Array<{ id: string; name: string; fleetId: string; fleetName: string }>
+> {
   // Get the absent driver's fleet info
   const absentDriver = await db.query.drivers.findFirst({
     where: and(
       eq(drivers.companyId, companyId),
-      eq(drivers.id, absentDriverId)
+      eq(drivers.id, absentDriverId),
     ),
     with: {
       fleet: true,
@@ -172,7 +185,7 @@ export async function getAvailableReplacementDrivers(
       eq(drivers.active, true),
       eq(drivers.status, "AVAILABLE"),
       fleetCondition || sql`${drivers.fleetId} IS NOT NULL`,
-      sql`${drivers.id} != ${absentDriverId}`
+      sql`${drivers.id} != ${absentDriverId}`,
     ),
     with: {
       fleet: true,
@@ -201,7 +214,7 @@ export async function calculateReassignmentImpact(
   companyId: string,
   absentDriverId: string,
   replacementDriverId: string,
-  jobId?: string
+  jobId?: string,
 ): Promise<ReassignmentImpact> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -210,7 +223,7 @@ export async function calculateReassignmentImpact(
   const affectedRoutes = await getAffectedRoutesForAbsentDriver(
     companyId,
     absentDriverId,
-    jobId
+    jobId,
   );
 
   if (affectedRoutes.length === 0) {
@@ -233,7 +246,7 @@ export async function calculateReassignmentImpact(
   const replacementDriver = await db.query.drivers.findFirst({
     where: and(
       eq(drivers.companyId, companyId),
-      eq(drivers.id, replacementDriverId)
+      eq(drivers.id, replacementDriverId),
     ),
     with: {
       driverSkills: {
@@ -265,7 +278,7 @@ export async function calculateReassignmentImpact(
   const now = new Date();
   const licenseExpiry = new Date(replacementDriver.licenseExpiry);
   const daysUntilExpiry = Math.ceil(
-    (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   if (daysUntilExpiry < 0) {
@@ -275,49 +288,55 @@ export async function calculateReassignmentImpact(
   }
 
   // Check driver status
-  if (replacementDriver.status !== "AVAILABLE" && replacementDriver.status !== "COMPLETED") {
+  if (
+    replacementDriver.status !== "AVAILABLE" &&
+    replacementDriver.status !== "COMPLETED"
+  ) {
     warnings.push(`Driver status is ${replacementDriver.status}`);
   }
 
   // Collect all stops and orders
   const allStops = affectedRoutes.flatMap((route) => route.stops);
-  const pendingStops = allStops.filter((s) => s.status === "PENDING" || s.status === "IN_PROGRESS");
+  const pendingStops = allStops.filter(
+    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+  );
 
   // Get skills required by all orders
   const orderIds = pendingStops.map((s) => s.orderId);
   const ordersList = await db.query.orders.findMany({
-    where: and(
-      eq(orders.companyId, companyId),
-      inArray(orders.id, orderIds)
-    ),
+    where: and(eq(orders.companyId, companyId), inArray(orders.id, orderIds)),
   });
 
   // Calculate skills match
   const requiredSkillsSet = new Set<string>();
   for (const order of ordersList) {
     if (order.requiredSkills) {
-      const skills = typeof order.requiredSkills === "string"
-        ? JSON.parse(order.requiredSkills)
-        : order.requiredSkills;
+      const skills =
+        typeof order.requiredSkills === "string"
+          ? JSON.parse(order.requiredSkills)
+          : order.requiredSkills;
       skills.forEach((skill: string) => requiredSkillsSet.add(skill));
     }
   }
 
   const driverSkillIds = new Set(
-    replacementDriver.driverSkills.map((ds) => ds.skillId)
+    replacementDriver.driverSkills.map((ds) => ds.skillId),
   );
 
   const requiredSkills = Array.from(requiredSkillsSet);
   const matchedSkills = requiredSkills.filter((skillId) =>
-    driverSkillIds.has(skillId)
+    driverSkillIds.has(skillId),
   );
 
-  const skillsMatch = requiredSkills.length > 0
-    ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
-    : 100;
+  const skillsMatch =
+    requiredSkills.length > 0
+      ? Math.round((matchedSkills.length / requiredSkills.length) * 100)
+      : 100;
 
   if (skillsMatch < 100 && requiredSkills.length > 0) {
-    warnings.push(`${matchedSkills.length}/${requiredSkills.length} skills matched`);
+    warnings.push(
+      `${matchedSkills.length}/${requiredSkills.length} skills matched`,
+    );
   }
 
   // Check skill expiration
@@ -337,19 +356,33 @@ export async function calculateReassignmentImpact(
   });
 
   // Calculate capacity utilization (estimate)
-  const totalWeightCapacity = vehiclesList.reduce((sum, v) => sum + v.weightCapacity, 0);
-  const totalVolumeCapacity = vehiclesList.reduce((sum, v) => sum + v.volumeCapacity, 0);
+  const totalWeightCapacity = vehiclesList.reduce(
+    (sum, v) => sum + v.weightCapacity,
+    0,
+  );
+  const totalVolumeCapacity = vehiclesList.reduce(
+    (sum, v) => sum + v.volumeCapacity,
+    0,
+  );
 
   // Get order requirements
-  const totalWeightRequired = ordersList.reduce((sum, o) => sum + (o.weightRequired || 0), 0);
-  const totalVolumeRequired = ordersList.reduce((sum, o) => sum + (o.volumeRequired || 0), 0);
+  const totalWeightRequired = ordersList.reduce(
+    (sum, o) => sum + (o.weightRequired || 0),
+    0,
+  );
+  const totalVolumeRequired = ordersList.reduce(
+    (sum, o) => sum + (o.volumeRequired || 0),
+    0,
+  );
 
-  const weightUtilization = totalWeightCapacity > 0
-    ? (totalWeightRequired / totalWeightCapacity) * 100
-    : 0;
-  const volumeUtilization = totalVolumeCapacity > 0
-    ? (totalVolumeRequired / totalVolumeCapacity) * 100
-    : 0;
+  const weightUtilization =
+    totalWeightCapacity > 0
+      ? (totalWeightRequired / totalWeightCapacity) * 100
+      : 0;
+  const volumeUtilization =
+    totalVolumeCapacity > 0
+      ? (totalVolumeRequired / totalVolumeCapacity) * 100
+      : 0;
 
   const capacityUtilization = Math.max(weightUtilization, volumeUtilization);
 
@@ -401,7 +434,7 @@ export async function generateReassignmentOptions(
   absentDriverId: string,
   strategy: ReassignmentStrategy = "SAME_FLEET",
   jobId?: string,
-  limit: number = 5
+  limit: number = 5,
 ): Promise<ReassignmentOption[]> {
   // Get available replacement drivers
   const replacementDrivers = await getAvailableReplacementDrivers(
@@ -409,14 +442,14 @@ export async function generateReassignmentOptions(
     absentDriverId,
     strategy,
     jobId,
-    limit
+    limit,
   );
 
   // Get affected routes
   const affectedRoutes = await getAffectedRoutesForAbsentDriver(
     companyId,
     absentDriverId,
-    jobId
+    jobId,
   );
 
   const routeIds = affectedRoutes.map((r) => r.routeId);
@@ -429,7 +462,7 @@ export async function generateReassignmentOptions(
       companyId,
       absentDriverId,
       driver.id,
-      jobId
+      jobId,
     );
 
     options.push({
@@ -478,7 +511,7 @@ export async function executeReassignment(
     stopIds: string[];
   }>,
   reason?: string,
-  userId?: string
+  userId?: string,
 ): Promise<ExecuteReassignmentResult> {
   const errors: string[] = [];
   let reassignedStops = 0;
@@ -491,16 +524,19 @@ export async function executeReassignment(
     for (const reassignment of reassignments) {
       // Update all stops for this route
       for (const stopId of reassignment.stopIds) {
-        await db.update(routeStops)
+        await db
+          .update(routeStops)
           .set({
             driverId: reassignment.toDriverId,
             updatedAt: new Date(),
           })
-          .where(and(
-            eq(routeStops.companyId, companyId),
-            eq(routeStops.id, stopId),
-            eq(routeStops.driverId, absentDriverId)
-          ));
+          .where(
+            and(
+              eq(routeStops.companyId, companyId),
+              eq(routeStops.id, stopId),
+              eq(routeStops.driverId, absentDriverId),
+            ),
+          );
 
         reassignedStops++;
       }
@@ -557,12 +593,48 @@ export async function getReassignmentHistory(
   jobId?: string,
   driverId?: string,
   limit: number = 50,
-  offset: number = 0
+  offset: number = 0,
 ): Promise<ReassignmentHistoryEntry[]> {
-  // This would query a reassignments_history table
-  // For now, we return an empty array as this table needs to be created
+  const conditions = [eq(reassignmentsHistory.companyId, companyId)];
 
-  // TODO: Create reassignments_history table and implement this
+  if (jobId) {
+    conditions.push(eq(reassignmentsHistory.jobId, jobId));
+  }
 
-  return [];
+  if (driverId) {
+    conditions.push(eq(reassignmentsHistory.absentDriverId, driverId));
+  }
+
+  const historyRecords = await db.query.reassignmentsHistory.findMany({
+    where: and(...conditions),
+    orderBy: [desc(reassignmentsHistory.executedAt)],
+    limit,
+    offset,
+  });
+
+  return historyRecords.map((record) => {
+    const routeIds =
+      typeof record.routeIds === "string"
+        ? JSON.parse(record.routeIds)
+        : record.routeIds;
+    const reassignments =
+      typeof record.reassignments === "string"
+        ? JSON.parse(record.reassignments)
+        : record.reassignments;
+
+    return {
+      id: record.id,
+      absentDriverId: record.absentDriverId,
+      absentDriverName: record.absentDriverName,
+      replacementDrivers: reassignments.map((r: any) => ({
+        id: r.driverId,
+        name: r.driverName,
+        stopsAssigned: r.stopCount,
+      })),
+      routeIds,
+      reason: record.reason || "",
+      createdAt: record.createdAt,
+      createdBy: record.executedBy || "",
+    };
+  });
 }

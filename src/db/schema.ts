@@ -996,3 +996,44 @@ export const routeStopHistoryRelations = relations(routeStopHistory, ({ one }) =
     references: [users.id],
   }),
 }));
+
+// Reassignment history - tracks driver reassignments due to absence
+export const reassignmentsHistory = pgTable("reassignments_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  jobId: uuid("job_id").references(() => optimizationJobs.id, { onDelete: "set null" }),
+  absentDriverId: uuid("absent_driver_id")
+    .notNull()
+    .references(() => drivers.id, { onDelete: "restrict" }),
+  absentDriverName: varchar("absent_driver_name", { length: 255 }).notNull(),
+  routeIds: text("route_ids").notNull(), // JSON array of route IDs
+  vehicleIds: text("vehicle_ids").notNull(), // JSON array of vehicle IDs
+  // Reassignment details stored as JSON array of reassignments
+  // Each entry: { driverId, driverName, stopIds, stopCount }
+  reassignments: text("reassignments").notNull(),
+  reason: text("reason"),
+  executedBy: uuid("executed_by").references(() => users.id),
+  executedAt: timestamp("executed_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const reassignmentsHistoryRelations = relations(reassignmentsHistory, ({ one }) => ({
+  company: one(companies, {
+    fields: [reassignmentsHistory.companyId],
+    references: [companies.id],
+  }),
+  job: one(optimizationJobs, {
+    fields: [reassignmentsHistory.jobId],
+    references: [optimizationJobs.id],
+  }),
+  absentDriver: one(drivers, {
+    fields: [reassignmentsHistory.absentDriverId],
+    references: [drivers.id],
+  }),
+  executedByUser: one(users, {
+    fields: [reassignmentsHistory.executedBy],
+    references: [users.id],
+  }),
+}));
