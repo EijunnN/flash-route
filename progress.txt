@@ -1,5 +1,41 @@
 # Progress - Sistema de Gestión Logística
 
+## 2025-01-11 - Story 11.2: Cálculo de Impacto de Reasignación (COMPLETED)
+
+### Enhanced Reassignment Impact Calculation
+- Updated ReassignmentImpact interface (src/lib/reassignment.ts:28-63):
+  - additionalDistance: Now includes absolute (meters) and percentage increase
+  - additionalTime: Now includes absolute (seconds), percentage, and human-readable formatted string
+  - compromisedWindows: Now includes count and percentage of affected stops
+  - capacityUtilization: Now includes current, projected, and available percentages
+  - skillsMatch: Now includes percentage and list of missing skill names
+  - availabilityStatus: New field showing isAvailable, currentStops, maxCapacity, canAbsorbStops
+
+### Same Fleet Type Driver Prioritization
+- Enhanced getAvailableReplacementDrivers (src/lib/reassignment.ts:171-276):
+  - Priority 1: Drivers from same fleet
+  - Priority 2: Drivers from same fleet type (e.g., same vehicle category)
+  - Priority 3: All other available drivers
+  - Results are sorted by priority, then alphabetically by name
+  - Priority is included in ReassignmentOption for display purposes
+
+### Capacity Constraint Verification
+- Enhanced calculateReassignmentImpact (src/lib/reassignment.ts:278-599):
+  - Current utilization calculation based on existing workload
+  - Projected utilization calculation after absorbing new stops
+  - Max capacity validation (default 50 stops per driver)
+  - Explicit error when capacity constraints are violated
+  - Warning when utilization exceeds 90%
+
+### Story 11.2 Verification Steps (All Completed)
+✓ Verificar cálculo de impacto incluye distancia adicional, tiempo adicional y ventanas comprometidas
+✓ Validar métricas mostradas en términos absolutos y porcentuales
+✓ Confirmar cálculo de impacto para cada opción de reasignación
+✓ Verificar política de reasignación prioriza conductores del mismo tipo de flota
+✓ Validar verificación de restricciones de capacidad para cada conductor receptor
+✓ Confirmar indicación de disponibilidad de conductores para absorber stops
+✓ Verificar API retorna estructura de impacto para cada opción calculada
+
 ## 2025-01-11 - Story 11.1: Proceso de Reasignación por Ausencia de Conductor (COMPLETED)
 
 ### Completed Features

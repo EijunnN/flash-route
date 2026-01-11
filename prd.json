@@ -506,7 +506,7 @@
         "Confirmar indicación de disponibilidad de conductores para absorber stops",
         "Verificar API retorna estructura de impacto para cada opción calculada"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "11.3",
