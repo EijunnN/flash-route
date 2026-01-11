@@ -746,7 +746,7 @@
         "Confirmar sistema maneja apropiadamente fallos de Redis",
         "Verificar métricas de caché se monitorizan para optimización"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "17.3",

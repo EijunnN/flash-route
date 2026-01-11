@@ -33,6 +33,7 @@ export enum EntityType {
   AUDIT_LOG = "audit_log",
   METRICS = "metrics",
   SESSION = "session",
+  CACHE = "cache",
 }
 
 /**
@@ -66,6 +67,10 @@ export enum Action {
   CHANGE_STATUS = "change_status",
   INVALIDATE_SESSIONS = "invalidate_sessions",
   INVALIDATE_ALL = "invalidate_all",
+
+  // Cache actions (Story 17.2)
+  WARMUP = "warmup",
+  DELETE_ALL = "delete_all",
 }
 
 /**
@@ -84,6 +89,7 @@ export const SENSITIVE_ACTIONS = new Set<Action>([
   Action.INVALIDATE_SESSIONS,
   Action.INVALIDATE_ALL,
   Action.DELETE,
+  Action.DELETE_ALL,
 ]);
 
 /**

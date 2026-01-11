@@ -1,75 +1,35 @@
 # Progress - Sistema de Gestión Logística
 
-## Completed Stories
+## 2025-01-11 - Story 17.2: Caché de Datos con Redis
 
-### Story 14.1 - Sistema de Autenticación con JWT (Security)
-- Implemented JWT authentication system using jose library
-- Created login endpoint (/api/auth/login) with rate limiting
-- Created logout endpoint (/api/auth/logout) to clear auth cookies
-- Created refresh token endpoint (/api/auth/refresh) for token renewal
-- Created /api/auth/me endpoint to get current user info
-- Added password hashing utilities with bcryptjs
-- Implemented rate limiting for auth endpoints (5 requests per minute)
-- Updated proxy.ts to verify JWT tokens on protected routes
-- Added role-based permission system (PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA)
-- Configured JWT_SECRET environment variable
+### Completed Steps:
+1. **Redis Configuration** - Extended existing Redis infrastructure (from Story 15.1) to support data caching beyond sessions
+2. **Cache Key Versioning** - Implemented versioned cache keys (v1) for granular invalidation when data structures change
+3. **TTL Configuration** - Defined separate TTL values for different data types:
+   - Geocoding: 30 days (addresses rarely change)
+   - Reference data: 1 hour (skills, presets, rules)
+   - User data: 15 minutes (profiles, permissions)
+   - Operational data: 5 minutes (fleets, vehicles, drivers)
+   - Planning data: 2 minutes (orders, routes)
+   - Real-time data: 30 seconds (monitoring)
+   - Metrics: 1 minute
+   - Optimization results: 10 minutes
+4. **Geocoding Cache** - Implemented with long TTL for address lookups
+5. **Redis Failure Handling** - Added `withRedisFallback()` wrapper that gracefully handles Redis failures
+6. **Cache Metrics Monitoring** - Implemented hit/miss/delete/error counters and `getCacheHitRate()`
+7. **Admin API** - Created `/api/admin/cache` endpoint for:
+   - GET cache statistics
+   - DELETE all cache (admin only)
+   - POST warmup for company
 
-### Previously Completed (Stories 1.1 - 12.2)
-- Multi-tenant company management
-- Fleet, vehicle, and driver management
-- Time window configuration
-- Order import with CSV
-- Optimization engine with async job processing
-- Driver assignment (manual and automatic)
-- Real-time monitoring dashboard
-- Reassignment system for absent drivers
-- Output generation and plan metrics
+### Files Created:
+- `src/lib/cache.ts` - Core caching layer with typed APIs for all data types
+- `src/app/api/admin/cache/route.ts` - Cache management API
 
-### Story 14.2 - Control de Acceso Basado en Roles (Security) - COMPLETED
-- Created comprehensive RBAC system in src/lib/authorization.ts
-- Implemented granular permissions: EntityType enum with 17 entities, Action enum with 16 actions
-- Defined role permissions mapping for all 4 roles (PLANIFICADOR, MONITOR, ADMIN_FLOTA, ADMIN_SISTEMA)
-- ADMIN_SISTEMA has wildcard (*) permission for full access
-- Created AuthorizationError class with detailed error information
-- Implemented sensitive actions tracking (force_delete, bulk_delete, bulk_update, change_status, invalidate_sessions)
-- Created route helper utilities (src/lib/route-helpers.ts) for consistent permission checks
-- Updated companies API routes with permission checks (GET, POST, PATCH, DELETE)
-- Created API middleware (src/lib/api-middleware.ts) with auth, permission, and audit logging helpers
-- Tenant filtering (by Company) already implemented in src/db/tenant-aware.ts
-- Audit logging already implemented in src/lib/audit.ts
+### Files Modified:
+- `.env.example` - Added cache TTL configuration documentation
+- `src/lib/authorization.ts` - Added CACHE entity type and WARMUP/DELETE_ALL actions
 
-### Story 15.1 - Gestión de Sesiones con Redis (Security) - COMPLETED
-- Created Redis session management module (src/lib/session.ts) using Upstash Redis
-- Sessions stored in Redis with configurable TTL (7 days default)
-- User activity renews session TTL via updateSessionActivity()
-- Expired sessions automatically invalidated by Redis TTL mechanism
-- Session validation on each request via validateSession()
-- API endpoints for session management:
-  - GET /api/auth/sessions - List current user's sessions
-  - GET /api/auth/sessions/[id] - Get specific session
-  - DELETE /api/auth/sessions/[id] - Invalidate specific session
-  - DELETE /api/users/[userId]/sessions - Invalidate all user sessions
-  - POST /api/auth/sessions/invalidate-all - Global session invalidation (admin only)
-- Refresh tokens invalidated when session revoked via invalidateRefreshToken()
-- Added session ID cookie (session_id) for client-side tracking
-- Updated auth.ts with createAuthSession(), getCurrentSession(), invalidateCurrentSession()
-- Added SESSION entity and INVALIDATE_ALL action to authorization system
-- Updated .env.example with Upstash Redis configuration variables
+### Build Status:
+✅ Build successful - All TypeScript checks passing
 
-## Next Priority Stories
-
-### Story 13.1 - API RESTful de Gestión (Functional)
-- Verificar API sigue convenciones REST para operaciones CRUD
-- Validar endpoints usan métodos HTTP apropiados: GET, POST, PUT, PATCH, DELETE
-- Confirmar paginación soporta limit y offset con total count
-- Verificar filtrado usa operadores estándar en query params
-- Validar errores retornan código HTTP apropiado con detalle de validación
-- Confirmar documentación de API disponible en formato OpenAPI
-- Verificar autenticación usa tokens JWT en headers Authorization
-
-### Story 15.2 - Integración de Sesiones con Login/Logout (Security)
-- Update /api/auth/login to create Redis session on successful authentication
-- Update /api/auth/logout to invalidate Redis session
-- Update /api/auth/refresh to validate session before issuing new tokens
-- Ensure session cookie is set/cleared appropriately
-- Verify refresh tokens are linked to sessions
