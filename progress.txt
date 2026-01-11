@@ -98,3 +98,141 @@ Implemented comprehensive real-time monitoring system for tracking driver routes
 - **Error Handling**: Comprehensive error states with retry options
 
 ---
+
+## Story 10.2: Sistema de Alertas - COMPLETED
+
+### Implementation Summary
+
+Implemented comprehensive alert system for proactive monitoring and issue resolution:
+
+#### Database Schema Changes:
+1. **Added `alert_rules` table**:
+   - Configurable alert conditions (type, severity, threshold, metadata)
+   - Tenant-aware rules per company
+   - Enable/disable toggle for each rule
+   - Supports alert types: DRIVER_LICENSE_EXPIRING, DRIVER_LICENSE_EXPIRED, DRIVER_ABSENT, VEHICLE_INSURANCE_EXPIRING, VEHICLE_INSPECTION_EXPIRING, TIME_WINDOW_VIOLATION, STOP_FAILED, STOP_SKIPPED, ROUTE_DELAYED, OPTIMIZATION_FAILED, PLAN_INCOMPLETE, CAPACITY_ISSUE
+
+2. **Added `alerts` table**:
+   - Actual alert instances triggered by rules
+   - Fields: severity (CRITICAL, WARNING, INFO), type, entityType, entityId, title, description, metadata
+   - Status tracking: ACTIVE, ACKNOWLEDGED, RESOLVED, DISMISSED
+   - Acknowledgment tracking (user, timestamp, note)
+   - Resolution timestamp
+
+3. **Added `alert_notifications` table**:
+   - Notification delivery tracking per alert
+   - Channels: IN_APP, EMAIL, SMS, WEBHOOK
+   - Status: PENDING, SENT, DELIVERED, FAILED
+   - Retry count and error tracking
+
+#### Backend API Endpoints:
+1. **`GET /api/alerts`**:
+   - List alerts with filters (status, severity, type, entityType)
+   - Pagination support (limit, offset)
+   - Returns total count
+   - Default filter: excludes dismissed alerts
+
+2. **`GET /api/alerts/[id]`**:
+   - Get alert details with related data
+   - Includes rule info, acknowledged user, notifications
+
+3. **`PATCH /api/alerts/[id]`**:
+   - Update alert (generic update endpoint)
+
+4. **`DELETE /api/alerts/[id]`**:
+   - Delete alert
+
+5. **`POST /api/alerts/[id]/acknowledge`**:
+   - Acknowledge alert with optional note
+   - Tracks user and timestamp
+
+6. **`POST /api/alerts/[id]/dismiss`**:
+   - Dismiss alert with optional note
+   - Hides from active list
+
+7. **`GET /api/alerts/rules`**:
+   - List alert rules with filters (type, enabled)
+   - Pagination support
+
+8. **`POST /api/alerts/rules`**:
+   - Create new alert rule
+
+9. **`PUT /api/alerts/rules/[id]`**:
+   - Update alert rule
+
+10. **`DELETE /api/alerts/rules/[id]`**:
+    - Delete alert rule
+
+11. **`POST /api/alerts/evaluate`**:
+    - Trigger alert evaluation
+    - Supports specific evaluation types or all
+    - Returns created alerts count
+
+#### Alert Engine (`src/lib/alerts/engine.ts`):
+1. **`createAlert()`**: Creates new alert instance
+2. **`hasActiveAlert()`**: Checks for existing active alerts
+3. **`evaluateDriverLicenseAlerts()`**: Checks for expiring/expired driver licenses
+4. **`evaluateVehicleDocumentAlerts()`**: Checks for expiring vehicle insurance/inspection
+5. **`evaluateDriverAbsentAlerts()`**: Creates alerts for absent drivers
+6. **`evaluateOptimizationFailedAlerts()`**: Creates alerts for failed optimization jobs
+7. **`runAllAlertEvaluations()`**: Runs all evaluations (for background jobs)
+8. **`resolveAlertsForEntity()`**: Resolves alerts for specific entity
+
+#### Frontend Components:
+1. **`src/components/alerts/alert-item.tsx`**:
+   - Individual alert card display
+   - Severity indicators (Critical, Warning, Info)
+   - Acknowledge/Dismiss actions with optional notes
+   - Shows time since creation
+   - Entity type and acknowledgment info
+
+2. **`src/components/alerts/alert-panel.tsx`**:
+   - Full alert panel with tabs by severity
+   - Search and filter functionality
+   - Status filter (Active, Acknowledged, All)
+   - Real-time refresh capability
+   - Alert count badges
+
+3. **`src/hooks/use-toast.ts`**:
+   - Toast notification hook
+   - For user feedback on actions
+
+4. **`src/components/ui/toast.tsx`**:
+   - Toast UI component
+
+#### Monitoring Dashboard Integration:
+1. **Updated `src/app/monitoring/page.tsx`**:
+   - Added Alerts button in header with badge showing active count
+   - Integrated AlertPanel component
+   - Shows alert panel when toggle is active
+   - Responsive grid layout adjusts when alerts panel is open
+
+2. **Updated `src/app/api/monitoring/summary/route.ts`**:
+   - Now returns real activeAlerts count from database
+   - Replaced mock alert count with actual query
+
+### Features Implemented:
+- ✅ Configurable alert rules per company
+- ✅ Multiple alert severity levels (CRITICAL, WARNING, INFO)
+- ✅ Alert types for drivers, vehicles, routes, and optimization
+- ✅ Alert acknowledgment with notes
+- ✅ Alert dismissal capability
+- ✅ Alert history and status tracking
+- ✅ Real-time alert count on monitoring dashboard
+- ✅ Alert panel with filtering and search
+- ✅ Tabs for organizing alerts by severity
+- ✅ Tenant-aware alert data isolation
+- ✅ Alert engine for automatic evaluation
+- ✅ API endpoint for manual alert creation
+- ✅ API endpoint for triggering evaluations
+
+### Technical Details:
+- **Database Tables**: 3 new tables (alert_rules, alerts, alert_notifications)
+- **API Endpoints**: 11 new endpoints
+- **UI Components**: 3 new components (AlertItem, AlertPanel, Toaster)
+- **Alert Evaluation**: Engine with 6 evaluation functions
+- **Status Types**: 4 alert statuses (ACTIVE, ACKNOWLEDGED, RESOLVED, DISMISSED)
+- **Severity Levels**: 3 levels (CRITICAL, WARNING, INFO)
+- **Alert Types**: 12 predefined types covering all major scenarios
+
+---

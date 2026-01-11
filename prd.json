@@ -442,7 +442,7 @@
         "Confirmar rendimiento fluido con docenas de conductores activos",
         "Verificar API soporta polling frecuente con datos resumidos"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "10.2",
@@ -458,7 +458,7 @@
         "Confirmar alertas pueden marcarse como leídas o descartarse",
         "Verificar API permite consultar alertas activas con filtros"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "10.3",

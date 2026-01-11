@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationJobs, optimizationConfigurations, drivers } from "@/db/schema";
+import { optimizationJobs, optimizationConfigurations, drivers, alerts } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/tenant";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -92,7 +92,16 @@ export async function GET(request: NextRequest) {
     // In a real implementation, this would come from a stops table with actual status tracking
     const completedStops = Math.floor(totalStops * 0.4); // Mock: 40% completed
     const delayedStops = Math.floor(totalStops * 0.1); // Mock: 10% delayed
-    const activeAlerts = driversInRoute > 0 ? Math.min(driversInRoute, 3) : 0; // Mock: some alerts
+
+    // Get active alerts count from database
+    const activeAlertsResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(alerts)
+      .where(and(
+        withTenantFilter(alerts),
+        eq(alerts.status, "ACTIVE")
+      ));
+    const activeAlerts = activeAlertsResult[0]?.count || 0;
 
     const completenessPercentage = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
 

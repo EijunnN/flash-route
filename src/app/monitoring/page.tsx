@@ -10,7 +10,8 @@ import { MonitoringMetrics } from "@/components/monitoring/monitoring-metrics";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
 import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
 import { MonitoringMap } from "@/components/monitoring/monitoring-map";
-import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { AlertPanel } from "@/components/alerts/alert-panel";
+import { Loader2, RefreshCw, AlertCircle, Bell, X } from "lucide-react";
 
 const DEFAULT_COMPANY_ID = "default-company";
 const POLLING_INTERVAL = 10000; // 10 seconds
@@ -80,6 +81,8 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"overview" | "detail">("overview");
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [showAlerts, setShowAlerts] = useState(false);
+  const [alertsCount, setAlertsCount] = useState(0);
 
   const fetchMonitoringData = useCallback(async () => {
     try {
@@ -91,6 +94,7 @@ export default function MonitoringPage() {
 
       const result = await response.json();
       setMonitoringData(result.data);
+      setAlertsCount(result.data.metrics.activeAlerts);
       setLastUpdate(new Date());
     } catch (err) {
       console.error("Error fetching monitoring data:", err);
@@ -230,6 +234,19 @@ export default function MonitoringPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
+          <Button
+            variant={alertsCount > 0 ? "destructive" : "outline"}
+            size="sm"
+            onClick={() => setShowAlerts(!showAlerts)}
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            Alerts
+            {alertsCount > 0 && (
+              <Badge variant="secondary" className="ml-2 px-1.5 min-w-[20px]">
+                {alertsCount}
+              </Badge>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -238,10 +255,10 @@ export default function MonitoringPage() {
           {/* Metrics */}
           {monitoringData && <MonitoringMetrics metrics={monitoringData.metrics} />}
 
-          {/* Main Content: Map and Driver List */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-            {/* Map - takes 2 columns */}
-            <div className="lg:col-span-2">
+          {/* Main Content: Map, Driver List, and Alerts */}
+          <div className={`grid gap-6 mt-6 ${showAlerts ? "grid-cols-1 lg:grid-cols-4" : "grid-cols-1 lg:grid-cols-3"}`}>
+            {/* Map - takes 2 columns (or 2 of 4 when alerts open) */}
+            <div className={showAlerts ? "lg:col-span-2" : "lg:col-span-2"}>
               <div className="h-[500px]">
                 <MonitoringMap
                   jobId={monitoringData?.jobId || null}
@@ -287,6 +304,15 @@ export default function MonitoringPage() {
                 </ScrollArea>
               </CardContent>
             </Card>
+
+            {/* Alerts Panel - shown when toggle is active */}
+            {showAlerts && (
+              <div className="lg:col-span-1">
+                <div className="h-[500px]">
+                  <AlertPanel companyId={DEFAULT_COMPANY_ID} />
+                </div>
+              </div>
+            )}
           </div>
         </>
       ) : (
