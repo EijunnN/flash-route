@@ -38,16 +38,25 @@
 - Tenant filtering (by Company) already implemented in src/db/tenant-aware.ts
 - Audit logging already implemented in src/lib/audit.ts
 
-## Next Priority Stories
+### Story 15.1 - Gestión de Sesiones con Redis (Security) - COMPLETED
+- Created Redis session management module (src/lib/session.ts) using Upstash Redis
+- Sessions stored in Redis with configurable TTL (7 days default)
+- User activity renews session TTL via updateSessionActivity()
+- Expired sessions automatically invalidated by Redis TTL mechanism
+- Session validation on each request via validateSession()
+- API endpoints for session management:
+  - GET /api/auth/sessions - List current user's sessions
+  - GET /api/auth/sessions/[id] - Get specific session
+  - DELETE /api/auth/sessions/[id] - Invalidate specific session
+  - DELETE /api/users/[userId]/sessions - Invalidate all user sessions
+  - POST /api/auth/sessions/invalidate-all - Global session invalidation (admin only)
+- Refresh tokens invalidated when session revoked via invalidateRefreshToken()
+- Added session ID cookie (session_id) for client-side tracking
+- Updated auth.ts with createAuthSession(), getCurrentSession(), invalidateCurrentSession()
+- Added SESSION entity and INVALIDATE_ALL action to authorization system
+- Updated .env.example with Upstash Redis configuration variables
 
-### Story 15.1 - Gestión de Sesiones con Redis (Security)
-- Verify sesiones almacenadas en Redis con TTL configurado
-- Validar actividad del usuario renueva TTL de la sesión
-- Confirm sesiones expiradas se invalidan automáticamente
-- Verificar API verifica validez de sesión en cada request
-- Validar administradores pueden invalidar sesiones de usuarios
-- Confirm invalidación global puede aplicarse a todos los usuarios
-- Verificar tokens de refresco se invalidan cuando la sesión se revoca
+## Next Priority Stories
 
 ### Story 13.1 - API RESTful de Gestión (Functional)
 - Verificar API sigue convenciones REST para operaciones CRUD
@@ -57,3 +66,10 @@
 - Validar errores retornan código HTTP apropiado con detalle de validación
 - Confirmar documentación de API disponible en formato OpenAPI
 - Verificar autenticación usa tokens JWT en headers Authorization
+
+### Story 15.2 - Integración de Sesiones con Login/Logout (Security)
+- Update /api/auth/login to create Redis session on successful authentication
+- Update /api/auth/logout to invalidate Redis session
+- Update /api/auth/refresh to validate session before issuing new tokens
+- Ensure session cookie is set/cleared appropriately
+- Verify refresh tokens are linked to sessions

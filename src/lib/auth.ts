@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { validateSession, createSession, invalidateSession, type SessionData } from "./session";
 
 // JWT Configuration
 const ACCESS_TOKEN_EXPIRY = "15min"; // 15 minutes
@@ -8,6 +9,7 @@ const REFRESH_TOKEN_EXPIRY = "7d"; // 7 days
 // Cookie names
 const ACCESS_TOKEN_COOKIE = "access_token";
 const REFRESH_TOKEN_COOKIE = "refresh_token";
+const SESSION_ID_COOKIE = "session_id";
 
 // Secret key - should be stored in environment variables
 const getSecretKey = () => {
@@ -25,6 +27,7 @@ export interface TokenPayload {
   email: string;
   role: string;
   type: "access" | "refresh";
+  sessionId?: string;
 }
 
 /**
@@ -159,4 +162,85 @@ export function extractTokenFromAuthHeader(authHeader: string | null): string | 
     return null;
   }
   return authHeader.substring(7);
+}
+
+/**
+ * Create session and set session cookie
+ *
+ * @param user - User information
+ * @param options - Optional metadata
+ * @returns Session ID
+ */
+export async function createAuthSession(
+  user: {
+    id: string;
+    companyId: string;
+    email: string;
+    role: string;
+  },
+  options?: { userAgent?: string; ipAddress?: string }
+): Promise<string> {
+  const sessionId = await createSession(
+    {
+      userId: user.id,
+      companyId: user.companyId,
+      email: user.email,
+      role: user.role,
+    },
+    options
+  );
+
+  // Set session cookie
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_ID_COOKIE, sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    path: "/",
+  });
+
+  return sessionId;
+}
+
+/**
+ * Get session ID from cookies
+ */
+export async function getSessionId(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  return cookieStore.get(SESSION_ID_COOKIE)?.value;
+}
+
+/**
+ * Clear session cookie
+ */
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_ID_COOKIE);
+}
+
+/**
+ * Validate current session
+ * Checks if session exists in Redis and is not expired
+ *
+ * @returns Session data if valid, null otherwise
+ */
+export async function getCurrentSession(): Promise<SessionData | null> {
+  const sessionId = await getSessionId();
+  if (!sessionId) {
+    return null;
+  }
+
+  return await validateSession(sessionId);
+}
+
+/**
+ * Invalidate current session (logout)
+ */
+export async function invalidateCurrentSession(): Promise<void> {
+  const sessionId = await getSessionId();
+  if (sessionId) {
+    await invalidateSession(sessionId);
+  }
+  await clearSessionCookie();
 }

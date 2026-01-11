@@ -32,6 +32,7 @@ export enum EntityType {
   USER = "user",
   AUDIT_LOG = "audit_log",
   METRICS = "metrics",
+  SESSION = "session",
 }
 
 /**
@@ -64,6 +65,7 @@ export enum Action {
   BULK_UPDATE = "bulk_update",
   CHANGE_STATUS = "change_status",
   INVALIDATE_SESSIONS = "invalidate_sessions",
+  INVALIDATE_ALL = "invalidate_all",
 }
 
 /**
@@ -80,6 +82,7 @@ export const SENSITIVE_ACTIONS = new Set<Action>([
   Action.BULK_UPDATE,
   Action.CHANGE_STATUS,
   Action.INVALIDATE_SESSIONS,
+  Action.INVALIDATE_ALL,
   Action.DELETE,
 ]);
 
@@ -302,6 +305,45 @@ export function getRolePermissions(role: string): Permission[] {
  */
 export function isAdmin(user: AuthenticatedUser): boolean {
   return user.role === USER_ROLES.ADMIN_SISTEMA;
+}
+
+/**
+ * Simple authorization check helper
+ * Returns true if user has permission, with special handling for:
+ * - Users can always access their own resources
+ * - Admins have full access
+ *
+ * @param user - Authenticated user
+ * @param entity - Entity type
+ * @param action - Action to perform
+ * @param resourceOwnerId - Optional owner ID of the resource (for ownership checks)
+ * @returns true if authorized, false otherwise
+ */
+export function authorize(
+  user: AuthenticatedUser,
+  entity: EntityType,
+  action: Action,
+  resourceOwnerId?: string
+): boolean {
+  // Admins have full access
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  // Users can always manage their own sessions
+  if (entity === EntityType.SESSION && resourceOwnerId === user.userId) {
+    return action === Action.READ || action === Action.DELETE;
+  }
+
+  // Users can always invalidate their own sessions
+  if (entity === EntityType.USER && resourceOwnerId === user.userId) {
+    if (action === Action.INVALIDATE_SESSIONS) {
+      return true;
+    }
+  }
+
+  // Check standard permission
+  return hasPermission(user, entity, action);
 }
 
 /**

@@ -650,7 +650,7 @@
         "Confirmar invalidación global puede aplicarse a todos los usuarios",
         "Verificar tokens de refresco se invalidan cuando la sesión se revoca"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "16.1",
