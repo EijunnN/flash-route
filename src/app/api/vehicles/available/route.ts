@@ -40,16 +40,16 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const queryParams = vehicleAvailabilityQuerySchema.parse({
-      startDate: searchParams.get("startDate"),
-      endDate: searchParams.get("endDate"),
-      fleetId: searchParams.get("fleetId"),
+      startDate: searchParams.get("startDate") || undefined,
+      endDate: searchParams.get("endDate") || undefined,
+      fleetId: searchParams.get("fleetId") || undefined,
       limit: searchParams.get("limit") || "50",
       offset: searchParams.get("offset") || "0",
     });
 
-    // Parse dates
-    const startDate = new Date(queryParams.startDate);
-    const endDate = new Date(queryParams.endDate);
+    // Parse dates if provided (for future filtering by planifications)
+    const startDate = queryParams.startDate ? new Date(queryParams.startDate) : undefined;
+    const endDate = queryParams.endDate ? new Date(queryParams.endDate) : undefined;
 
     // Build query conditions
     const conditions = [
@@ -103,14 +103,15 @@ export async function GET(request: NextRequest) {
     // For now, we return all AVAILABLE vehicles
 
     return NextResponse.json({
-      vehicles: availableVehicles,
+      data: availableVehicles,
+      vehicles: availableVehicles, // Keep for backwards compatibility
       total,
       limit: queryParams.limit,
       offset: queryParams.offset,
-      dateRange: {
+      dateRange: queryParams.startDate && queryParams.endDate ? {
         startDate: queryParams.startDate,
         endDate: queryParams.endDate,
-      },
+      } : null,
     });
   } catch (error) {
     console.error("Error fetching available vehicles:", error);

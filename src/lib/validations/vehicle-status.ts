@@ -97,8 +97,8 @@ export const vehicleStatusHistoryQuerySchema = z.object({
 });
 
 export const vehicleAvailabilityQuerySchema = z.object({
-  startDate: z.string().datetime("Fecha de inicio inválida"),
-  endDate: z.string().datetime("Fecha de fin inválida"),
+  startDate: z.string().datetime("Fecha de inicio inválida").optional(),
+  endDate: z.string().datetime("Fecha de fin inválida").optional(),
   fleetId: z.string().uuid("ID de flota inválido").optional(),
   limit: z.coerce.number().int().positive().max(100).default(50),
   offset: z.coerce.number().int().nonnegative().default(0),
