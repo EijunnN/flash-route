@@ -23,6 +23,7 @@ import { DriverAssignmentDisplay, AssignmentMetricsCard } from "./driver-assignm
 import { ManualDriverAssignmentDialog } from "./manual-driver-assignment-dialog";
 import { AssignmentHistory } from "./assignment-history";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";
+import { RouteMap } from "./route-map";
 
 // Re-export types from optimization-runner
 export type { OptimizationResult, OptimizationRoute, OptimizationStop } from "@/lib/optimization-runner";
@@ -88,6 +89,10 @@ interface OptimizationResultsProps {
       optimizedAt: string;
       objective: string;
       processingTimeMs: number;
+    };
+    depot?: {
+      latitude: number;
+      longitude: number;
     };
   };
   onReoptimize?: () => void;
@@ -520,17 +525,12 @@ export function OptimizationResults({ result, onReoptimize, onConfirm, onReassig
         </TabsContent>
 
         <TabsContent value="map">
-          <Card>
-            <CardHeader>
-              <CardTitle>Route Map</CardTitle>
-              <CardDescription>
-                Visual representation of all generated routes with color-coded paths
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RouteMapPlaceholder />
-            </CardContent>
-          </Card>
+          <RouteMap
+            routes={result.routes}
+            depot={result.depot}
+            selectedRouteId={selectedRouteId}
+            onRouteSelect={(routeId) => setSelectedRouteId(routeId)}
+          />
         </TabsContent>
       </Tabs>
 

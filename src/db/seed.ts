@@ -7,6 +7,16 @@ import {
   drivers, 
   orders,
   timeWindowPresets,
+  auditLogs,
+  driverAvailability,
+  driverSecondaryFleets,
+  driverStatusHistory,
+  vehicleStatusHistory,
+  vehicleFleetHistory,
+  driverSkills,
+  vehicleSkills,
+  optimizationJobs,
+  optimizationConfigurations,
   DRIVER_STATUS,
   ORDER_STATUS,
   TIME_WINDOW_TYPES,
@@ -19,7 +29,33 @@ import { USER_ROLES } from "@/lib/auth-api";
 async function seed() {
   console.log("🌱 Starting database seed...");
 
+  // Check for --reset flag to clean existing data
+  const shouldReset = process.argv.includes("--reset");
+
   try {
+    if (shouldReset) {
+      console.log("🗑️  Resetting database...");
+      // Delete in correct order to respect foreign keys
+      await db.delete(optimizationJobs);
+      await db.delete(optimizationConfigurations);
+      await db.delete(auditLogs);
+      await db.delete(orders);
+      await db.delete(driverAvailability);
+      await db.delete(driverSecondaryFleets);
+      await db.delete(driverStatusHistory);
+      await db.delete(driverSkills);
+      await db.delete(drivers);
+      await db.delete(vehicleStatusHistory);
+      await db.delete(vehicleFleetHistory);
+      await db.delete(vehicleSkills);
+      await db.delete(vehicles);
+      await db.delete(fleets);
+      await db.delete(timeWindowPresets);
+      await db.delete(users);
+      await db.delete(companies);
+      console.log("✅ Database reset complete");
+    }
+
     // Check if default company exists
     const existingCompany = await db
       .select()
@@ -36,10 +72,10 @@ async function seed() {
           legalName: "Sistema Demo",
           commercialName: "Demo Company",
           email: "admin@demo.com",
-          phone: "+1234567890",
-          country: "MX",
-          timezone: "America/Mexico_City",
-          currency: "MXN",
+          phone: "+51123456789",
+          country: "PE",
+          timezone: "America/Lima",
+          currency: "PEN",
           dateFormat: "DD/MM/YYYY",
           active: true,
         })
@@ -124,7 +160,7 @@ async function seed() {
       console.log(`ℹ️  Vehicles already exist`);
     }
 
-    // Create drivers
+    // Create drivers - Perú
     const existingDrivers = await db.select().from(drivers).where(eq(drivers.companyId, companyId)).limit(1);
     
     if (existingDrivers.length === 0 && fleetIds.length > 0) {
@@ -132,36 +168,39 @@ async function seed() {
       futureDate.setFullYear(futureDate.getFullYear() + 2);
       
       await db.insert(drivers).values([
-        { companyId, fleetId: fleetIds[0], name: "Juan Pérez", identification: "CURP001", email: "juan@demo.com", phone: "+521234567890", licenseNumber: "LIC001", licenseExpiry: futureDate, licenseCategories: "B,C", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
-        { companyId, fleetId: fleetIds[0], name: "María García", identification: "CURP002", email: "maria@demo.com", phone: "+521234567891", licenseNumber: "LIC002", licenseExpiry: futureDate, licenseCategories: "B", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
-        { companyId, fleetId: fleetIds[1], name: "Carlos López", identification: "CURP003", email: "carlos@demo.com", phone: "+521234567892", licenseNumber: "LIC003", licenseExpiry: futureDate, licenseCategories: "B,C,D", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
-        { companyId, fleetId: fleetIds[1], name: "Ana Rodríguez", identification: "CURP004", email: "ana@demo.com", phone: "+521234567893", licenseNumber: "LIC004", licenseExpiry: futureDate, licenseCategories: "B,C", status: "IN_ROUTE" as keyof typeof DRIVER_STATUS, active: true },
-        { companyId, fleetId: fleetIds[2], name: "Roberto Sánchez", identification: "CURP005", email: "roberto@demo.com", phone: "+521234567894", licenseNumber: "LIC005", licenseExpiry: futureDate, licenseCategories: "B", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
+        { companyId, fleetId: fleetIds[0], name: "Juan Pérez Huamán", identification: "DNI70123456", email: "juan@demo.com", phone: "+51912345670", licenseNumber: "A-I-70123456", licenseExpiry: futureDate, licenseCategories: "A-IIa,A-IIb", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
+        { companyId, fleetId: fleetIds[0], name: "María García Quispe", identification: "DNI70123457", email: "maria@demo.com", phone: "+51912345671", licenseNumber: "A-I-70123457", licenseExpiry: futureDate, licenseCategories: "A-IIa", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
+        { companyId, fleetId: fleetIds[1], name: "Carlos López Mamani", identification: "DNI70123458", email: "carlos@demo.com", phone: "+51912345672", licenseNumber: "A-I-70123458", licenseExpiry: futureDate, licenseCategories: "A-IIb,A-IIIa", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
+        { companyId, fleetId: fleetIds[1], name: "Ana Rodríguez Flores", identification: "DNI70123459", email: "ana@demo.com", phone: "+51912345673", licenseNumber: "A-I-70123459", licenseExpiry: futureDate, licenseCategories: "A-IIa,A-IIb", status: "IN_ROUTE" as keyof typeof DRIVER_STATUS, active: true },
+        { companyId, fleetId: fleetIds[2], name: "Roberto Sánchez Torres", identification: "DNI70123460", email: "roberto@demo.com", phone: "+51912345674", licenseNumber: "A-I-70123460", licenseExpiry: futureDate, licenseCategories: "A-IIa", status: "AVAILABLE" as keyof typeof DRIVER_STATUS, active: true },
       ]);
       console.log(`✅ Created 5 drivers`);
     } else {
       console.log(`ℹ️  Drivers already exist`);
     }
 
-    // Create sample orders
+    // Create sample orders - Lima, Perú
     const existingOrders = await db.select().from(orders).where(eq(orders.companyId, companyId)).limit(1);
     
     if (existingOrders.length === 0) {
+      // Direcciones reales de Lima, Perú
       const addresses = [
-        { address: "Av. Insurgentes Sur 1234, Col. Del Valle, CDMX", lat: "19.3910", lng: "-99.1775" },
-        { address: "Calle Reforma 567, Col. Juárez, CDMX", lat: "19.4285", lng: "-99.1556" },
-        { address: "Blvd. Miguel Hidalgo 890, Col. Centro, CDMX", lat: "19.4326", lng: "-99.1332" },
-        { address: "Av. Universidad 234, Col. Narvarte, CDMX", lat: "19.3895", lng: "-99.1548" },
-        { address: "Calzada de Tlalpan 456, Col. Portales, CDMX", lat: "19.3685", lng: "-99.1423" },
-        { address: "Av. Revolución 789, Col. San Ángel, CDMX", lat: "19.3482", lng: "-99.1895" },
-        { address: "Periférico Sur 1011, Col. Pedregal, CDMX", lat: "19.3156", lng: "-99.1856" },
-        { address: "Av. Chapultepec 321, Col. Roma, CDMX", lat: "19.4152", lng: "-99.1619" },
+        { address: "Av. Javier Prado Este 4200, Surco, Lima", lat: "-12.0847", lng: "-76.9716" },
+        { address: "Av. Larco 345, Miraflores, Lima", lat: "-12.1219", lng: "-77.0308" },
+        { address: "Jr. de la Unión 450, Centro Histórico, Lima", lat: "-12.0464", lng: "-77.0327" },
+        { address: "Av. La Marina 2000, San Miguel, Lima", lat: "-12.0769", lng: "-77.0940" },
+        { address: "Av. Salaverry 3250, San Isidro, Lima", lat: "-12.0983", lng: "-77.0487" },
+        { address: "Av. Brasil 2850, Pueblo Libre, Lima", lat: "-12.0750", lng: "-77.0590" },
+        { address: "Av. Angamos Este 1550, Surquillo, Lima", lat: "-12.1139", lng: "-77.0140" },
+        { address: "Av. Arequipa 4545, Miraflores, Lima", lat: "-12.1145", lng: "-77.0278" },
+        { address: "Av. Universitaria 1801, San Miguel, Lima", lat: "-12.0670", lng: "-77.0830" },
+        { address: "Av. Petit Thouars 5050, Miraflores, Lima", lat: "-12.1190", lng: "-77.0340" },
       ];
 
       const clients = [
-        "Farmacia San Pablo", "OXXO Centro", "Restaurante El Rincón", 
-        "Hospital Central", "Supermercado La Comer", "Oficinas Reforma",
-        "Hotel Presidente", "Centro Comercial Santa Fe"
+        "Wong Javier Prado", "Metro Larco", "Farmacia Inkafarma Centro", 
+        "Plaza San Miguel", "Clínica San Isidro", "Supermercado Tottus",
+        "Real Plaza Surquillo", "CC Larcomar", "PUCP Entregas", "Vivanda Miraflores"
       ];
 
       const getStatus = (i: number): keyof typeof ORDER_STATUS => {
@@ -173,8 +212,8 @@ async function seed() {
       const orderValues = addresses.map((addr, i) => ({
         companyId,
         trackingId: `ORD-${String(i + 1).padStart(4, '0')}`,
-        customerName: clients[i],
-        customerPhone: `+5255${String(10000000 + i).slice(-8)}`,
+        customerName: clients[i % clients.length],
+        customerPhone: `+519${String(10000000 + i).slice(-8)}`,
         address: addr.address,
         latitude: addr.lat,
         longitude: addr.lng,

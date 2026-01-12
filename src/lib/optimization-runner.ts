@@ -98,6 +98,10 @@ export interface OptimizationResult {
     objective: string;
     processingTimeMs: number;
   };
+  depot?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 export interface OptimizationInput {
@@ -416,6 +420,10 @@ export async function runOptimization(
       optimizedAt: new Date().toISOString(),
       objective: config.objective,
       processingTimeMs: Date.now() - startTime,
+    },
+    depot: {
+      latitude: parseFloat(config.depotLatitude),
+      longitude: parseFloat(config.depotLongitude),
     },
   };
 

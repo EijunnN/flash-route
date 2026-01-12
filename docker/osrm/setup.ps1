@@ -2,7 +2,7 @@
 # This script downloads and prepares OpenStreetMap data for OSRM
 
 param(
-    [string]$Region = "mexico"
+    [string]$Region = "peru"
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,7 +22,7 @@ if (Test-Path $osrmFile) {
 # Download OSM data if not exists
 if (-not (Test-Path $osmFile)) {
     Write-Host "Downloading $osmFile from Geofabrik..." -ForegroundColor Yellow
-    $url = "https://download.geofabrik.de/north-america/$osmFile"
+    $url = "https://download.geofabrik.de/south-america/$osmFile"
     
     try {
         Invoke-WebRequest -Uri $url -OutFile $osmFile -UseBasicParsing
@@ -30,7 +30,7 @@ if (-not (Test-Path $osmFile)) {
     }
     catch {
         Write-Host "Failed to download. Trying alternative URL..." -ForegroundColor Red
-        $url = "https://download.geofabrik.de/north-america/mexico-latest.osm.pbf"
+        $url = "https://download.geofabrik.de/south-america/peru-latest.osm.pbf"
         Invoke-WebRequest -Uri $url -OutFile $osmFile -UseBasicParsing
     }
 }

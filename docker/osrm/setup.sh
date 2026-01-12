@@ -4,7 +4,7 @@
 
 set -e
 
-REGION="${1:-mexico}"
+REGION="${1:-peru}"
 OSM_FILE="${REGION}-latest.osm.pbf"
 OSRM_FILE="${REGION}-latest.osrm"
 
@@ -20,17 +20,17 @@ fi
 # Download OSM data if not exists
 if [ ! -f "$OSM_FILE" ]; then
     echo "Downloading $OSM_FILE from Geofabrik..."
-    URL="https://download.geofabrik.de/north-america/${OSM_FILE}"
+    URL="https://download.geofabrik.de/south-america/${OSM_FILE}"
     
     if command -v wget &> /dev/null; then
         wget -O "$OSM_FILE" "$URL" || {
             echo "Download failed, trying alternative..."
-            wget -O "$OSM_FILE" "https://download.geofabrik.de/north-america/mexico-latest.osm.pbf"
+            wget -O "$OSM_FILE" "https://download.geofabrik.de/south-america/peru-latest.osm.pbf"
         }
     else
         curl -L -o "$OSM_FILE" "$URL" || {
             echo "Download failed, trying alternative..."
-            curl -L -o "$OSM_FILE" "https://download.geofabrik.de/north-america/mexico-latest.osm.pbf"
+            curl -L -o "$OSM_FILE" "https://download.geofabrik.de/south-america/peru-latest.osm.pbf"
         }
     fi
     
