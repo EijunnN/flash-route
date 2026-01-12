@@ -23,9 +23,15 @@ import {
 } from "./driver-assignment";
 import {
   calculateRouteDistance,
-  calculateDistanceMatrix,
   type Coordinates,
 } from "./geospatial";
+import {
+  optimizeRoutes as vroomOptimizeRoutes,
+  type OrderForOptimization,
+  type VehicleForOptimization,
+  type DepotConfig,
+  type OptimizationConfig as VroomOptConfig,
+} from "./vroom-optimizer";
 
 // Optimization result types
 export interface OptimizationStop {
@@ -199,134 +205,127 @@ export async function runOptimization(
 
   checkAbort();
 
-  // Mock optimization algorithm
-  // In production, this would be replaced with actual VRP solving logic
-  // using libraries like OR-Tools, Vroom, or a custom solver
-
+  // === VROOM Optimization ===
+  // Uses VROOM for VRP solving when available, falls back to nearest-neighbor
   await updateJobProgress(jobId || input.configurationId, 10);
   checkAbort();
 
-  // Simulate processing time
-  await sleep(500);
+  // Prepare orders for VROOM
+  const ordersForVroom: OrderForOptimization[] = pendingOrders.map((order) => ({
+    id: order.id,
+    trackingId: order.trackingId,
+    address: order.address,
+    latitude: parseFloat(order.latitude),
+    longitude: parseFloat(order.longitude),
+    weightRequired: order.weightRequired || 0,
+    volumeRequired: order.volumeRequired || 0,
+    timeWindowStart: order.promisedDate
+      ? new Date(order.promisedDate).toTimeString().slice(0, 5)
+      : undefined,
+    timeWindowEnd: order.promisedDate
+      ? new Date(new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000)
+          .toTimeString()
+          .slice(0, 5)
+      : undefined,
+    serviceTime: 300, // 5 minutes default
+  }));
+
+  // Prepare vehicles for VROOM
+  const vehiclesForVroom: VehicleForOptimization[] = selectedVehicles.map((vehicle) => ({
+    id: vehicle.id,
+    plate: vehicle.plate,
+    maxWeight: vehicle.weightCapacity || 10000,
+    maxVolume: vehicle.volumeCapacity || 100,
+  }));
+
+  // Depot config
+  const depotConfig: DepotConfig = {
+    latitude: parseFloat(config.depotLatitude),
+    longitude: parseFloat(config.depotLongitude),
+    timeWindowStart: "06:00",
+    timeWindowEnd: "22:00",
+  };
+
+  // Optimization config
+  const vroomConfig: VroomOptConfig = {
+    depot: depotConfig,
+    objective: (config?.objective as "DISTANCE" | "TIME" | "BALANCED") || "BALANCED",
+  };
 
   await updateJobProgress(jobId || input.configurationId, 30);
   checkAbort();
 
-  await sleep(500);
-
-  await updateJobProgress(jobId || input.configurationId, 50);
-  checkAbort();
-
-  await sleep(500);
+  // Run VROOM optimization
+  const vroomResult = await vroomOptimizeRoutes(
+    ordersForVroom,
+    vehiclesForVroom,
+    vroomConfig
+  );
 
   await updateJobProgress(jobId || input.configurationId, 70);
   checkAbort();
 
-  // Generate mock routes based on available vehicles and orders
+  // Convert VROOM result to our format
   const routes: OptimizationRoute[] = [];
   const unassignedOrders: Array<{
     orderId: string;
     trackingId: string;
     reason: string;
-  }> = [];
+  }> = vroomResult.unassigned;
 
-  // Prepare route assignments for intelligent driver assignment
-  let orderIndex = 0;
-  const maxStopsPerRoute = Math.ceil(pendingOrders.length / selectedVehicles.length) || 1;
   const routeAssignments: DriverAssignmentRequest[] = [];
   const assignedDrivers = new Map<string, string>();
 
-  // Build route assignments
-  for (const vehicle of selectedVehicles) {
+  for (const vroomRoute of vroomResult.routes) {
     checkAbort();
 
-    const routeStops: OptimizationStop[] = [];
+    const vehicle = selectedVehicles.find((v) => v.id === vroomRoute.vehicleId);
+    if (!vehicle) continue;
 
-    // Assign orders to this route
-    for (
-      let i = 0;
-      i < maxStopsPerRoute && orderIndex < pendingOrders.length;
-      i++
-    ) {
-      const order = pendingOrders[orderIndex++];
-      routeStops.push({
-        orderId: order.id,
-        trackingId: order.trackingId,
-        sequence: i + 1,
-        address: order.address,
-        latitude: order.latitude,
-        longitude: order.longitude,
-        timeWindow: order.promisedDate
-          ? {
-              start: new Date(order.promisedDate).toISOString(),
-              end: new Date(
-                new Date(order.promisedDate).getTime() + 2 * 60 * 60 * 1000
-              ).toISOString(),
-            }
-          : undefined,
-      });
-    }
+    const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
+      orderId: stop.orderId,
+      trackingId: stop.trackingId,
+      sequence: stop.sequence,
+      address: stop.address,
+      latitude: String(stop.latitude),
+      longitude: String(stop.longitude),
+      estimatedArrival: stop.arrivalTime
+        ? new Date(stop.arrivalTime * 1000).toISOString()
+        : undefined,
+    }));
 
-    if (routeStops.length > 0) {
-      // Store route stops for assignment
-      routeAssignments.push({
-        companyId: input.companyId,
-        vehicleId: vehicle.id,
-        routeStops: routeStops.map(s => ({
-          orderId: s.orderId,
-          promisedDate: s.timeWindow?.start ? new Date(s.timeWindow.start) : undefined,
-        })),
-        candidateDriverIds: selectedDrivers.map(d => d.id),
-        assignedDrivers,
-      });
+    // Store route for driver assignment
+    routeAssignments.push({
+      companyId: input.companyId,
+      vehicleId: vehicle.id,
+      routeStops: routeStops.map((s) => ({
+        orderId: s.orderId,
+        promisedDate: undefined,
+      })),
+      candidateDriverIds: selectedDrivers.map((d) => d.id),
+      assignedDrivers,
+    });
 
-      // Calculate real route distance using PostGIS (Story 17.1)
-      const depotCoords: Coordinates = {
-        latitude: parseFloat(config.depotLatitude),
-        longitude: parseFloat(config.depotLongitude),
-      };
+    const newRoute: OptimizationRoute = {
+      routeId: `route-${vehicle.id}-${Date.now()}`,
+      vehicleId: vehicle.id,
+      vehiclePlate: vehicle.plate,
+      stops: routeStops,
+      totalDistance: vroomRoute.totalDistance,
+      totalDuration: vroomRoute.totalDuration,
+      totalWeight: vroomRoute.totalWeight,
+      totalVolume: vroomRoute.totalVolume,
+      utilizationPercentage: Math.round(
+        Math.max(
+          (vroomRoute.totalWeight / (vehicle.weightCapacity || 1)) * 100,
+          (vroomRoute.totalVolume / (vehicle.volumeCapacity || 1)) * 100
+        ) || 0
+      ),
+      timeWindowViolations: 0,
+    };
 
-      // Build route coordinates: depot -> all stops -> depot
-      const routeCoordinates: Coordinates[] = [
-        depotCoords,
-        ...routeStops.map(stop => ({
-          latitude: parseFloat(stop.latitude),
-          longitude: parseFloat(stop.longitude),
-        })),
-        depotCoords, // Return to depot
-      ];
-
-      // Calculate actual distance using Haversine formula
-      const routeDistanceResult = calculateRouteDistance(routeCoordinates);
-
-      // Calculate total weight and volume from orders
-      const routeOrderIds = routeStops.map(s => s.orderId);
-      const routeOrders = pendingOrders.filter(o => routeOrderIds.includes(o.id));
-      const totalWeight = routeOrders.reduce((sum, o) => sum + (o.weightRequired || 0), 0);
-      const totalVolume = routeOrders.reduce((sum, o) => sum + (o.volumeRequired || 0), 0);
-
-      // Create route with real distances from PostGIS
-      const newRoute: OptimizationRoute = {
-        routeId: `route-${vehicle.id}-${Date.now()}`,
-        vehicleId: vehicle.id,
-        vehiclePlate: vehicle.plate,
-        stops: routeStops,
-        totalDistance: routeDistanceResult.distanceMeters, // Real distance from PostGIS
-        totalDuration: routeDistanceResult.durationSeconds, // Estimated duration based on distance
-        totalWeight,
-        totalVolume,
-        utilizationPercentage: Math.round(
-          Math.max(
-            (totalWeight / vehicle.weightCapacity) * 100,
-            (totalVolume / vehicle.volumeCapacity) * 100
-          ) || (routeStops.length / maxStopsPerRoute) * 100
-        ),
-        timeWindowViolations: 0,
-      };
-      routes.push(newRoute);
-      // Update partial results tracking
-      partialRoutes = [...routes];
-    }
+    routes.push(newRoute);
+    partialRoutes = [...routes];
   }
 
   // Perform intelligent driver assignment
@@ -351,16 +350,6 @@ export async function runOptimization(
         errors: assignment.score.errors,
       };
     }
-  }
-
-  // Remaining orders are unassigned
-  while (orderIndex < pendingOrders.length) {
-    const order = pendingOrders[orderIndex++];
-    unassignedOrders.push({
-      orderId: order.id,
-      trackingId: order.trackingId,
-      reason: "No available vehicles or capacity constraints",
-    });
   }
 
   await updateJobProgress(jobId || input.configurationId, 90);

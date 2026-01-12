@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  # OSRM Backend - Routing engine for real road distances/times
+  osrm-backend:
+    image: osrm/osrm-backend:latest
+    container_name: osrm-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./docker/osrm:/data
+    command: osrm-routed --algorithm mld /data/mexico-latest.osrm
+    profiles:
+      - routing
+
+  # VROOM - Vehicle Routing Optimization
+  vroom:
+    image: vroomvrp/vroom-docker:v1.14.0
+    container_name: vroom
+    restart: unless-stopped
+    ports:
+      - "5000:3000"
+    environment:
+      - VROOM_ROUTER=osrm
+    volumes:
+      - ./docker/vroom/config.yml:/etc/vroom/config.yml:ro
+    depends_on:
+      - osrm-backend
+    profiles:
+      - routing
+
+  # PostgreSQL with PostGIS (optional - for production)
+  # postgres:
+  #   image: postgis/postgis:16-3.4
+  #   container_name: postgres
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: planeamiento
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
