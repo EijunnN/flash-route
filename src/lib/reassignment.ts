@@ -14,7 +14,6 @@ import {
 import { eq, and, inArray, sql, lt, gte, desc } from "drizzle-orm";
 import {
   calculateRouteDistance,
-  calculateDistanceFromRouteStop,
 } from "./geospatial";
 
 /**
@@ -457,7 +456,7 @@ export async function calculateReassignmentImpact(
   if (currentDriverStops.length > 0) {
     // Sort stops by sequence and calculate actual route distance
     const sortedStops = [...currentDriverStops].sort((a, b) => a.sequence - b.sequence);
-    const currentRouteResult = await calculateRouteDistance(
+    const currentRouteResult = calculateRouteDistance(
       sortedStops.map((s) => ({
         latitude: parseFloat(s.latitude),
         longitude: parseFloat(s.longitude),
@@ -474,7 +473,7 @@ export async function calculateReassignmentImpact(
   if (stopsToReassign > 0) {
     // Sort stops by sequence and calculate route distance
     const sortedStops = [...pendingStops].sort((a, b) => a.sequence - b.sequence);
-    const reassignRouteResult = await calculateRouteDistance(
+    const reassignRouteResult = calculateRouteDistance(
       sortedStops.map((s) => ({
         latitude: parseFloat(s.latitude),
         longitude: parseFloat(s.longitude),

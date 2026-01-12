@@ -296,8 +296,8 @@ export async function runOptimization(
         depotCoords, // Return to depot
       ];
 
-      // Calculate actual distance using PostGIS
-      const routeDistanceResult = await calculateRouteDistance(routeCoordinates);
+      // Calculate actual distance using Haversine formula
+      const routeDistanceResult = calculateRouteDistance(routeCoordinates);
 
       // Calculate total weight and volume from orders
       const routeOrderIds = routeStops.map(s => s.orderId);

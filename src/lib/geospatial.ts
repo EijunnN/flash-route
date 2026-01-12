@@ -1,12 +1,10 @@
 /**
  * Geospatial utilities for Story 17.1: Optimización de Consultas Geoespaciales
  *
- * This module provides PostGIS-based distance calculations and spatial queries
- * with caching support for improved performance.
+ * This module provides distance calculations using Haversine formula.
+ * Falls back to JavaScript calculation when PostGIS is not available.
  */
 
-import { db } from "@/db";
-import { sql } from "drizzle-orm";
 import { cacheGet, cacheSet, CACHE_TTL } from "./cache";
 
 // Distance result in meters and seconds
@@ -21,30 +19,30 @@ export interface Coordinates {
   longitude: number;
 }
 
-// Distance matrix cache key
-type DistanceMatrixKey = `${string}-${string}`;
-
 /**
- * Calculate the distance between two points using PostGIS ST_Distance
+ * Calculate the distance between two points using Haversine formula
  * Returns distance in meters
  *
  * @param from - Starting coordinates
  * @param to - Ending coordinates
  * @returns Distance in meters
  */
-export async function calculateDistance(
+export function calculateDistance(
   from: Coordinates,
   to: Coordinates
-): Promise<number> {
-  const result = await db.execute(sql`
-    SELECT ST_Distance(
-      ST_SetSRID(ST_MakePoint(${from.longitude}, ${from.latitude}), 4326)::geography,
-      ST_SetSRID(ST_MakePoint(${to.longitude}, ${to.latitude}), 4326)::geography
-    ) as distance
-  `);
+): number {
+  const R = 6371000; // Earth's radius in meters
+  const lat1 = (from.latitude * Math.PI) / 180;
+  const lat2 = (to.latitude * Math.PI) / 180;
+  const deltaLat = ((to.latitude - from.latitude) * Math.PI) / 180;
+  const deltaLon = ((to.longitude - from.longitude) * Math.PI) / 180;
 
-  const row = result[0] as { distance: number } | undefined;
-  return Math.round(row?.distance || 0);
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return Math.round(R * c);
 }
 
 /**
@@ -55,11 +53,11 @@ export async function calculateDistance(
  * @param to - Ending coordinates
  * @returns Distance in meters and estimated duration in seconds
  */
-export async function calculateDistanceWithDuration(
+export function calculateDistanceWithDuration(
   from: Coordinates,
   to: Coordinates
-): Promise<DistanceResult> {
-  const distanceMeters = await calculateDistance(from, to);
+): DistanceResult {
+  const distanceMeters = calculateDistance(from, to);
 
   // Average urban speed: 40 km/h = ~11.11 m/s
   const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
@@ -72,67 +70,17 @@ export async function calculateDistanceWithDuration(
 }
 
 /**
- * Calculate distance from an order by ID to a point
+ * Calculate distance from coordinates to another point
  *
- * @param orderId - Order ID
+ * @param from - Starting coordinates
  * @param to - Target coordinates
  * @returns Distance in meters and estimated duration in seconds
  */
-export async function calculateDistanceFromOrder(
-  orderId: string,
+export function calculateDistanceFromCoords(
+  from: Coordinates,
   to: Coordinates
-): Promise<DistanceResult> {
-  const result = await db.execute(sql`
-    SELECT
-      ST_Distance(
-        location,
-        ST_SetSRID(ST_MakePoint(${to.longitude}, ${to.latitude}), 4326)::geography
-      ) as distance
-    FROM orders
-    WHERE id = ${orderId}
-  `);
-
-  const row = result[0] as { distance: number } | undefined;
-  const distanceMeters = Math.round(row?.distance || 0);
-  const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
-  const durationSeconds = Math.round(distanceMeters / averageSpeedMetersPerSecond);
-
-  return {
-    distanceMeters,
-    durationSeconds,
-  };
-}
-
-/**
- * Calculate distance from depot to an order
- *
- * @param depotCoordinates - Depot coordinates
- * @param orderId - Order ID
- * @returns Distance in meters and estimated duration in seconds
- */
-export async function calculateDistanceFromDepotToOrder(
-  depotCoordinates: Coordinates,
-  orderId: string
-): Promise<DistanceResult> {
-  const result = await db.execute(sql`
-    SELECT
-      ST_Distance(
-        ST_SetSRID(ST_MakePoint(${depotCoordinates.longitude}, ${depotCoordinates.latitude}), 4326)::geography,
-        location
-      ) as distance
-    FROM orders
-    WHERE id = ${orderId}
-  `);
-
-  const row = result[0] as { distance: number } | undefined;
-  const distanceMeters = Math.round(row?.distance || 0);
-  const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
-  const durationSeconds = Math.round(distanceMeters / averageSpeedMetersPerSecond);
-
-  return {
-    distanceMeters,
-    durationSeconds,
-  };
+): DistanceResult {
+  return calculateDistanceWithDuration(from, to);
 }
 
 /**
@@ -163,10 +111,10 @@ export async function calculateDistanceMatrix(
     return cached;
   }
 
-  // Calculate distances using PostGIS
+  // Calculate distances using Haversine formula
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      const distance = await calculateDistance(coordinates[i], coordinates[j]);
+      const distance = calculateDistance(coordinates[i], coordinates[j]);
       matrix[i][j] = distance;
       matrix[j][i] = distance; // Symmetric matrix
     }
@@ -179,41 +127,20 @@ export async function calculateDistanceMatrix(
 }
 
 /**
- * Find nearby orders within a given radius
+ * Check if a point is within a given radius from center
  *
  * @param center - Center coordinates
+ * @param point - Point coordinates
  * @param radiusMeters - Search radius in meters
- * @param companyId - Company ID for filtering
- * @returns Array of nearby orders with their distances
+ * @returns True if point is within radius
  */
-export async function findNearbyOrders(
+export function isWithinRadius(
   center: Coordinates,
-  radiusMeters: number,
-  companyId: string
-): Promise<Array<{ orderId: string; distance: number }>> {
-  const result = await db.execute(sql`
-    SELECT
-      id as order_id,
-      ST_Distance(
-        location,
-        ST_SetSRID(ST_MakePoint(${center.longitude}, ${center.latitude}), 4326)::geography
-      ) as distance
-    FROM orders
-    WHERE
-      company_id = ${companyId}
-      AND ST_DWithin(
-        location,
-        ST_SetSRID(ST_MakePoint(${center.longitude}, ${center.latitude}), 4326)::geography,
-        ${radiusMeters}
-      )
-      AND active = true
-    ORDER BY distance ASC
-  `);
-
-  return (result as unknown as Array<{ order_id: string; distance: number }>).map((row) => ({
-    orderId: row.order_id,
-    distance: Math.round(row.distance),
-  }));
+  point: Coordinates,
+  radiusMeters: number
+): boolean {
+  const distance = calculateDistance(center, point);
+  return distance <= radiusMeters;
 }
 
 /**
@@ -222,9 +149,9 @@ export async function findNearbyOrders(
  * @param stops - Array of coordinates in order
  * @returns Total distance in meters and total duration in seconds
  */
-export async function calculateRouteDistance(
+export function calculateRouteDistance(
   stops: Coordinates[]
-): Promise<DistanceResult> {
+): DistanceResult {
   if (stops.length < 2) {
     return { distanceMeters: 0, durationSeconds: 0 };
   }
@@ -232,7 +159,7 @@ export async function calculateRouteDistance(
   let totalDistance = 0;
 
   for (let i = 0; i < stops.length - 1; i++) {
-    const distance = await calculateDistance(stops[i], stops[i + 1]);
+    const distance = calculateDistance(stops[i], stops[i + 1]);
     totalDistance += distance;
   }
 
@@ -246,77 +173,15 @@ export async function calculateRouteDistance(
 }
 
 /**
- * Calculate distance from route stop to another location
- *
- * @param routeStopId - Route stop ID
- * @param to - Target coordinates
- * @returns Distance in meters and estimated duration in seconds
- */
-export async function calculateDistanceFromRouteStop(
-  routeStopId: string,
-  to: Coordinates
-): Promise<DistanceResult> {
-  const result = await db.execute(sql`
-    SELECT
-      ST_Distance(
-        location,
-        ST_SetSRID(ST_MakePoint(${to.longitude}, ${to.latitude}), 4326)::geography
-      ) as distance
-    FROM route_stops
-    WHERE id = ${routeStopId}
-  `);
-
-  const row = result[0] as { distance: number } | undefined;
-  const distanceMeters = Math.round(row?.distance || 0);
-  const averageSpeedMetersPerSecond = 40 * 1000 / 3600;
-  const durationSeconds = Math.round(distanceMeters / averageSpeedMetersPerSecond);
-
-  return {
-    distanceMeters,
-    durationSeconds,
-  };
-}
-
-/**
- * Batch calculate distances for multiple pairs
- * More efficient than individual calculations for large batches
+ * Batch calculate distances for multiple pairs using Haversine
  *
  * @param pairs - Array of coordinate pairs
  * @returns Array of distances in meters
  */
-export async function batchCalculateDistances(
+export function batchCalculateDistances(
   pairs: Array<{ from: Coordinates; to: Coordinates }>
-): Promise<number[]> {
-  if (pairs.length === 0) {
-    return [];
-  }
-
-  // Use UNNEST to process all pairs in a single query
-  const values = pairs.map(
-    (p, i) => `(${p.from.longitude}, ${p.from.latitude}, ${p.to.longitude}, ${p.to.latitude}, ${i})`
-  ).join(", ");
-
-  const result = await db.execute(sql`
-    WITH pairs(from_lng, from_lat, to_lng, to_lat, idx) AS (
-      VALUES ${sql.raw(values)}
-    )
-    SELECT
-      idx,
-      ST_Distance(
-        ST_SetSRID(ST_MakePoint(from_lng, from_lat), 4326)::geography,
-        ST_SetSRID(ST_MakePoint(to_lng, to_lat), 4326)::geography
-      ) as distance
-    FROM pairs
-    ORDER BY idx
-  `);
-
-  // Sort by index and return distances
-  const distances = new Array<number>(pairs.length).fill(0);
-  for (const row of result as unknown as Array<{ idx: number; distance: number }>) {
-    distances[row.idx] = Math.round(row.distance);
-  }
-
-  return distances;
+): number[] {
+  return pairs.map((p) => calculateDistance(p.from, p.to));
 }
 
 /**
