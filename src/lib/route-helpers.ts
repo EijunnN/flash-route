@@ -99,9 +99,10 @@ export function checkPermissionOrError(
   try {
     requirePermission(user, entity, action);
     return null; // Permission granted
-  } catch (error: any) {
-    if (error.name === "AuthorizationError") {
-      return NextResponse.json(error.toJSON(), { status: 403 });
+  } catch (error: unknown) {
+    const err = error as { name?: string; toJSON?: () => unknown };
+    if (err.name === "AuthorizationError" && err.toJSON) {
+      return NextResponse.json(err.toJSON(), { status: 403 });
     }
     return NextResponse.json(
       { error: "Permission check failed", code: "PERMISSION_ERROR" },
@@ -157,8 +158,9 @@ export function handleError(error: unknown, context: string): NextResponse {
   if (error instanceof Error) {
     // Handle specific error types
     if (error.name === "AuthorizationError") {
+      const authError = error as { toJSON?: () => unknown };
       return NextResponse.json(
-        (error as any).toJSON?.() || { error: error.message },
+        authError.toJSON?.() || { error: error.message },
         { status: 403 },
       );
     }

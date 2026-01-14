@@ -119,7 +119,9 @@ export async function GET(
     // Parse optimization result
     let result: OptimizationResult | null = null;
     try {
-      result = job.result ? (JSON.parse(job.result) as OptimizationResult) : null;
+      result = job.result
+        ? (JSON.parse(job.result) as OptimizationResult)
+        : null;
     } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },

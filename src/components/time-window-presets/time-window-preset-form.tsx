@@ -111,17 +111,21 @@ export function TimeWindowPresetForm({
 
     try {
       await onSubmit(formData);
-    } catch (error: any) {
-      if (error.details) {
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path?: string[]; message: string }>;
+        message?: string;
+      };
+      if (err.details) {
         const fieldErrors: Record<string, string> = {};
-        error.details.forEach((detail: any) => {
+        err.details.forEach((detail) => {
           if (detail.path && detail.path.length > 0) {
             fieldErrors[detail.path[0]] = detail.message;
           }
         });
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: error.message || "Failed to save preset" });
+        setErrors({ form: err.message || "Failed to save preset" });
       }
     } finally {
       setIsSubmitting(false);

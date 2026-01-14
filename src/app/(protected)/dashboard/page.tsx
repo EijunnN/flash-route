@@ -159,7 +159,12 @@ interface DriverItemProps {
   fleetName: string;
 }
 
-function ActiveDriverItem({ id: _id, name, status, fleetName }: DriverItemProps) {
+function ActiveDriverItem({
+  id: _id,
+  name,
+  status,
+  fleetName,
+}: DriverItemProps) {
   const statusConfig: Record<string, { label: string; color: string }> = {
     AVAILABLE: { label: "Disponible", color: "bg-[hsl(var(--chart-2))]" },
     ASSIGNED: { label: "Asignado", color: "bg-[hsl(var(--chart-3))]" },

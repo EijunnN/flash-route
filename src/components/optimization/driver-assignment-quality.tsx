@@ -87,8 +87,9 @@ export function DriverAssignmentDisplay({
   return (
     <div className="space-y-2">
       {/* Driver Info Header */}
-      <div
-        className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-colors ${
+      <button
+        type="button"
+        className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-colors w-full text-left ${
           hasErrors
             ? "border-red-200 bg-red-50/50"
             : hasWarnings
@@ -143,7 +144,7 @@ export function DriverAssignmentDisplay({
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
-      </div>
+      </button>
 
       {/* Expanded Details */}
       {isExpanded && quality && (
@@ -165,9 +166,9 @@ export function DriverAssignmentDisplay({
             <div className="space-y-1">
               <p className="text-xs font-medium text-yellow-700">Warnings:</p>
               <ul className="space-y-1">
-                {quality.warnings.map((warning, idx) => (
+                {quality.warnings.map((warning) => (
                   <li
-                    key={idx}
+                    key={warning}
                     className="text-xs text-yellow-600 flex items-start gap-1"
                   >
                     <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -183,9 +184,9 @@ export function DriverAssignmentDisplay({
             <div className="space-y-1">
               <p className="text-xs font-medium text-red-700">Errors:</p>
               <ul className="space-y-1">
-                {quality.errors.map((error, idx) => (
+                {quality.errors.map((error) => (
                   <li
-                    key={idx}
+                    key={error}
                     className="text-xs text-red-600 flex items-start gap-1"
                   >
                     <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />

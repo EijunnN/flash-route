@@ -366,9 +366,9 @@ export function PlanConfirmationDialog({
                   <ScrollArea className="max-h-[200px]">
                     <div className="space-y-2 pr-4">
                       {validationResult.issuesBySeverity?.errors?.map(
-                        (issue, idx) => (
+                        (issue) => (
                           <div
-                            key={idx}
+                            key={issue.message}
                             className="flex gap-3 p-3 bg-destructive/10 rounded-md"
                           >
                             {getSeverityIcon(issue.severity)}
@@ -389,9 +389,9 @@ export function PlanConfirmationDialog({
                         ),
                       )}
                       {validationResult.issuesBySeverity?.warnings?.map(
-                        (issue, idx) => (
+                        (issue) => (
                           <div
-                            key={idx}
+                            key={issue.message}
                             className="flex gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-md"
                           >
                             {getSeverityIcon(issue.severity)}

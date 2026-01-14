@@ -301,7 +301,8 @@ export function suggestColumnMapping(
   );
   const unmappedOptionalFields = CSV_SYSTEM_FIELDS.filter(
     (field) =>
-      !CSV_REQUIRED_FIELDS.includes(field as any) && !mappedFields.has(field),
+      !(CSV_REQUIRED_FIELDS as readonly string[]).includes(field) &&
+      !mappedFields.has(field),
   );
 
   return {

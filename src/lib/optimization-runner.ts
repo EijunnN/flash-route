@@ -114,6 +114,12 @@ export interface OptimizationInput {
   driverIds: string[];
 }
 
+// Global state for partial optimization results during cancellation
+declare global {
+  // eslint-disable-next-line no-var
+  var __partialOptimizationResult: OptimizationResult | undefined;
+}
+
 /**
  * Run optimization with mock algorithm (placeholder for actual VRP solver)
  * In production, this would integrate with OR-Tools, Vroom, or similar
@@ -168,7 +174,7 @@ export async function runOptimization(
         isPartial: true,
       };
       // Store partial result globally for access during cancellation
-      (globalThis as any).__partialOptimizationResult = partialResult;
+      globalThis.__partialOptimizationResult = partialResult;
       throw new Error("Optimization cancelled by user");
     }
   };
@@ -356,9 +362,10 @@ export async function runOptimization(
 
   // Perform intelligent driver assignment
   checkAbort();
+  const strategy = config?.objective === "TIME" ? "AVAILABILITY" : "BALANCED";
   const driverAssignments = await assignDriversToRoutes(routeAssignments, {
     ...DEFAULT_ASSIGNMENT_CONFIG,
-    strategy: (config?.objective as any) || "BALANCED",
+    strategy,
   });
 
   // Update routes with assigned drivers
@@ -402,12 +409,15 @@ export async function runOptimization(
 
   // Calculate assignment quality metrics
   const assignmentResults: DriverAssignmentResult[] = routes
-    .filter((r) => r.assignmentQuality)
+    .filter(
+      (r): r is OptimizationRoute & { driverId: string; driverName: string } =>
+        !!r.assignmentQuality && !!r.driverId && !!r.driverName,
+    )
     .map((r) => ({
-      driverId: r.driverId!,
-      driverName: r.driverName!,
+      driverId: r.driverId,
+      driverName: r.driverName,
       score: {
-        driverId: r.driverId!,
+        driverId: r.driverId,
         score: r.assignmentQuality?.score ?? 0,
         factors: {
           skillsMatch: 100, // Placeholder - not tracked per route
@@ -554,10 +564,10 @@ export async function createAndExecuteJob(
     } catch (error) {
       if (isJobAborting(jobId)) {
         // Get partial results if available
-        const partialResults = (globalThis as any).__partialOptimizationResult;
+        const partialResults = globalThis.__partialOptimizationResult;
         await cancelJob(jobId, partialResults);
         // Clean up global state
-        delete (globalThis as any).__partialOptimizationResult;
+        globalThis.__partialOptimizationResult = undefined;
       } else {
         await failJob(
           jobId,

@@ -367,11 +367,10 @@ export async function cacheDeletePattern(pattern: string): Promise<void> {
       const keys: string[] = [];
 
       do {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const scanResult: any = await redis.scan(cursor, {
+        const scanResult = (await redis.scan(cursor, {
           match: pattern,
           count: 100,
-        });
+        })) as [string | number, string[]];
         cursor = scanResult[0];
         keys.push(...(scanResult[1] || []));
       } while (cursor !== 0);

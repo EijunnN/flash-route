@@ -323,15 +323,17 @@ export function RouteMap({
                 </div>
               `);
 
-              const marker = new maplibregl.Marker({ element: markerEl })
-                .setLngLat([
-                  parseFloat(stop.longitude),
-                  parseFloat(stop.latitude),
-                ])
-                .setPopup(popup)
-                .addTo(map.current!);
+              if (map.current) {
+                const marker = new maplibregl.Marker({ element: markerEl })
+                  .setLngLat([
+                    parseFloat(stop.longitude),
+                    parseFloat(stop.latitude),
+                  ])
+                  .setPopup(popup)
+                  .addTo(map.current);
 
-              markersRef.current.push(marker);
+                markersRef.current.push(marker);
+              }
             });
           });
 
@@ -380,7 +382,9 @@ export function RouteMap({
     initMap();
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current.forEach((marker) => {
+        marker.remove();
+      });
       markersRef.current = [];
       map.current?.remove();
       map.current = null;
@@ -427,6 +431,7 @@ export function RouteMap({
           <div className="p-3 border-t flex flex-wrap gap-3">
             {routes.map((route, i) => (
               <button
+                type="button"
                 key={route.routeId}
                 onClick={() => onRouteSelect?.(route.routeId)}
                 className={`flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${

@@ -109,7 +109,15 @@ export function OrderMap({
             750,
             "#f28cb1",
           ],
-          "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            20,
+            100,
+            30,
+            750,
+            40,
+          ],
         },
       });
 
@@ -151,7 +159,9 @@ export function OrderMap({
 
         if (features.length > 0) {
           const cluster = features[0];
-          const coordinates = (cluster.geometry as unknown as { coordinates: [number, number] }).coordinates;
+          const coordinates = (
+            cluster.geometry as unknown as { coordinates: [number, number] }
+          ).coordinates;
           const zoom = mapInstance.getZoom();
 
           mapInstance.easeTo({

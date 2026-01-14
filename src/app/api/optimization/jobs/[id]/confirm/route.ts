@@ -4,12 +4,12 @@ import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { getAuditLogContext, getTenantContext } from "@/db/tenant-aware";
 import { createAuditLog } from "@/lib/audit";
+import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
   calculateComparisonMetrics,
   calculatePlanMetrics,
   savePlanMetrics,
 } from "@/lib/plan-metrics";
-import type { OptimizationResult } from "@/lib/optimization-runner";
 import {
   canConfirmPlan,
   validatePlanForConfirmation,
@@ -117,7 +117,9 @@ export async function POST(
     // Parse optimization result
     let result: OptimizationResult | null = null;
     try {
-      result = job.result ? (JSON.parse(job.result) as OptimizationResult) : null;
+      result = job.result
+        ? (JSON.parse(job.result) as OptimizationResult)
+        : null;
     } catch (_error) {
       return NextResponse.json(
         { error: "Failed to parse optimization result" },

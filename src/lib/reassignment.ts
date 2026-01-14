@@ -148,7 +148,8 @@ export async function getAffectedRoutesForAbsentDriver(
       });
     }
 
-    const route = routesMap.get(routeId)!;
+    const route = routesMap.get(routeId);
+    if (!route) continue;
     route.stops.push({
       id: stop.id,
       orderId: stop.orderId,
@@ -568,7 +569,9 @@ export async function calculateReassignmentImpact(
         typeof order.requiredSkills === "string"
           ? JSON.parse(order.requiredSkills)
           : order.requiredSkills;
-      skills.forEach((skill: string) => requiredSkillsSet.add(skill));
+      skills.forEach((skill: string) => {
+        requiredSkillsSet.add(skill);
+      });
     }
   }
 
@@ -1154,11 +1157,13 @@ export async function getReassignmentHistory(
       id: record.id,
       absentDriverId: record.absentUserId,
       absentDriverName: record.absentUserName,
-      replacementDrivers: reassignments.map((r: any) => ({
-        id: r.userId,
-        name: r.userName,
-        stopsAssigned: r.stopCount,
-      })),
+      replacementDrivers: reassignments.map(
+        (r: { userId: string; userName: string; stopCount: number }) => ({
+          id: r.userId,
+          name: r.userName,
+          stopsAssigned: r.stopCount,
+        }),
+      ),
       routeIds,
       reason: record.reason || "",
       createdAt: record.createdAt,

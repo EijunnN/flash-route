@@ -97,7 +97,7 @@ export const driverSchema = z
           .split(",")
           .map((c) => c.trim());
         const invalidCategories = categories.filter(
-          (c) => !LICENSE_CATEGORIES.includes(c as any),
+          (c) => !(LICENSE_CATEGORIES as readonly string[]).includes(c),
         );
         if (invalidCategories.length > 0) {
           return false;

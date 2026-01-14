@@ -77,7 +77,7 @@ export function VehicleStatusModal({
       setReason("");
       setForce(false);
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const response = err as Response;
       const errorData = await response.json();
 

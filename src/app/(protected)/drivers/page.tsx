@@ -380,7 +380,16 @@ export default function DriversPage() {
           onOpenChange={(open) => !open && setStatusModalDriver(null)}
           driverId={statusModalDriver.id}
           driverName={statusModalDriver.name}
-          currentStatus={statusModalDriver.status as "AVAILABLE" | "ASSIGNED" | "IN_ROUTE" | "ON_PAUSE" | "COMPLETED" | "UNAVAILABLE" | "ABSENT"}
+          currentStatus={
+            statusModalDriver.status as
+              | "AVAILABLE"
+              | "ASSIGNED"
+              | "IN_ROUTE"
+              | "ON_PAUSE"
+              | "COMPLETED"
+              | "UNAVAILABLE"
+              | "ABSENT"
+          }
           onStatusChange={handleStatusChange}
         />
       )}

@@ -263,19 +263,41 @@ async function getRequiredSkillsForRoute(
         typeof order.requiredSkills === "string"
           ? JSON.parse(order.requiredSkills)
           : order.requiredSkills;
-      skills.forEach((skill: string) => requiredSkills.add(skill));
+      skills.forEach((skill: string) => {
+        requiredSkills.add(skill);
+      });
     }
   }
 
   return Array.from(requiredSkills);
 }
 
+interface DriverForScoring {
+  id: string;
+  name: string;
+  licenseExpiry: Date | string | null;
+  licenseCategories: string | null;
+  status: string | null;
+  fleetId: string | null;
+  secondaryFleetIds: string[];
+  skills: Array<{ id: string }>;
+  driverSkills: Array<{
+    expiresAt: Date | string | null;
+    skill: { name: string };
+  }>;
+}
+
+interface VehicleForScoring {
+  vehicleFleets: Array<{ fleetId: string }>;
+  licenseRequired: string | null;
+}
+
 /**
  * Calculate driver assignment score
  */
 async function calculateDriverScore(
-  driver: any,
-  vehicle: any,
+  driver: DriverForScoring,
+  vehicle: VehicleForScoring,
   requiredSkills: string[],
   config: DriverAssignmentConfig & { assignedDrivers: Map<string, string> },
 ): Promise<AssignmentScore> {
@@ -292,21 +314,26 @@ async function calculateDriverScore(
 
   // 1. Check license validity
   const now = new Date();
-  const licenseExpiry = new Date(driver.licenseExpiry);
-  const daysUntilExpiry = Math.ceil(
-    (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  if (daysUntilExpiry < 0) {
-    errors.push("License expired");
+  if (!driver.licenseExpiry) {
+    errors.push("No license expiry date");
     factors.licenseValid = 0;
-  } else if (daysUntilExpiry <= config.maxDaysLicenseNearExpiry) {
-    warnings.push(`License expires in ${daysUntilExpiry} days`);
-    factors.licenseValid = Math.round(
-      (daysUntilExpiry / config.maxDaysLicenseNearExpiry) * 100,
-    );
   } else {
-    factors.licenseValid = 100;
+    const licenseExpiry = new Date(driver.licenseExpiry);
+    const daysUntilExpiry = Math.ceil(
+      (licenseExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (daysUntilExpiry < 0) {
+      errors.push("License expired");
+      factors.licenseValid = 0;
+    } else if (daysUntilExpiry <= config.maxDaysLicenseNearExpiry) {
+      warnings.push(`License expires in ${daysUntilExpiry} days`);
+      factors.licenseValid = Math.round(
+        (daysUntilExpiry / config.maxDaysLicenseNearExpiry) * 100,
+      );
+    } else {
+      factors.licenseValid = 100;
+    }
   }
 
   // 2. Check driver status
@@ -323,9 +350,12 @@ async function calculateDriverScore(
   }
 
   // 3. Check fleet compatibility
-  const isPrimaryFleetMatch = driver.fleetId === vehicle.fleetId;
-  const isSecondaryFleetMatch = driver.secondaryFleetIds.includes(
-    vehicle.fleetId as string,
+  const vehicleFleetIds = vehicle.vehicleFleets.map((vf) => vf.fleetId);
+  const primaryVehicleFleetId = vehicleFleetIds[0] || null;
+  const isPrimaryFleetMatch =
+    primaryVehicleFleetId && driver.fleetId === primaryVehicleFleetId;
+  const isSecondaryFleetMatch = vehicleFleetIds.some((fid) =>
+    driver.secondaryFleetIds.includes(fid),
   );
 
   if (isPrimaryFleetMatch) {
@@ -340,7 +370,7 @@ async function calculateDriverScore(
 
   // 4. Check skills matching
   if (requiredSkills.length > 0) {
-    const driverSkillIds = new Set(driver.skills.map((s: any) => s.id));
+    const driverSkillIds = new Set(driver.skills.map((s) => s.id));
 
     const matchedSkills = requiredSkills.filter((skillId) =>
       driverSkillIds.has(skillId),

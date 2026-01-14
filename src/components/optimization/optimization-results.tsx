@@ -548,7 +548,12 @@ export function OptimizationResults({
       )}
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) =>
+          setActiveTab(v as "routes" | "unassigned" | "map")
+        }
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="routes">
             Routes ({result.routes.length})

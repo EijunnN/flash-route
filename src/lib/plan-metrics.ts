@@ -301,7 +301,11 @@ export async function savePlanMetrics(
       fleetAlignment: metrics.fleetAlignment,
       workloadBalance: metrics.workloadBalance,
       unassignedOrders: metrics.unassignedOrders,
-      objective: metrics.objective as any,
+      objective: metrics.objective as
+        | "DISTANCE"
+        | "TIME"
+        | "BALANCED"
+        | undefined,
       processingTimeMs: metrics.processingTimeMs,
       comparedToJobId: comparison?.comparedToJobId,
       distanceChangePercent: comparison?.distanceChangePercent,

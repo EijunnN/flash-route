@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL, sql } from "drizzle-orm";
+import { and, desc, type SQL, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { alerts } from "@/db/schema";

@@ -78,9 +78,10 @@ export function withPermission(
     try {
       requirePermission(request.user, entity, action);
       return await handler(request);
-    } catch (error: any) {
-      if (error.name === "AuthorizationError") {
-        return NextResponse.json(error.toJSON(), { status: 403 });
+    } catch (error: unknown) {
+      const err = error as { name?: string; toJSON?: () => unknown };
+      if (err.name === "AuthorizationError" && err.toJSON) {
+        return NextResponse.json(err.toJSON(), { status: 403 });
       }
       throw error;
     }
@@ -194,9 +195,10 @@ export function withAuthAndAudit(
       }
 
       return response;
-    } catch (error: any) {
-      if (error.name === "AuthorizationError") {
-        return NextResponse.json(error.toJSON(), { status: 403 });
+    } catch (error: unknown) {
+      const err = error as { name?: string; toJSON?: () => unknown };
+      if (err.name === "AuthorizationError" && err.toJSON) {
+        return NextResponse.json(err.toJSON(), { status: 403 });
       }
       throw error;
     }

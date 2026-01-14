@@ -12,7 +12,7 @@ import {
   Wrench,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -70,11 +70,11 @@ export interface ManualDriverAssignmentDialogProps {
 export function ManualDriverAssignmentDialog({
   open,
   onOpenChange,
-  routeId,
+  routeId: _routeId,
   vehicleId,
   vehiclePlate,
   currentDriverId,
-  currentDriverName,
+  currentDriverName: _currentDriverName,
   onAssign,
   onRemove,
 }: ManualDriverAssignmentDialogProps) {
@@ -94,24 +94,7 @@ export function ManualDriverAssignmentDialog({
   } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  // Load drivers when dialog opens
-  useEffect(() => {
-    if (open) {
-      loadDrivers();
-      setSelectedDriverId(currentDriverId || null);
-    }
-  }, [open, currentDriverId, loadDrivers]);
-
-  // Validate selected driver
-  useEffect(() => {
-    if (selectedDriverId && open) {
-      validateDriver(selectedDriverId);
-    } else {
-      setValidation(null);
-    }
-  }, [selectedDriverId, open, validateDriver]);
-
-  async function loadDrivers() {
+  const loadDrivers = useCallback(async () => {
     setLoading(true);
     try {
       // Get driver suggestions for this vehicle
@@ -141,33 +124,53 @@ export function ManualDriverAssignmentDialog({
     } finally {
       setLoading(false);
     }
-  }
+  }, [vehicleId]);
 
-  async function validateDriver(driverId: string) {
-    try {
-      const response = await fetch("/api/driver-assignment/validate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-company-id": localStorage.getItem("companyId") || "",
-          "x-user-id": localStorage.getItem("userId") || "",
-        },
-        body: JSON.stringify({
-          companyId: localStorage.getItem("companyId"),
-          driverId,
-          vehicleId,
-          routeStops: [],
-        }),
-      });
+  const validateDriver = useCallback(
+    async (driverId: string) => {
+      try {
+        const response = await fetch("/api/driver-assignment/validate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": localStorage.getItem("companyId") || "",
+            "x-user-id": localStorage.getItem("userId") || "",
+          },
+          body: JSON.stringify({
+            companyId: localStorage.getItem("companyId"),
+            driverId,
+            vehicleId,
+            routeStops: [],
+          }),
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        setValidation(result.data);
+        if (response.ok) {
+          const result = await response.json();
+          setValidation(result.data);
+        }
+      } catch (error) {
+        console.error("Error validating driver:", error);
       }
-    } catch (error) {
-      console.error("Error validating driver:", error);
+    },
+    [vehicleId],
+  );
+
+  // Load drivers when dialog opens
+  useEffect(() => {
+    if (open) {
+      loadDrivers();
+      setSelectedDriverId(currentDriverId || null);
     }
-  }
+  }, [open, currentDriverId, loadDrivers]);
+
+  // Validate selected driver
+  useEffect(() => {
+    if (selectedDriverId && open) {
+      validateDriver(selectedDriverId);
+    } else {
+      setValidation(null);
+    }
+  }, [selectedDriverId, open, validateDriver]);
 
   async function handleAssign() {
     if (!selectedDriverId) return;
@@ -267,9 +270,9 @@ export function ManualDriverAssignmentDialog({
                 <div className="space-y-1">
                   <p className="text-xs font-medium text-red-700">Errors:</p>
                   <ul className="space-y-1">
-                    {validation.errors.map((error, idx) => (
+                    {validation.errors.map((error) => (
                       <li
-                        key={idx}
+                        key={error}
                         className="text-xs text-red-600 flex items-start gap-1"
                       >
                         <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -287,9 +290,9 @@ export function ManualDriverAssignmentDialog({
                     Warnings:
                   </p>
                   <ul className="space-y-1">
-                    {validation.warnings.map((warning, idx) => (
+                    {validation.warnings.map((warning) => (
                       <li
-                        key={idx}
+                        key={warning}
                         className="text-xs text-yellow-600 flex items-start gap-1"
                       >
                         <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -422,9 +425,10 @@ function DriverCard({ driver, selected, onClick }: DriverCardProps) {
   const hasWarnings = driver.warnings.length > 0;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+      className={`p-3 rounded-lg border cursor-pointer transition-colors w-full text-left ${
         selected
           ? "border-primary bg-primary/5 ring-2 ring-primary/20"
           : "border-border hover:border-primary/50"
@@ -488,13 +492,13 @@ function DriverCard({ driver, selected, onClick }: DriverCardProps) {
           value={driver.factors.fleetMatch}
         />
       </div>
-    </div>
+    </button>
   );
 }
 
 function StatItem({
   icon: Icon,
-  label,
+  label: _label,
   value,
 }: {
   icon: React.ElementType;

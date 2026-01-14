@@ -117,22 +117,29 @@ export function UserForm({
 
     try {
       await onSubmit(submitData);
-    } catch (error: any) {
-      if (error.details) {
+    } catch (error: unknown) {
+      const err = error as {
+        details?: Array<{ path: string[]; message: string }>;
+        error?: string;
+      };
+      if (err.details) {
         const fieldErrors: Record<string, string> = {};
-        error.details.forEach((err: any) => {
-          fieldErrors[err.path[0]] = err.message;
+        err.details.forEach((detail) => {
+          fieldErrors[detail.path[0]] = detail.message;
         });
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: error.error || "Error al guardar el usuario" });
+        setErrors({ form: err.error || "Error al guardar el usuario" });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const updateField = (field: keyof CreateUserInput, value: any) => {
+  const updateField = (
+    field: keyof CreateUserInput,
+    value: CreateUserInput[keyof CreateUserInput],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {

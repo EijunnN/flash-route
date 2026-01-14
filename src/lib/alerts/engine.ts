@@ -27,7 +27,7 @@ export interface AlertData {
   entityId: string;
   title: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   ruleId?: string;
 }
 
@@ -66,7 +66,7 @@ async function hasActiveAlert(
   const existing = await db.query.alerts.findFirst({
     where: and(
       eq(alerts.companyId, context.companyId),
-      eq(alerts.type, type as any),
+      sql`${alerts.type} = ${type}`,
       eq(alerts.entityType, entityType),
       eq(alerts.entityId, entityId),
       eq(alerts.status, "ACTIVE"),
@@ -125,8 +125,8 @@ export async function evaluateDriverLicenseAlerts(
     const severity = isExpired ? "CRITICAL" : "WARNING";
 
     const alert = await createAlert(context, {
-      type: alertType as any,
-      severity: severity as any,
+      type: alertType as AlertData["type"],
+      severity: severity as AlertData["severity"],
       entityType: "DRIVER",
       entityId: driver.id,
       title: isExpired
@@ -191,15 +191,17 @@ export async function evaluateVehicleDocumentAlerts(
       continue;
     }
 
-    const expiryDate = new Date(vehicle.insuranceExpiry!);
+    if (!vehicle.insuranceExpiry) continue;
+    const expiryDate = new Date(vehicle.insuranceExpiry);
     const daysUntilExpiry = Math.ceil(
       (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
     );
     const isExpired = daysUntilExpiry <= 0;
+    const severity = isExpired ? "CRITICAL" : "WARNING";
 
     const alert = await createAlert(context, {
       type: "VEHICLE_INSURANCE_EXPIRING",
-      severity: isExpired ? "CRITICAL" : ("WARNING" as any),
+      severity: severity as AlertData["severity"],
       entityType: "VEHICLE",
       entityId: vehicle.id,
       title: isExpired
@@ -232,15 +234,17 @@ export async function evaluateVehicleDocumentAlerts(
       continue;
     }
 
-    const expiryDate = new Date(vehicle.inspectionExpiry!);
+    if (!vehicle.inspectionExpiry) continue;
+    const expiryDate = new Date(vehicle.inspectionExpiry);
     const daysUntilExpiry = Math.ceil(
       (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
     );
     const isExpired = daysUntilExpiry <= 0;
+    const severity = isExpired ? "CRITICAL" : "WARNING";
 
     const alert = await createAlert(context, {
       type: "VEHICLE_INSPECTION_EXPIRING",
-      severity: isExpired ? "CRITICAL" : ("WARNING" as any),
+      severity: severity as AlertData["severity"],
       entityType: "VEHICLE",
       entityId: vehicle.id,
       title: isExpired

@@ -128,8 +128,14 @@ export async function generatePlanOutput(
       });
     }
 
-    const route = driverRoutesMap.get(driver.id)!;
-    const metadata = stop.metadata as Record<string, any> | null;
+    const route = driverRoutesMap.get(driver.id);
+    if (!route) continue;
+    const metadata = stop.metadata as {
+      trackingId?: string;
+      customerName?: string;
+      customerPhone?: string;
+      customerNotes?: string;
+    } | null;
     const stopOutput: RouteStopOutput = {
       sequence: stop.sequence,
       orderId: stop.orderId,

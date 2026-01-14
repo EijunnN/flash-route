@@ -374,17 +374,15 @@ export function DriverRouteDetail({
                     )}
                     {route.assignmentQuality.warnings.length > 0 && (
                       <div className="flex flex-wrap gap-2">
-                        {route.assignmentQuality.warnings.map(
-                          (warning, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {warning}
-                            </Badge>
-                          ),
-                        )}
+                        {route.assignmentQuality.warnings.map((warning) => (
+                          <Badge
+                            key={warning}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {warning}
+                          </Badge>
+                        ))}
                       </div>
                     )}
                   </div>

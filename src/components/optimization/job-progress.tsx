@@ -161,10 +161,8 @@ export function JobProgress({
     const start = jobData.startedAt
       ? new Date(jobData.startedAt)
       : new Date(jobData.createdAt);
-    const end =
-      jobData.completedAt || jobData.cancelledAt
-        ? new Date(jobData.completedAt || jobData.cancelledAt!)
-        : new Date();
+    const endTime = jobData.completedAt || jobData.cancelledAt;
+    const end = endTime ? new Date(endTime) : new Date();
     const elapsed = Math.floor((end.getTime() - start.getTime()) / 1000);
 
     if (elapsed < 60) return `${elapsed}s`;
@@ -280,16 +278,15 @@ export function JobProgress({
               <span>{new Date(jobData.startedAt).toLocaleString()}</span>
             </div>
           )}
-          {(jobData.completedAt || jobData.cancelledAt) && (
-            <div className="flex justify-between">
-              <span>Ended:</span>
-              <span>
-                {new Date(
-                  jobData.completedAt || jobData.cancelledAt!,
-                ).toLocaleString()}
-              </span>
-            </div>
-          )}
+          {(() => {
+            const endedAt = jobData.completedAt || jobData.cancelledAt;
+            return endedAt ? (
+              <div className="flex justify-between">
+                <span>Ended:</span>
+                <span>{new Date(endedAt).toLocaleString()}</span>
+              </div>
+            ) : null;
+          })()}
         </div>
       </CardContent>
     </Card>

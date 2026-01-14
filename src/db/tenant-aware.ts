@@ -11,7 +11,10 @@ export class TenantAccessDeniedError extends Error {
   }
 }
 
-export function withTenantFilter(table: any, conditions: SQL[] = []) {
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle table types are complex and need any for compatibility
+type DrizzleTable = Record<string, any>;
+
+export function withTenantFilter(table: DrizzleTable, conditions: SQL[] = []) {
   const context = requireTenantContext();
 
   if (table === companies) {

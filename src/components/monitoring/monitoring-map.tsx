@@ -155,9 +155,11 @@ export function MonitoringMap({
         if (feature.geometry.type === "Point") {
           bounds.extend(feature.geometry.coordinates as [number, number]);
         } else if (feature.geometry.type === "LineString") {
-          (feature.geometry.coordinates as [number, number][]).forEach((coord) => {
-            bounds.extend(coord);
-          });
+          (feature.geometry.coordinates as [number, number][]).forEach(
+            (coord) => {
+              bounds.extend(coord);
+            },
+          );
         }
       });
 
