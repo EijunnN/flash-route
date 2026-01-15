@@ -125,7 +125,7 @@ function decodePolyline(
 }
 
 // Vibrant color palette optimized for dark backgrounds
-const ROUTE_COLORS = [
+export const ROUTE_COLORS = [
   "#FF6B6B", // coral red
   "#4ECDC4", // teal
   "#45B7D1", // sky blue

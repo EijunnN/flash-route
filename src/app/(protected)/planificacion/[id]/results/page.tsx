@@ -346,6 +346,11 @@ function ResultsPageContent() {
     );
   }
 
+  // Handler for in-place result updates (e.g., reassignment)
+  const handleResultUpdate = (newResult: OptimizationResult) => {
+    setResult(newResult);
+  };
+
   // Show results dashboard
   if (result) {
     return (
@@ -357,6 +362,7 @@ function ResultsPageContent() {
         onReoptimize={handleReoptimize}
         onConfirm={handleConfirm}
         onBack={() => router.push("/planificacion")}
+        onResultUpdate={handleResultUpdate}
       />
     );
   }
