@@ -120,6 +120,9 @@ export interface OptimizationStop {
     start: string;
     end: string;
   };
+  // For grouped stops (multiple orders at same location)
+  groupedOrderIds?: string[];
+  groupedTrackingIds?: string[];
 }
 
 export interface OptimizationRoute {
@@ -652,17 +655,17 @@ export async function runOptimization(
         );
         if (!vehicle) continue;
 
-        // Expand grouped stops into individual orders
+        // Process stops - keep grouped or expand based on groupSameLocation setting
         const routeStops: OptimizationStop[] = [];
         let sequenceCounter = 1;
         for (const stop of vroomRoute.stops) {
           const grouped = globalGroupMap.get(stop.orderId);
           if (grouped && grouped.orderIds.length > 1) {
-            // Expand grouped order into individual stops at same location
-            for (let i = 0; i < grouped.orderIds.length; i++) {
+            if (groupSameLocation) {
+              // Keep as single stop with grouped order info
               routeStops.push({
-                orderId: grouped.orderIds[i],
-                trackingId: grouped.trackingIds[i],
+                orderId: grouped.orderIds[0], // Use first order as representative
+                trackingId: grouped.trackingIds.join(", "), // Show all tracking IDs
                 sequence: sequenceCounter++,
                 address: stop.address,
                 latitude: String(stop.latitude),
@@ -670,7 +673,24 @@ export async function runOptimization(
                 estimatedArrival: stop.arrivalTime
                   ? new Date(stop.arrivalTime * 1000).toISOString()
                   : undefined,
+                groupedOrderIds: grouped.orderIds,
+                groupedTrackingIds: grouped.trackingIds,
               });
+            } else {
+              // Expand grouped order into individual stops at same location
+              for (let i = 0; i < grouped.orderIds.length; i++) {
+                routeStops.push({
+                  orderId: grouped.orderIds[i],
+                  trackingId: grouped.trackingIds[i],
+                  sequence: sequenceCounter++,
+                  address: stop.address,
+                  latitude: String(stop.latitude),
+                  longitude: String(stop.longitude),
+                  estimatedArrival: stop.arrivalTime
+                    ? new Date(stop.arrivalTime * 1000).toISOString()
+                    : undefined,
+                });
+              }
             }
           } else {
             routeStops.push({
@@ -817,17 +837,17 @@ export async function runOptimization(
       );
       if (!vehicle) continue;
 
-      // Expand grouped stops into individual orders
+      // Process stops - keep grouped or expand based on groupSameLocation setting
       const routeStops: OptimizationStop[] = [];
       let sequenceCounter = 1;
       for (const stop of vroomRoute.stops) {
         const grouped = globalGroupMap.get(stop.orderId);
         if (grouped && grouped.orderIds.length > 1) {
-          // Expand grouped order into individual stops at same location
-          for (let i = 0; i < grouped.orderIds.length; i++) {
+          if (groupSameLocation) {
+            // Keep as single stop with grouped order info
             routeStops.push({
-              orderId: grouped.orderIds[i],
-              trackingId: grouped.trackingIds[i],
+              orderId: grouped.orderIds[0], // Use first order as representative
+              trackingId: grouped.trackingIds.join(", "), // Show all tracking IDs
               sequence: sequenceCounter++,
               address: stop.address,
               latitude: String(stop.latitude),
@@ -835,7 +855,24 @@ export async function runOptimization(
               estimatedArrival: stop.arrivalTime
                 ? new Date(stop.arrivalTime * 1000).toISOString()
                 : undefined,
+              groupedOrderIds: grouped.orderIds,
+              groupedTrackingIds: grouped.trackingIds,
             });
+          } else {
+            // Expand grouped order into individual stops at same location
+            for (let i = 0; i < grouped.orderIds.length; i++) {
+              routeStops.push({
+                orderId: grouped.orderIds[i],
+                trackingId: grouped.trackingIds[i],
+                sequence: sequenceCounter++,
+                address: stop.address,
+                latitude: String(stop.latitude),
+                longitude: String(stop.longitude),
+                estimatedArrival: stop.arrivalTime
+                  ? new Date(stop.arrivalTime * 1000).toISOString()
+                  : undefined,
+              });
+            }
           }
         } else {
           routeStops.push({
