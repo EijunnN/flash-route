@@ -47,6 +47,7 @@ interface OptimizationPreset {
   bigVrp: boolean;
   flexibleTimeWindows: boolean;
   mergeByDistance: boolean;
+  groupSameLocation: boolean;
   maxDistanceKm: number | null;
   vehicleRechargeTime: number | null;
   trafficFactor: number | null;
@@ -81,6 +82,7 @@ const defaultPreset: Partial<OptimizationPreset> = {
   bigVrp: true,
   flexibleTimeWindows: false,
   mergeByDistance: false,
+  groupSameLocation: true,
   maxDistanceKm: 200,
   vehicleRechargeTime: 0,
   trafficFactor: 50,
@@ -412,6 +414,7 @@ export default function OptimizationPresetsPage() {
                     { key: "openStart", label: "Inicio abierto", desc: "Vehículos pueden iniciar desde cualquier lugar" },
                     { key: "openEnd", label: "Fin abierto", desc: "Vehículos no necesitan volver al origen" },
                     { key: "oneRoutePerVehicle", label: "Una ruta por vehículo", desc: "Cada vehículo solo tiene una ruta asignada" },
+                    { key: "groupSameLocation", label: "Agrupar mismas coordenadas", desc: "Múltiples pedidos en la misma ubicación cuentan como una sola parada" },
                   ].map((option) => {
                     const isChecked = editingPreset[option.key as keyof typeof editingPreset] as boolean;
                     return (

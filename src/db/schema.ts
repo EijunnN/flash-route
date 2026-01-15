@@ -1430,6 +1430,8 @@ export const optimizationPresets = pgTable("optimization_presets", {
     .notNull()
     .default(false),
   mergeByDistance: boolean("merge_by_distance").notNull().default(false),
+  // Group orders with same coordinates as single stop
+  groupSameLocation: boolean("group_same_location").notNull().default(true),
   // Parameters
   maxDistanceKm: integer("max_distance_km").default(200),
   vehicleRechargeTime: integer("vehicle_recharge_time").default(0), // minutes

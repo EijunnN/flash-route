@@ -127,6 +127,7 @@ export async function PUT(
         bigVrp: body.bigVrp ?? existingPreset.bigVrp,
         flexibleTimeWindows: body.flexibleTimeWindows ?? existingPreset.flexibleTimeWindows,
         mergeByDistance: body.mergeByDistance ?? existingPreset.mergeByDistance,
+        groupSameLocation: body.groupSameLocation ?? existingPreset.groupSameLocation,
         maxDistanceKm: body.maxDistanceKm ?? existingPreset.maxDistanceKm,
         vehicleRechargeTime: body.vehicleRechargeTime ?? existingPreset.vehicleRechargeTime,
         trafficFactor: body.trafficFactor ?? existingPreset.trafficFactor,

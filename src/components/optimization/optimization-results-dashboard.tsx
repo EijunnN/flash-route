@@ -80,6 +80,15 @@ interface OptimizationResultsDashboardProps {
       orderId: string;
       trackingId: string;
       reason: string;
+      latitude?: string;
+      longitude?: string;
+      address?: string;
+    }>;
+    vehiclesWithoutRoutes?: Array<{
+      id: string;
+      plate: string;
+      originLatitude?: string;
+      originLongitude?: string;
     }>;
     metrics: {
       totalDistance: number;
@@ -311,42 +320,59 @@ function CompactRouteCard({
   );
 }
 
-// Unassigned Orders Panel
+// Unassigned Orders Panel (Collapsible)
 function UnassignedOrdersPanel({
   orders,
+  isExpanded,
+  onToggle,
 }: {
   orders: Array<{
     orderId: string;
     trackingId: string;
     reason: string;
   }>;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   if (orders.length === 0) return null;
 
   return (
-    <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
-      <CardHeader className="py-3 px-4">
-        <CardTitle className="text-sm flex items-center gap-2 text-orange-800 dark:text-orange-300">
-          <AlertTriangle className="h-4 w-4" />
-          {orders.length} pedido{orders.length > 1 ? "s" : ""} sin asignar
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="py-2 px-4 max-h-32 overflow-y-auto">
-        <div className="space-y-1">
-          {orders.map((order) => (
-            <div
-              key={order.orderId}
-              className="flex items-center justify-between text-xs"
-            >
-              <span className="font-medium">{order.trackingId}</span>
-              <span className="text-muted-foreground truncate ml-2">
-                {order.reason}
-              </span>
-            </div>
-          ))}
+    <div className="border border-orange-200 dark:border-orange-800/50 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-orange-100/50 dark:hover:bg-orange-900/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <span className="text-sm font-medium text-orange-800 dark:text-orange-300">
+            {orders.length} sin asignar
+          </span>
         </div>
-      </CardContent>
-    </Card>
+        {isExpanded ? (
+          <ChevronUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="px-3 pb-2 max-h-40 overflow-y-auto border-t border-orange-200/50 dark:border-orange-800/30">
+          <div className="space-y-1 pt-2">
+            {orders.map((order) => (
+              <div
+                key={order.orderId}
+                className="flex items-center justify-between text-xs py-1"
+              >
+                <span className="font-medium text-orange-900 dark:text-orange-200">{order.trackingId}</span>
+                <span className="text-orange-700/70 dark:text-orange-400/70 truncate ml-2 max-w-[200px]">
+                  {order.reason}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -362,6 +388,7 @@ export function OptimizationResultsDashboard({
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [unassignedExpanded, setUnassignedExpanded] = useState(false);
 
   return (
     <div className="flex flex-col h-full">
@@ -521,10 +548,14 @@ export function OptimizationResultsDashboard({
             ))}
           </div>
 
-          {/* Unassigned Orders */}
+          {/* Unassigned Orders - Collapsible */}
           {result.unassignedOrders.length > 0 && (
-            <div className="p-3 border-t">
-              <UnassignedOrdersPanel orders={result.unassignedOrders} />
+            <div className="p-3 border-t shrink-0">
+              <UnassignedOrdersPanel
+                orders={result.unassignedOrders}
+                isExpanded={unassignedExpanded}
+                onToggle={() => setUnassignedExpanded(!unassignedExpanded)}
+              />
             </div>
           )}
         </div>
@@ -534,6 +565,8 @@ export function OptimizationResultsDashboard({
           <RouteMap
             routes={result.routes}
             depot={result.depot}
+            unassignedOrders={result.unassignedOrders}
+            vehiclesWithoutRoutes={result.vehiclesWithoutRoutes}
             selectedRouteId={selectedRouteId}
             onRouteSelect={(routeId) => setSelectedRouteId(routeId)}
             variant="fullscreen"

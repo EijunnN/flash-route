@@ -55,6 +55,15 @@ interface OptimizationResult {
     orderId: string;
     trackingId: string;
     reason: string;
+    latitude?: string;
+    longitude?: string;
+    address?: string;
+  }>;
+  vehiclesWithoutRoutes?: Array<{
+    id: string;
+    plate: string;
+    originLatitude?: string;
+    originLongitude?: string;
   }>;
   metrics: {
     totalDistance: number;

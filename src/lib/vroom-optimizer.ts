@@ -233,9 +233,21 @@ async function optimizeWithVroom(
     : undefined;
 
   // Calculate max travel time in seconds
-  const maxTravelTime = config.maxTravelTimeMinutes
+  // Can come from maxTravelTimeMinutes directly, or estimated from maxDistanceKm
+  let maxTravelTime = config.maxTravelTimeMinutes
     ? config.maxTravelTimeMinutes * 60
     : undefined;
+
+  // If maxDistanceKm is set but no maxTravelTime, estimate based on average speed
+  // Assume average 35 km/h in urban areas (accounting for stops, traffic, etc.)
+  const AVERAGE_SPEED_KMH = 35;
+  if (!maxTravelTime && config.maxDistanceKm) {
+    // Convert distance to time: time = distance / speed
+    // Add 20% buffer for service times and variability
+    const estimatedTimeHours = (config.maxDistanceKm / AVERAGE_SPEED_KMH) * 1.2;
+    maxTravelTime = Math.round(estimatedTimeHours * 3600); // Convert to seconds
+    console.log(`Max distance ${config.maxDistanceKm}km -> estimated max travel time: ${Math.round(estimatedTimeHours * 60)} minutes`);
+  }
 
   // Calculate minimum vehicles needed if minimizeVehicles is enabled
   // Estimate: assume average 15 stops per vehicle

@@ -45,6 +45,68 @@ import {
   type ZoneData,
 } from "./zone-utils";
 
+// Type for grouped orders (multiple orders at same location)
+interface GroupedOrder {
+  // Representative order (first one in the group)
+  id: string;
+  trackingId: string;
+  address: string;
+  latitude: string | number;
+  longitude: string | number;
+  weightRequired: number;
+  volumeRequired: number;
+  promisedDate: Date | null;
+  serviceTime: number;
+  // All orders in this group (including the representative)
+  groupedOrderIds: string[];
+  groupedTrackingIds: string[];
+}
+
+// Map to track grouped orders for ungrouping later
+type OrderGroupMap = Map<string, { orderIds: string[]; trackingIds: string[] }>;
+
+/**
+ * Group orders that share the same coordinates
+ * Returns grouped orders and a map to ungroup later
+ */
+function groupOrdersByLocation<T extends { id: string; trackingId: string; latitude: string | number; longitude: string | number }>(
+  orders: T[],
+): { groupedOrders: (T & { groupedOrderIds: string[]; groupedTrackingIds: string[] })[]; groupMap: OrderGroupMap } {
+  const locationMap = new Map<string, T[]>();
+
+  // Group by coordinates (rounded to 6 decimal places for precision)
+  for (const order of orders) {
+    const lat = parseFloat(String(order.latitude)).toFixed(6);
+    const lng = parseFloat(String(order.longitude)).toFixed(6);
+    const key = `${lat},${lng}`;
+
+    const existing = locationMap.get(key) || [];
+    existing.push(order);
+    locationMap.set(key, existing);
+  }
+
+  const groupedOrders: (T & { groupedOrderIds: string[]; groupedTrackingIds: string[] })[] = [];
+  const groupMap: OrderGroupMap = new Map();
+
+  for (const [, ordersAtLocation] of locationMap) {
+    // Use first order as representative
+    const representative = ordersAtLocation[0];
+    const orderIds = ordersAtLocation.map(o => o.id);
+    const trackingIds = ordersAtLocation.map(o => o.trackingId);
+
+    groupedOrders.push({
+      ...representative,
+      groupedOrderIds: orderIds,
+      groupedTrackingIds: trackingIds,
+    });
+
+    // Store mapping for ungrouping
+    groupMap.set(representative.id, { orderIds, trackingIds });
+  }
+
+  return { groupedOrders, groupMap };
+}
+
 // Optimization result types
 export interface OptimizationStop {
   orderId: string;
@@ -92,6 +154,21 @@ export interface OptimizationResult {
     orderId: string;
     trackingId: string;
     reason: string;
+    latitude?: string;
+    longitude?: string;
+    address?: string;
+  }>;
+  driversWithoutRoutes?: Array<{
+    id: string;
+    name: string;
+    originLatitude?: string;
+    originLongitude?: string;
+  }>;
+  vehiclesWithoutRoutes?: Array<{
+    id: string;
+    plate: string;
+    originLatitude?: string;
+    originLongitude?: string;
   }>;
   metrics: {
     totalDistance: number;
@@ -152,6 +229,9 @@ export async function runOptimization(
     orderId: string;
     trackingId: string;
     reason: string;
+    latitude?: string;
+    longitude?: string;
+    address?: string;
   }> = [];
 
   // Check for abort signal
@@ -318,6 +398,11 @@ export async function runOptimization(
     serviceTime: 300, // 5 minutes default
   }));
 
+  // Create lookup map for order details (used when populating unassigned orders)
+  const orderDetailsMap = new Map(
+    ordersWithLocation.map((o) => [o.id, { latitude: o.latitude, longitude: o.longitude, address: o.address }])
+  );
+
   // Prepare vehicles with zone assignments
   const vehiclesWithZones = selectedVehicles.map((vehicle) => ({
     id: vehicle.id,
@@ -330,6 +415,17 @@ export async function runOptimization(
     originLongitude: vehicle.originLongitude,
     zoneAssignments: zoneAssignmentsByVehicle.get(vehicle.id) || [],
   }));
+
+  // Create map of driverId -> vehicle origin (for drivers without routes display)
+  const driverVehicleOriginMap = new Map<string, { latitude: string; longitude: string }>();
+  for (const vehicle of selectedVehicles) {
+    if (vehicle.assignedDriverId && vehicle.originLatitude && vehicle.originLongitude) {
+      driverVehicleOriginMap.set(vehicle.assignedDriverId, {
+        latitude: vehicle.originLatitude,
+        longitude: vehicle.originLongitude,
+      });
+    }
+  }
 
   // Depot config
   const depotConfig: DepotConfig = {
@@ -347,6 +443,12 @@ export async function runOptimization(
       eq(optimizationPresets.active, true),
     ),
   });
+
+  // Get groupSameLocation setting from preset
+  const groupSameLocation = preset?.groupSameLocation ?? true;
+
+  // Global map to track grouped orders for ungrouping later
+  const globalGroupMap: OrderGroupMap = new Map();
 
   // Optimization config with preset values
   const vroomConfig: VroomOptConfig = {
@@ -383,7 +485,14 @@ export async function runOptimization(
     orderId: string;
     trackingId: string;
     reason: string;
+    latitude?: string;
+    longitude?: string;
+    address?: string;
   }> = [];
+
+  // Track vehicles that have been assigned routes (for oneRoutePerVehicle)
+  const oneRoutePerVehicle = preset?.oneRoutePerVehicle ?? true;
+  const vehiclesWithRoutes = new Set<string>();
 
   if (hasZones) {
     // Zone-aware optimization: run optimization per zone batch
@@ -394,8 +503,20 @@ export async function runOptimization(
       dayOfWeek,
     );
 
+    // IMPORTANT: Sort batches to process "unzoned" (Sin Zona) FIRST
+    // This ensures unrestricted vehicles serve orders that ONLY they can handle
+    // before being used for zone orders (which may have zone-specific vehicles)
+    zoneBatches.sort((a, b) => {
+      if (a.zoneId === "unzoned") return -1;
+      if (b.zoneId === "unzoned") return 1;
+      return 0;
+    });
+
     console.log(
       `Zone batches created: ${zoneBatches.length} batches for ${ordersWithLocation.length} orders`,
+    );
+    console.log(
+      `Batch order: ${zoneBatches.map((b) => `${b.zoneName}(${b.orders.length} orders, ${b.vehicles.length} vehicles)`).join(" → ")}`,
     );
 
     const progressPerBatch =
@@ -405,24 +526,51 @@ export async function runOptimization(
     for (const batch of zoneBatches) {
       checkAbort();
 
+      // Filter out vehicles that already have routes if oneRoutePerVehicle is enabled
+      const availableVehicles = oneRoutePerVehicle
+        ? batch.vehicles.filter((v) => !vehiclesWithRoutes.has(v.id))
+        : batch.vehicles;
+
       console.log(
-        `Processing zone batch: ${batch.zoneName} (${batch.orders.length} orders, ${batch.vehicles.length} vehicles)`,
+        `Processing zone batch: ${batch.zoneName} (${batch.orders.length} orders, ${availableVehicles.length}/${batch.vehicles.length} vehicles available)`,
       );
 
-      if (batch.vehicles.length === 0) {
+      if (availableVehicles.length === 0) {
         // No vehicles available for this zone - mark all orders as unassigned
+        const reason = oneRoutePerVehicle && batch.vehicles.length > 0
+          ? `Vehículos de zona ${batch.zoneName} ya tienen rutas asignadas (1 ruta por vehículo habilitado)`
+          : `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`;
+
         for (const order of batch.orders) {
+          const details = orderDetailsMap.get(order.id);
           unassignedOrders.push({
             orderId: order.id,
             trackingId: order.trackingId,
-            reason: `No hay vehículos disponibles para la zona ${batch.zoneName} el día ${dayOfWeek}`,
+            reason,
+            latitude: details?.latitude,
+            longitude: details?.longitude,
+            address: details?.address,
           });
         }
         continue;
       }
 
+      // Apply grouping if enabled
+      let ordersToProcess = batch.orders;
+      if (groupSameLocation) {
+        const { groupedOrders, groupMap } = groupOrdersByLocation(batch.orders);
+        // Store in global map for later ungrouping
+        for (const [key, value] of groupMap) {
+          globalGroupMap.set(key, value);
+        }
+        ordersToProcess = groupedOrders;
+        console.log(
+          `Grouped ${batch.orders.length} orders into ${groupedOrders.length} unique locations for zone ${batch.zoneName}`,
+        );
+      }
+
       // Convert batch orders to VROOM format
-      const batchOrdersForVroom: OrderForOptimization[] = batch.orders.map(
+      const batchOrdersForVroom: OrderForOptimization[] = ordersToProcess.map(
         (order) => ({
           id: order.id,
           trackingId: order.trackingId,
@@ -446,9 +594,9 @@ export async function runOptimization(
         }),
       );
 
-      // Convert batch vehicles to VROOM format
+      // Convert batch vehicles to VROOM format (using filtered available vehicles)
       const batchVehiclesForVroom: VehicleForOptimization[] =
-        batch.vehicles.map((vehicle) => ({
+        availableVehicles.map((vehicle) => ({
           id: vehicle.id,
           plate: vehicle.plate,
           maxWeight: vehicle.weightCapacity || 10000,
@@ -469,12 +617,32 @@ export async function runOptimization(
         vroomConfig,
       );
 
-      // Add batch unassigned orders
+      // Add batch unassigned orders (expand grouped orders)
       for (const unassigned of batchResult.unassigned) {
-        unassignedOrders.push({
-          ...unassigned,
-          reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
-        });
+        const grouped = globalGroupMap.get(unassigned.orderId);
+        if (grouped && grouped.orderIds.length > 1) {
+          // Expand grouped order into individual unassigned
+          for (let i = 0; i < grouped.orderIds.length; i++) {
+            const details = orderDetailsMap.get(grouped.orderIds[i]);
+            unassignedOrders.push({
+              orderId: grouped.orderIds[i],
+              trackingId: grouped.trackingIds[i],
+              reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
+              latitude: details?.latitude,
+              longitude: details?.longitude,
+              address: details?.address,
+            });
+          }
+        } else {
+          const details = orderDetailsMap.get(unassigned.orderId);
+          unassignedOrders.push({
+            ...unassigned,
+            reason: `${unassigned.reason} (Zona: ${batch.zoneName})`,
+            latitude: details?.latitude,
+            longitude: details?.longitude,
+            address: details?.address,
+          });
+        }
       }
 
       // Convert batch routes to our format
@@ -484,17 +652,40 @@ export async function runOptimization(
         );
         if (!vehicle) continue;
 
-        const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
-          orderId: stop.orderId,
-          trackingId: stop.trackingId,
-          sequence: stop.sequence,
-          address: stop.address,
-          latitude: String(stop.latitude),
-          longitude: String(stop.longitude),
-          estimatedArrival: stop.arrivalTime
-            ? new Date(stop.arrivalTime * 1000).toISOString()
-            : undefined,
-        }));
+        // Expand grouped stops into individual orders
+        const routeStops: OptimizationStop[] = [];
+        let sequenceCounter = 1;
+        for (const stop of vroomRoute.stops) {
+          const grouped = globalGroupMap.get(stop.orderId);
+          if (grouped && grouped.orderIds.length > 1) {
+            // Expand grouped order into individual stops at same location
+            for (let i = 0; i < grouped.orderIds.length; i++) {
+              routeStops.push({
+                orderId: grouped.orderIds[i],
+                trackingId: grouped.trackingIds[i],
+                sequence: sequenceCounter++,
+                address: stop.address,
+                latitude: String(stop.latitude),
+                longitude: String(stop.longitude),
+                estimatedArrival: stop.arrivalTime
+                  ? new Date(stop.arrivalTime * 1000).toISOString()
+                  : undefined,
+              });
+            }
+          } else {
+            routeStops.push({
+              orderId: stop.orderId,
+              trackingId: stop.trackingId,
+              sequence: sequenceCounter++,
+              address: stop.address,
+              latitude: String(stop.latitude),
+              longitude: String(stop.longitude),
+              estimatedArrival: stop.arrivalTime
+                ? new Date(stop.arrivalTime * 1000).toISOString()
+                : undefined,
+            });
+          }
+        }
 
         const newRoute: OptimizationRoute = {
           routeId: `route-${vehicle.id}-${batch.zoneId}-${Date.now()}`,
@@ -517,6 +708,11 @@ export async function runOptimization(
 
         routes.push(newRoute);
         partialRoutes = [...routes];
+
+        // Track this vehicle as having a route assigned
+        if (oneRoutePerVehicle) {
+          vehiclesWithRoutes.add(vehicle.id);
+        }
       }
 
       currentProgress += progressPerBatch;
@@ -524,7 +720,22 @@ export async function runOptimization(
     }
   } else {
     // No zones configured - run single optimization for all orders
-    const ordersForVroom: OrderForOptimization[] = ordersWithLocation.map(
+
+    // Apply grouping if enabled
+    let ordersToProcess = ordersWithLocation;
+    if (groupSameLocation) {
+      const { groupedOrders, groupMap } = groupOrdersByLocation(ordersWithLocation);
+      // Store in global map for later ungrouping
+      for (const [key, value] of groupMap) {
+        globalGroupMap.set(key, value);
+      }
+      ordersToProcess = groupedOrders;
+      console.log(
+        `Grouped ${ordersWithLocation.length} orders into ${groupedOrders.length} unique locations`,
+      );
+    }
+
+    const ordersForVroom: OrderForOptimization[] = ordersToProcess.map(
       (order) => ({
         id: order.id,
         trackingId: order.trackingId,
@@ -572,8 +783,32 @@ export async function runOptimization(
       vroomConfig,
     );
 
-    // Add unassigned orders
-    unassignedOrders.push(...vroomResult.unassigned);
+    // Add unassigned orders (expand grouped orders)
+    for (const unassigned of vroomResult.unassigned) {
+      const grouped = globalGroupMap.get(unassigned.orderId);
+      if (grouped && grouped.orderIds.length > 1) {
+        // Expand grouped order into individual unassigned
+        for (let i = 0; i < grouped.orderIds.length; i++) {
+          const details = orderDetailsMap.get(grouped.orderIds[i]);
+          unassignedOrders.push({
+            orderId: grouped.orderIds[i],
+            trackingId: grouped.trackingIds[i],
+            reason: unassigned.reason,
+            latitude: details?.latitude,
+            longitude: details?.longitude,
+            address: details?.address,
+          });
+        }
+      } else {
+        const details = orderDetailsMap.get(unassigned.orderId);
+        unassignedOrders.push({
+          ...unassigned,
+          latitude: details?.latitude,
+          longitude: details?.longitude,
+          address: details?.address,
+        });
+      }
+    }
 
     // Convert routes
     for (const vroomRoute of vroomResult.routes) {
@@ -582,17 +817,40 @@ export async function runOptimization(
       );
       if (!vehicle) continue;
 
-      const routeStops: OptimizationStop[] = vroomRoute.stops.map((stop) => ({
-        orderId: stop.orderId,
-        trackingId: stop.trackingId,
-        sequence: stop.sequence,
-        address: stop.address,
-        latitude: String(stop.latitude),
-        longitude: String(stop.longitude),
-        estimatedArrival: stop.arrivalTime
-          ? new Date(stop.arrivalTime * 1000).toISOString()
-          : undefined,
-      }));
+      // Expand grouped stops into individual orders
+      const routeStops: OptimizationStop[] = [];
+      let sequenceCounter = 1;
+      for (const stop of vroomRoute.stops) {
+        const grouped = globalGroupMap.get(stop.orderId);
+        if (grouped && grouped.orderIds.length > 1) {
+          // Expand grouped order into individual stops at same location
+          for (let i = 0; i < grouped.orderIds.length; i++) {
+            routeStops.push({
+              orderId: grouped.orderIds[i],
+              trackingId: grouped.trackingIds[i],
+              sequence: sequenceCounter++,
+              address: stop.address,
+              latitude: String(stop.latitude),
+              longitude: String(stop.longitude),
+              estimatedArrival: stop.arrivalTime
+                ? new Date(stop.arrivalTime * 1000).toISOString()
+                : undefined,
+            });
+          }
+        } else {
+          routeStops.push({
+            orderId: stop.orderId,
+            trackingId: stop.trackingId,
+            sequence: sequenceCounter++,
+            address: stop.address,
+            latitude: String(stop.latitude),
+            longitude: String(stop.longitude),
+            estimatedArrival: stop.arrivalTime
+              ? new Date(stop.arrivalTime * 1000).toISOString()
+              : undefined,
+          });
+        }
+      }
 
       const newRoute: OptimizationRoute = {
         routeId: `route-${vehicle.id}-${Date.now()}`,
@@ -723,9 +981,37 @@ export async function runOptimization(
   const assignmentMetrics =
     await getAssignmentQualityMetrics(assignmentResults);
 
+  // Calculate drivers without routes
+  const assignedDriverIds = new Set(routes.map((r) => r.driverId).filter(Boolean));
+  const driversWithoutRoutes = selectedDrivers
+    .filter((d) => !assignedDriverIds.has(d.id))
+    .map((d) => {
+      // Get origin from assigned vehicle if available
+      const vehicleOrigin = driverVehicleOriginMap.get(d.id);
+      return {
+        id: d.id,
+        name: d.name,
+        originLatitude: vehicleOrigin?.latitude,
+        originLongitude: vehicleOrigin?.longitude,
+      };
+    });
+
+  // Calculate vehicles without routes
+  const assignedVehicleIds = new Set(routes.map((r) => r.vehicleId));
+  const vehiclesWithoutRoutes = vehiclesWithZones
+    .filter((v) => !assignedVehicleIds.has(v.id))
+    .map((v) => ({
+      id: v.id,
+      plate: v.plate,
+      originLatitude: v.originLatitude ?? undefined,
+      originLongitude: v.originLongitude ?? undefined,
+    }));
+
   const result: OptimizationResult = {
     routes,
     unassignedOrders,
+    driversWithoutRoutes,
+    vehiclesWithoutRoutes,
     metrics: {
       totalDistance,
       totalDuration,

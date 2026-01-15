@@ -31,12 +31,30 @@ interface Route {
   geometry?: string;
 }
 
+interface UnassignedOrder {
+  orderId: string;
+  trackingId: string;
+  reason: string;
+  latitude?: string;
+  longitude?: string;
+  address?: string;
+}
+
+interface VehicleWithoutRoute {
+  id: string;
+  plate: string;
+  originLatitude?: string;
+  originLongitude?: string;
+}
+
 interface RouteMapProps {
   routes: Route[];
   depot?: {
     latitude: number;
     longitude: number;
   };
+  unassignedOrders?: UnassignedOrder[];
+  vehiclesWithoutRoutes?: VehicleWithoutRoute[];
   selectedRouteId?: string | null;
   onRouteSelect?: (routeId: string | null) => void;
   variant?: "card" | "fullscreen";
@@ -104,10 +122,13 @@ const ROUTE_COLORS = [
 ];
 
 const UNSELECTED_COLOR = "#4a5568"; // Gray for unselected routes
+const UNASSIGNED_COLOR = "#6b7280"; // Gray for unassigned items
 
 export function RouteMap({
   routes,
   depot,
+  unassignedOrders = [],
+  vehiclesWithoutRoutes = [],
   selectedRouteId,
   onRouteSelect,
   variant = "card",
@@ -479,8 +500,155 @@ export function RouteMap({
             });
           });
 
+          // Add unassigned orders markers (gray)
+          unassignedOrders.forEach((order) => {
+            if (!map.current || !order.latitude || !order.longitude) return;
+
+            const markerEl = document.createElement("div");
+            markerEl.setAttribute("data-type", "unassigned");
+            markerEl.innerHTML = `
+              <div class="pin-marker" style="
+                position: relative;
+                cursor: pointer;
+                transition: transform 0.15s ease;
+                opacity: 0.7;
+              ">
+                <svg width="28" height="35" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 24 16 24s16-12 16-24C32 7.163 24.837 0 16 0z" fill="${UNASSIGNED_COLOR}"/>
+                  <path d="M16 1C7.716 1 1 7.716 1 16c0 5.5 4 11 8 15.5 2.5 2.8 5.5 5.5 7 6.8 1.5-1.3 4.5-4 7-6.8 4-4.5 8-10 8-15.5 0-8.284-6.716-15-15-15z" fill="rgba(255,255,255,0.1)"/>
+                  <circle cx="16" cy="14" r="10" fill="rgba(0,0,0,0.2)"/>
+                </svg>
+                <span style="
+                  position: absolute;
+                  top: 5px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  font-size: 10px;
+                  font-weight: 700;
+                  color: white;
+                  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                ">✕</span>
+              </div>
+            `;
+
+            markerEl.addEventListener("mouseenter", () => {
+              const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+              if (pin) pin.style.transform = "scale(1.15) translateY(-3px)";
+            });
+            markerEl.addEventListener("mouseleave", () => {
+              const pin = markerEl.querySelector('.pin-marker') as HTMLElement;
+              if (pin) pin.style.transform = "scale(1) translateY(0)";
+            });
+
+            const popup = new maplibregl.Popup({
+              offset: 25,
+              className: "dark-popup",
+            }).setHTML(`
+              <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 200px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span style="background: ${UNASSIGNED_COLOR}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Sin asignar</span>
+                  <strong style="color: #fff;">${order.trackingId}</strong>
+                </div>
+                <hr style="margin: 8px 0; border: none; border-top: 1px solid #333;"/>
+                <span style="color: #f87171; font-size: 11px; line-height: 1.4; display: block;">${order.reason}</span>
+                ${order.address ? `<span style="color: #aaa; font-size: 11px; line-height: 1.4; display: block; margin-top: 4px;">${order.address}</span>` : ""}
+              </div>
+            `);
+
+            const marker = new maplibregl.Marker({ element: markerEl, anchor: "bottom" })
+              .setLngLat([
+                parseFloat(order.longitude),
+                parseFloat(order.latitude),
+              ])
+              .setPopup(popup)
+              .addTo(map.current);
+
+            markersRef.current.push(marker);
+          });
+
+          // Add vehicles without routes markers (distinctive with truck icon and dashed border)
+          vehiclesWithoutRoutes.forEach((vehicle) => {
+            if (!map.current || !vehicle.originLatitude || !vehicle.originLongitude) return;
+
+            const vehicleEl = document.createElement("div");
+            vehicleEl.setAttribute("data-type", "vehicle-no-route");
+            vehicleEl.innerHTML = `
+              <div class="vehicle-no-route-marker" style="
+                position: relative;
+                width: 40px;
+                height: 40px;
+                cursor: pointer;
+                transition: transform 0.2s ease;
+              ">
+                <div style="
+                  position: absolute;
+                  inset: 0;
+                  border: 3px dashed #f97316;
+                  border-radius: 8px;
+                  animation: pulse-vehicle 2s ease-in-out infinite;
+                "></div>
+                <div style="
+                  position: absolute;
+                  inset: 3px;
+                  background: ${UNASSIGNED_COLOR};
+                  border-radius: 5px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                ">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                    <path d="M15 18H9"/>
+                    <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+                    <circle cx="17" cy="18" r="2"/>
+                    <circle cx="7" cy="18" r="2"/>
+                  </svg>
+                </div>
+              </div>
+              <style>
+                @keyframes pulse-vehicle {
+                  0%, 100% { opacity: 1; transform: scale(1); }
+                  50% { opacity: 0.6; transform: scale(1.08); }
+                }
+              </style>
+            `;
+
+            vehicleEl.addEventListener("mouseenter", () => {
+              const inner = vehicleEl.querySelector('.vehicle-no-route-marker') as HTMLElement;
+              if (inner) inner.style.transform = "scale(1.15)";
+            });
+            vehicleEl.addEventListener("mouseleave", () => {
+              const inner = vehicleEl.querySelector('.vehicle-no-route-marker') as HTMLElement;
+              if (inner) inner.style.transform = "scale(1)";
+            });
+
+            const popup = new maplibregl.Popup({
+              offset: 25,
+              className: "dark-popup",
+            }).setHTML(`
+              <div style="background: #1a1a2e; color: #eee; padding: 10px 14px; border-radius: 8px; min-width: 160px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span style="background: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">SIN RUTA</span>
+                </div>
+                <strong style="color: #fff; font-size: 14px;">${vehicle.plate}</strong>
+                <p style="color: #9ca3af; font-size: 11px; margin-top: 4px;">Vehículo disponible sin asignación</p>
+              </div>
+            `);
+
+            const marker = new maplibregl.Marker({ element: vehicleEl })
+              .setLngLat([
+                parseFloat(vehicle.originLongitude),
+                parseFloat(vehicle.originLatitude),
+              ])
+              .setPopup(popup)
+              .addTo(map.current);
+
+            markersRef.current.push(marker);
+          });
+
           // Fit bounds to show all markers
-          if (routes.length > 0) {
+          if (routes.length > 0 || unassignedOrders.length > 0 || vehiclesWithoutRoutes.length > 0) {
             const allCoords: [number, number][] = [];
 
             if (showDepot && depot) {
@@ -501,6 +669,26 @@ export function RouteMap({
                   parseFloat(stop.latitude),
                 ]);
               });
+            });
+
+            // Include unassigned orders in bounds
+            unassignedOrders.forEach((order) => {
+              if (order.latitude && order.longitude) {
+                allCoords.push([
+                  parseFloat(order.longitude),
+                  parseFloat(order.latitude),
+                ]);
+              }
+            });
+
+            // Include vehicles without routes in bounds
+            vehiclesWithoutRoutes.forEach((vehicle) => {
+              if (vehicle.originLatitude && vehicle.originLongitude) {
+                allCoords.push([
+                  parseFloat(vehicle.originLongitude),
+                  parseFloat(vehicle.originLatitude),
+                ]);
+              }
             });
 
             if (allCoords.length > 0) {
@@ -543,7 +731,7 @@ export function RouteMap({
       map.current?.remove();
       map.current = null;
     };
-  }, [routes, depot, showDepot]);
+  }, [routes, depot, showDepot, unassignedOrders, vehiclesWithoutRoutes]);
 
   if (error) {
     if (variant === "fullscreen") {
