@@ -357,16 +357,16 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/optimization">
+        <Link href="/planificacion">
           <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
                 <Route className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h3 className="font-semibold">Optimizar Rutas</h3>
+                <h3 className="font-semibold">Planificación</h3>
                 <p className="text-sm text-muted-foreground">
-                  Generar plan óptimo
+                  Optimizar rutas de entrega
                 </p>
               </div>
             </CardContent>
