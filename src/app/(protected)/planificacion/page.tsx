@@ -11,6 +11,7 @@ import {
   Loader2,
   MapPin,
   Package,
+  Pencil,
   Route,
   Search,
   Settings2,
@@ -205,6 +206,16 @@ export default function PlanificacionPage() {
       latitud: string;
     }>
   >([]);
+
+  // Order edit modal state
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editOrderData, setEditOrderData] = useState({
+    address: "",
+    latitude: "",
+    longitude: "",
+  });
+  const [isUpdatingOrder, setIsUpdatingOrder] = useState(false);
+  const [updateOrderError, setUpdateOrderError] = useState<string | null>(null);
 
   // Load fleets
   const loadFleets = useCallback(async () => {
@@ -634,6 +645,65 @@ export default function PlanificacionPage() {
     () => orders.filter((o) => !o.latitude || !o.longitude),
     [orders],
   );
+
+  // Open order edit modal
+  const openEditOrder = useCallback((order: Order) => {
+    setEditingOrder(order);
+    setEditOrderData({
+      address: order.address || "",
+      latitude: order.latitude || "",
+      longitude: order.longitude || "",
+    });
+    setUpdateOrderError(null);
+  }, []);
+
+  // Save order changes
+  const saveOrderChanges = useCallback(async () => {
+    if (!editingOrder || !companyId) return;
+
+    setIsUpdatingOrder(true);
+    setUpdateOrderError(null);
+
+    try {
+      const response = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({
+          address: editOrderData.address,
+          latitude: editOrderData.latitude || null,
+          longitude: editOrderData.longitude || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Error al actualizar el pedido");
+      }
+
+      // Update the order in the local state
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === editingOrder.id
+            ? {
+                ...o,
+                address: editOrderData.address,
+                latitude: editOrderData.latitude || null,
+                longitude: editOrderData.longitude || null,
+              }
+            : o,
+        ),
+      );
+
+      setEditingOrder(null);
+    } catch (err) {
+      setUpdateOrderError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setIsUpdatingOrder(false);
+    }
+  }, [editingOrder, companyId, editOrderData]);
 
   // Selected vehicles data for map
   const selectedVehicles = useMemo(
@@ -1110,10 +1180,9 @@ export default function PlanificacionPage() {
                   filteredOrders.map((order) => {
                     const hasIssue = !order.latitude || !order.longitude;
                     return (
-                      <label
+                      <div
                         key={order.id}
-                        htmlFor={`order-${order.id}`}
-                        className={`block p-3 rounded-lg border cursor-pointer transition-all ${
+                        className={`p-3 rounded-lg border transition-all ${
                           selectedOrderIds.includes(order.id)
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -1124,12 +1193,16 @@ export default function PlanificacionPage() {
                             id={`order-${order.id}`}
                             checked={selectedOrderIds.includes(order.id)}
                             onCheckedChange={() => toggleOrder(order.id)}
+                            className="mt-1"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">
+                              <label
+                                htmlFor={`order-${order.id}`}
+                                className="font-medium cursor-pointer"
+                              >
                                 {order.trackingId}
-                              </span>
+                              </label>
                               {hasIssue && (
                                 <Badge
                                   variant="outline"
@@ -1163,8 +1236,20 @@ export default function PlanificacionPage() {
                               </div>
                             )}
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditOrder(order);
+                            }}
+                            title="Editar dirección y coordenadas"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </label>
+                      </div>
                     );
                   })
                 )}
@@ -1498,6 +1583,95 @@ export default function PlanificacionPage() {
                   <Upload className="w-4 h-4 mr-2" />
                   Subir {csvPreview.length} pedidos
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Edit Dialog */}
+      <Dialog open={!!editingOrder} onOpenChange={(open) => !open && setEditingOrder(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar ubicación del pedido</DialogTitle>
+            <DialogDescription>
+              {editingOrder?.trackingId} - {editingOrder?.customerName || "Sin nombre"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-address">Dirección</Label>
+              <Input
+                id="edit-address"
+                value={editOrderData.address}
+                onChange={(e) =>
+                  setEditOrderData((prev) => ({ ...prev, address: e.target.value }))
+                }
+                placeholder="Ingresa la dirección completa"
+              />
+            </div>
+
+            {/* Coordinates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-latitude">Latitud</Label>
+                <Input
+                  id="edit-latitude"
+                  value={editOrderData.latitude}
+                  onChange={(e) =>
+                    setEditOrderData((prev) => ({ ...prev, latitude: e.target.value }))
+                  }
+                  placeholder="-12.0464"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-longitude">Longitud</Label>
+                <Input
+                  id="edit-longitude"
+                  value={editOrderData.longitude}
+                  onChange={(e) =>
+                    setEditOrderData((prev) => ({ ...prev, longitude: e.target.value }))
+                  }
+                  placeholder="-77.0428"
+                />
+              </div>
+            </div>
+
+            {/* Coordinates hint */}
+            <p className="text-xs text-muted-foreground">
+              Puedes obtener las coordenadas desde Google Maps haciendo clic derecho
+              en el punto y copiando las coordenadas.
+            </p>
+
+            {/* Error message */}
+            {updateOrderError && (
+              <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+                {updateOrderError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingOrder(null)}
+              disabled={isUpdatingOrder}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={saveOrderChanges}
+              disabled={isUpdatingOrder || !editOrderData.address}
+            >
+              {isUpdatingOrder ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar cambios"
               )}
             </Button>
           </DialogFooter>
