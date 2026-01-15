@@ -557,7 +557,7 @@ export function OptimizationResultsDashboard({
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Link href="/optimization/history">
+          <Link href="/planificacion/historial">
             <Button variant="ghost" size="sm">
               <History className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Historial</span>
