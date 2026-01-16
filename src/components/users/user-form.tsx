@@ -128,10 +128,11 @@ export function UserForm({
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<Record<string, GroupedPermissions>>({});
   const [loadingPermissions, setLoadingPermissions] = useState<string | null>(null);
+  const [isLoadingAllPermissions, setIsLoadingAllPermissions] = useState(false);
 
-  // Fetch permissions for a role when expanded
+  // Fetch permissions for a single role
   const fetchRolePermissions = useCallback(async (roleId: string) => {
-    if (rolePermissions[roleId] || !companyId) return; // Already fetched or no company
+    if (rolePermissions[roleId] || !companyId) return;
 
     setLoadingPermissions(roleId);
     try {
@@ -154,15 +155,55 @@ export function UserForm({
     }
   }, [rolePermissions, companyId]);
 
+  // Stable reference to role IDs
+  const roleIds = useMemo(() => roles.map(r => r.id).join(","), [roles]);
+
+  // Pre-fetch all role permissions when form loads
+  useEffect(() => {
+    if (!companyId || roles.length === 0) return;
+
+    const fetchAllPermissions = async () => {
+      setIsLoadingAllPermissions(true);
+      const permissionsMap: Record<string, GroupedPermissions> = {};
+
+      await Promise.all(
+        roles.map(async (role) => {
+          try {
+            const response = await fetch(`/api/roles/${role.id}/permissions`, {
+              headers: {
+                "x-company-id": companyId,
+              },
+            });
+            if (response.ok) {
+              const data = await response.json();
+              permissionsMap[role.id] = data.permissions || {};
+            }
+          } catch (error) {
+            console.error(`Error fetching permissions for role ${role.id}:`, error);
+          }
+        })
+      );
+
+      setRolePermissions(permissionsMap);
+      setIsLoadingAllPermissions(false);
+    };
+
+    fetchAllPermissions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, roleIds]);
+
   // Handle role expansion
   const handleExpandRole = useCallback((roleId: string) => {
     if (expandedRoleId === roleId) {
       setExpandedRoleId(null);
     } else {
       setExpandedRoleId(roleId);
-      fetchRolePermissions(roleId);
+      // Fetch if not already loaded (fallback)
+      if (!rolePermissions[roleId]) {
+        fetchRolePermissions(roleId);
+      }
     }
-  }, [expandedRoleId, fetchRolePermissions]);
+  }, [expandedRoleId, rolePermissions, fetchRolePermissions]);
 
   // Check if current role is CONDUCTOR
   const isConductor = formData.role === "CONDUCTOR";
@@ -702,6 +743,12 @@ export function UserForm({
 
               {/* Roles List */}
               <div className="space-y-2">
+                {isLoadingAllPermissions && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                    Cargando permisos...
+                  </div>
+                )}
                 {roles.map((role) => {
                   const isSelected = selectedRoleIds.includes(role.id);
                   const isExpanded = expandedRoleId === role.id;
@@ -739,7 +786,7 @@ export function UserForm({
                             )}
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {totalPermissions} permisos
+                            {isLoadingAllPermissions ? "..." : `${totalPermissions} permisos`}
                           </span>
                         </div>
                         {isSelected && (
