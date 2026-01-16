@@ -2,17 +2,27 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
+  alertNotifications,
+  alertRules,
+  alerts,
   auditLogs,
   companies,
+  csvColumnMappingTemplates,
   fleets,
   type ORDER_STATUS,
   optimizationConfigurations,
   optimizationJobs,
+  optimizationPresets,
   orders,
+  outputHistory,
   permissions,
   type PERMISSION_CATEGORIES,
+  planMetrics,
+  reassignmentsHistory,
   rolePermissions,
   roles,
+  routeStopHistory,
+  routeStops,
   type TIME_WINDOW_STRICTNESS,
   type TIME_WINDOW_TYPES,
   timeWindowPresets,
@@ -28,6 +38,8 @@ import {
   vehicleSkills,
   vehicleStatusHistory,
   vehicles,
+  zoneVehicles,
+  zones,
 } from "@/db/schema";
 
 async function seed() {
@@ -40,6 +52,15 @@ async function seed() {
     if (shouldReset) {
       console.log("🗑️  Resetting database...");
       // Delete in correct order to respect foreign keys
+      // First: tables that reference other non-company tables
+      await db.delete(alertNotifications);
+      await db.delete(routeStopHistory);
+      await db.delete(planMetrics);
+      await db.delete(outputHistory);
+      await db.delete(reassignmentsHistory);
+      await db.delete(routeStops);
+      await db.delete(alerts);
+      await db.delete(alertRules);
       await db.delete(optimizationJobs);
       await db.delete(optimizationConfigurations);
       await db.delete(auditLogs);
@@ -52,10 +73,19 @@ async function seed() {
       await db.delete(vehicleStatusHistory);
       await db.delete(vehicleFleetHistory);
       await db.delete(vehicleSkills);
+      await db.delete(zoneVehicles);
       await db.delete(vehicleFleets);
       await db.delete(vehicles);
+      await db.delete(zones);
       await db.delete(fleets);
       await db.delete(timeWindowPresets);
+      await db.delete(csvColumnMappingTemplates);
+      // Delete roles and permissions (must come before users and companies)
+      await db.delete(userRoles);
+      await db.delete(rolePermissions);
+      await db.delete(roles);
+      await db.delete(permissions);
+      await db.delete(optimizationPresets);
       await db.delete(users);
       await db.delete(companies);
       console.log("✅ Database reset complete");
