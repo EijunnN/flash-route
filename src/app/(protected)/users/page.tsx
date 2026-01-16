@@ -361,6 +361,12 @@ function UsersPageContent() {
   }
 
   if (showForm || editingUser) {
+    const handleCancel = () => {
+      setShowForm(false);
+      setEditingUser(null);
+      setEditingUserRoleIds([]);
+    };
+
     return (
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
@@ -373,52 +379,38 @@ function UsersPageContent() {
               : "Complete el formulario para crear un nuevo usuario"}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <UserForm
-            onSubmit={editingUser ? handleUpdate : handleCreate}
-            initialData={
-              editingUser
-                ? {
-                    name: editingUser.name,
-                    email: editingUser.email,
-                    username: editingUser.username,
-                    role: editingUser.role as CreateUserInput["role"],
-                    phone: editingUser.phone,
-                    identification: editingUser.identification,
-                    birthDate: editingUser.birthDate,
-                    photo: editingUser.photo,
-                    licenseNumber: editingUser.licenseNumber,
-                    licenseExpiry: editingUser.licenseExpiry,
-                    licenseCategories: editingUser.licenseCategories,
-                    certifications: editingUser.certifications,
-                    driverStatus:
-                      editingUser.driverStatus as CreateUserInput["driverStatus"],
-                    primaryFleetId: editingUser.primaryFleetId,
-                    active: editingUser.active,
-                  }
-                : undefined
-            }
-            fleets={fleets}
-            roles={roles}
-            initialRoleIds={editingUserRoleIds}
-            submitLabel={editingUser ? "Actualizar" : "Crear"}
-            isEditing={!!editingUser}
-            companyId={effectiveCompanyId ?? undefined}
-          />
-          <div className="mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setShowForm(false);
-                setEditingUser(null);
-                setEditingUserRoleIds([]);
-              }}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
+        <UserForm
+          onSubmit={editingUser ? handleUpdate : handleCreate}
+          onCancel={handleCancel}
+          initialData={
+            editingUser
+              ? {
+                  name: editingUser.name,
+                  email: editingUser.email,
+                  username: editingUser.username,
+                  role: editingUser.role as CreateUserInput["role"],
+                  phone: editingUser.phone,
+                  identification: editingUser.identification,
+                  birthDate: editingUser.birthDate,
+                  photo: editingUser.photo,
+                  licenseNumber: editingUser.licenseNumber,
+                  licenseExpiry: editingUser.licenseExpiry,
+                  licenseCategories: editingUser.licenseCategories,
+                  certifications: editingUser.certifications,
+                  driverStatus:
+                    editingUser.driverStatus as CreateUserInput["driverStatus"],
+                  primaryFleetId: editingUser.primaryFleetId,
+                  active: editingUser.active,
+                }
+              : undefined
+          }
+          fleets={fleets}
+          roles={roles}
+          initialRoleIds={editingUserRoleIds}
+          submitLabel={editingUser ? "Actualizar" : "Crear"}
+          isEditing={!!editingUser}
+          companyId={effectiveCompanyId ?? undefined}
+        />
       </div>
     );
   }

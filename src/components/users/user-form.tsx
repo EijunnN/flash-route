@@ -42,6 +42,7 @@ interface CustomRole {
 
 interface UserFormProps {
   onSubmit: (data: CreateUserInput, selectedRoleIds: string[]) => Promise<void>;
+  onCancel?: () => void;
   initialData?: Partial<CreateUserInput>;
   fleets: Array<{ id: string; name: string }>;
   roles?: CustomRole[];
@@ -85,6 +86,7 @@ const LICENSE_CATEGORIES = [
 
 export function UserForm({
   onSubmit,
+  onCancel,
   initialData,
   fleets,
   roles = [],
@@ -313,12 +315,17 @@ export function UserForm({
       )}
 
       {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* LEFT COLUMN - User Information */}
-        <div className="xl:col-span-3 space-y-6">
+        <div className="xl:col-span-3">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle>Información del Usuario</CardTitle>
+              <CardDescription>Datos básicos y credenciales de acceso</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
           {/* Basic User Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Información del Usuario</h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Name */}
           <div className="space-y-2">
@@ -724,23 +731,34 @@ export function UserForm({
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="flex justify-end gap-4 pt-4">
+          {/* Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                Cancelar
+              </Button>
+            )}
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : submitLabel}
             </Button>
           </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* RIGHT COLUMN - Roles and Permissions */}
         {roles.length > 0 && (
           <div className="xl:col-span-2">
-            <div className="sticky top-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                <h3 className="text-lg font-medium">Roles y Permisos</h3>
-              </div>
-
+            <div className="sticky top-4">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Roles y Permisos
+                  </CardTitle>
+                  <CardDescription>Asigne roles adicionales al usuario</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
               {/* Roles List */}
               <div className="space-y-2">
                 {isLoadingAllPermissions && (
@@ -800,78 +818,73 @@ export function UserForm({
                 })}
               </div>
 
-              {/* Permissions Panel */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {expandedRoleId
-                      ? `Permisos: ${roles.find(r => r.id === expandedRoleId)?.name}`
-                      : "Permisos"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!expandedRoleId ? (
-                    <div className="flex flex-col items-center justify-center py-6 text-center">
-                      <Shield className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                      <p className="text-xs text-muted-foreground">
-                        Seleccione un rol para ver sus permisos
-                      </p>
-                    </div>
-                  ) : loadingPermissions === expandedRoleId ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                    </div>
-                  ) : rolePermissions[expandedRoleId] && Object.keys(rolePermissions[expandedRoleId]).length > 0 ? (
-                    <div className="space-y-3 max-h-[350px] overflow-y-auto">
-                      {Object.entries(rolePermissions[expandedRoleId]).map(([category, perms]) => {
-                        const enabledCount = perms.filter(p => p.enabled).length;
-                        return (
-                          <div key={category}>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                                {category}
-                              </span>
-                              <Badge variant="outline" className="text-xs h-5">
-                                {enabledCount}/{perms.length}
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-1 gap-1">
-                              {perms.map((perm) => (
-                                <div
-                                  key={perm.id}
-                                  className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${
-                                    perm.enabled
-                                      ? "bg-green-50 dark:bg-green-900/20"
-                                      : "bg-muted/30"
-                                  }`}
-                                >
-                                  <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                    perm.enabled
-                                      ? "bg-green-500"
-                                      : "bg-muted-foreground/30"
-                                  }`} />
-                                  <span className={`truncate ${perm.enabled ? "" : "text-muted-foreground"}`}>
-                                    {perm.name}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      Sin permisos configurados
-                    </p>
-                  )}
+              {selectedRoleIds.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {selectedRoleIds.length} rol{selectedRoleIds.length > 1 ? "es" : ""} asignado{selectedRoleIds.length > 1 ? "s" : ""}
+                </p>
+              )}
                 </CardContent>
               </Card>
 
-              {selectedRoleIds.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {selectedRoleIds.length} rol{selectedRoleIds.length > 1 ? "es" : ""} asignado{selectedRoleIds.length > 1 ? "s" : ""}
-                </p>
+              {/* Permissions Panel */}
+              {expandedRoleId && (
+                <Card className="mt-4">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Permisos: {roles.find(r => r.id === expandedRoleId)?.name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingPermissions === expandedRoleId ? (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                      </div>
+                    ) : rolePermissions[expandedRoleId] && Object.keys(rolePermissions[expandedRoleId]).length > 0 ? (
+                      <div className="space-y-3 max-h-[350px] overflow-y-auto">
+                        {Object.entries(rolePermissions[expandedRoleId]).map(([category, perms]) => {
+                          const enabledCount = perms.filter(p => p.enabled).length;
+                          return (
+                            <div key={category}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                  {category}
+                                </span>
+                                <Badge variant="outline" className="text-xs h-5">
+                                  {enabledCount}/{perms.length}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 gap-1">
+                                {perms.map((perm) => (
+                                  <div
+                                    key={perm.id}
+                                    className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${
+                                      perm.enabled
+                                        ? "bg-green-50 dark:bg-green-900/20"
+                                        : "bg-muted/30"
+                                    }`}
+                                  >
+                                    <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                                      perm.enabled
+                                        ? "bg-green-500"
+                                        : "bg-muted-foreground/30"
+                                    }`} />
+                                    <span className={`truncate ${perm.enabled ? "" : "text-muted-foreground"}`}>
+                                      {perm.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        Sin permisos configurados
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
             </div>
           </div>
