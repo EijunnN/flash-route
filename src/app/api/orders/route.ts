@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       if (searchCondition) conditions.push(searchCondition);
     }
 
-    const whereClause = withTenantFilter(orders, conditions);
+    const whereClause = withTenantFilter(orders, conditions, tenantCtx.companyId);
 
     // Join with time window presets to get strictness info
     const data = await db
