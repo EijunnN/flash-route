@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { VehicleSkillForm } from "@/components/vehicle-skills/vehicle-skill-form";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
@@ -27,7 +29,8 @@ const CATEGORY_BADGE_COLORS: Record<string, string> = {
     "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
-export default function VehicleSkillsPage() {
+function VehicleSkillsPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +40,7 @@ export default function VehicleSkillsPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchSkills = useCallback(async () => {
+    if (!companyId) return;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -46,7 +50,7 @@ export default function VehicleSkillsPage() {
 
       const response = await fetch(`/api/vehicle-skills?${params.toString()}`, {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -56,18 +60,19 @@ export default function VehicleSkillsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterCategory, filterActive, searchTerm]);
+  }, [companyId, filterCategory, filterActive, searchTerm]);
 
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
 
   const handleCreate = async (data: VehicleSkillInput) => {
+    if (!companyId) return;
     const response = await fetch("/api/vehicle-skills", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -82,13 +87,13 @@ export default function VehicleSkillsPage() {
   };
 
   const handleUpdate = async (data: VehicleSkillInput) => {
-    if (!editingSkill) return;
+    if (!editingSkill || !companyId) return;
 
     const response = await fetch(`/api/vehicle-skills/${editingSkill.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -103,12 +108,13 @@ export default function VehicleSkillsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!companyId) return;
     if (!confirm("¿Está seguro de eliminar esta habilidad?")) return;
 
     const response = await fetch(`/api/vehicle-skills/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -122,11 +128,12 @@ export default function VehicleSkillsPage() {
   };
 
   const handleToggleActive = async (skill: VehicleSkill) => {
+    if (!companyId) return;
     const response = await fetch(`/api/vehicle-skills/${skill.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify({ active: !skill.active }),
     });
@@ -139,6 +146,14 @@ export default function VehicleSkillsPage() {
 
     await fetchSkills();
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingSkill) {
     return (
@@ -369,5 +384,13 @@ export default function VehicleSkillsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VehicleSkillsPage() {
+  return (
+    <ProtectedPage requiredPermission="vehicle_skills:VIEW">
+      <VehicleSkillsPageContent />
+    </ProtectedPage>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import {
   TimeWindowPresetForm,
   type TimeWindowPresetFormData,
@@ -10,8 +12,6 @@ import type {
   TIME_WINDOW_STRICTNESS,
   TIME_WINDOW_TYPES,
 } from "@/lib/validations/time-window-preset";
-
-const DEMO_COMPANY_ID = "demo-company-id";
 
 interface TimeWindowPreset {
   id: string;
@@ -27,7 +27,8 @@ interface TimeWindowPreset {
   updatedAt: string;
 }
 
-export default function TimeWindowPresetsPage() {
+function TimeWindowPresetsPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -36,10 +37,11 @@ export default function TimeWindowPresetsPage() {
   );
 
   const fetchPresets = useCallback(async () => {
+    if (!companyId) return;
     setIsLoading(true);
     try {
       const response = await fetch("/api/time-window-presets", {
-        headers: { "x-company-id": DEMO_COMPANY_ID },
+        headers: { "x-company-id": companyId ?? "" },
       });
       const result = await response.json();
       setPresets(result.data || []);
@@ -48,18 +50,19 @@ export default function TimeWindowPresetsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchPresets();
   }, [fetchPresets]);
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
+    if (!companyId) return;
     const response = await fetch("/api/time-window-presets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": DEMO_COMPANY_ID,
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -75,6 +78,7 @@ export default function TimeWindowPresetsPage() {
 
   const handleUpdate = async (data: TimeWindowPresetFormData) => {
     if (!editingPreset) return;
+    if (!companyId) return;
 
     const response = await fetch(
       `/api/time-window-presets/${editingPreset.id}`,
@@ -82,7 +86,7 @@ export default function TimeWindowPresetsPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": DEMO_COMPANY_ID,
+          "x-company-id": companyId ?? "",
         },
         body: JSON.stringify({ ...data, id: editingPreset.id }),
       },
@@ -105,10 +109,11 @@ export default function TimeWindowPresetsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this preset?")) return;
+    if (!companyId) return;
 
     const response = await fetch(`/api/time-window-presets/${id}`, {
       method: "DELETE",
-      headers: { "x-company-id": DEMO_COMPANY_ID },
+      headers: { "x-company-id": companyId ?? "" },
     });
 
     if (!response.ok) {
@@ -131,6 +136,14 @@ export default function TimeWindowPresetsPage() {
     }
     return `${preset.startTime} - ${preset.endTime}`;
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -236,5 +249,13 @@ export default function TimeWindowPresetsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function TimeWindowPresetsPage() {
+  return (
+    <ProtectedPage requiredPermission="time_window_presets:VIEW">
+      <TimeWindowPresetsPageContent />
+    </ProtectedPage>
   );
 }

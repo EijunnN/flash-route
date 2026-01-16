@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { FleetForm } from "@/components/fleets/fleet-form";
 import { Button } from "@/components/ui/button";
 import type { FleetInput } from "@/lib/validations/fleet";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Fleet {
   id: string;
@@ -35,7 +37,8 @@ interface UserWithFleets {
   fleets: Array<{ id: string; name: string }>;
 }
 
-export default function FleetsPage() {
+function FleetsPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [vehicles, setVehicles] = useState<VehicleWithFleets[]>([]);
   const [users, setUsers] = useState<UserWithFleets[]>([]);
@@ -44,10 +47,11 @@ export default function FleetsPage() {
   const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
 
   const fetchFleets = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -57,13 +61,14 @@ export default function FleetsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchVehiclesAndUsers = useCallback(async () => {
+    if (!companyId) return;
     try {
       // Fetch vehicles with their fleet assignments
       const vehiclesRes = await fetch("/api/vehicles", {
-        headers: { "x-company-id": "demo-company-id" },
+        headers: { "x-company-id": companyId ?? "" },
       });
       const vehiclesData = await vehiclesRes.json();
       const vehiclesList = vehiclesData.data || [];
@@ -86,7 +91,7 @@ export default function FleetsPage() {
 
       // Fetch users
       const usersRes = await fetch("/api/users", {
-        headers: { "x-company-id": "demo-company-id" },
+        headers: { "x-company-id": companyId ?? "" },
       });
       const usersData = await usersRes.json();
       const usersList = usersData.data || [];
@@ -116,19 +121,19 @@ export default function FleetsPage() {
     } catch (error) {
       console.error("Error fetching vehicles/users:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchFleets();
     fetchVehiclesAndUsers();
-  }, [fetchFleets, fetchVehiclesAndUsers]);
+  }, [fetchFleets, fetchVehiclesAndUsers, companyId]);
 
   const handleCreate = async (data: FleetInput) => {
     const response = await fetch("/api/fleets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -149,7 +154,7 @@ export default function FleetsPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -169,7 +174,7 @@ export default function FleetsPage() {
     const response = await fetch(`/api/fleets/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -181,6 +186,14 @@ export default function FleetsPage() {
 
     await fetchFleets();
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingFleet) {
     return (
@@ -322,5 +335,13 @@ export default function FleetsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FleetsPage() {
+  return (
+    <ProtectedPage requiredPermission="fleets:VIEW">
+      <FleetsPageContent />
+    </ProtectedPage>
   );
 }

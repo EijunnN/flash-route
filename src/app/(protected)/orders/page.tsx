@@ -8,7 +8,9 @@ import {
   Map as MapIcon,
   Trash2,
 } from "lucide-react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { OrderForm, type OrderFormData } from "@/components/orders/order-form";
 import { OrderMap } from "@/components/orders/order-map";
 import {
@@ -28,7 +30,6 @@ import type {
   TIME_WINDOW_STRICTNESS,
 } from "@/lib/validations/order";
 
-const DEMO_COMPANY_ID = "demo-company-id";
 const PAGE_SIZE = 20;
 
 interface Order {
@@ -57,7 +58,8 @@ interface Order {
   isStrictnessOverridden: boolean;
 }
 
-export default function OrdersPage() {
+function OrdersPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -72,6 +74,7 @@ export default function OrdersPage() {
   const [totalOrders, setTotalOrders] = useState(0);
 
   const fetchOrders = useCallback(async () => {
+    if (!companyId) return;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -81,7 +84,7 @@ export default function OrdersPage() {
       params.append("offset", String((currentPage - 1) * PAGE_SIZE));
 
       const response = await fetch(`/api/orders?${params}`, {
-        headers: { "x-company-id": DEMO_COMPANY_ID },
+        headers: { "x-company-id": companyId ?? "" },
       });
       const result = await response.json();
       setOrders(result.data || []);
@@ -91,7 +94,7 @@ export default function OrdersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterStatus, searchQuery, currentPage]);
+  }, [filterStatus, searchQuery, currentPage, companyId]);
 
   useEffect(() => {
     fetchOrders();
@@ -103,11 +106,12 @@ export default function OrdersPage() {
   }, [filterStatus, searchQuery]);
 
   const handleCreate = async (data: OrderFormData) => {
+    if (!companyId) return;
     const response = await fetch("/api/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": DEMO_COMPANY_ID,
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -122,13 +126,13 @@ export default function OrdersPage() {
   };
 
   const handleUpdate = async (data: OrderFormData) => {
-    if (!editingOrder) return;
+    if (!editingOrder || !companyId) return;
 
     const response = await fetch(`/api/orders/${editingOrder.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": DEMO_COMPANY_ID,
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -149,11 +153,12 @@ export default function OrdersPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!companyId) return;
     if (!confirm("¿Estás seguro de que deseas eliminar este pedido?")) return;
 
     const response = await fetch(`/api/orders/${id}`, {
       method: "DELETE",
-      headers: { "x-company-id": DEMO_COMPANY_ID },
+      headers: { "x-company-id": companyId ?? "" },
     });
 
     if (!response.ok) {
@@ -166,11 +171,12 @@ export default function OrdersPage() {
   };
 
   const handleDeleteAll = async () => {
+    if (!companyId) return;
     setIsDeleting(true);
     try {
       const response = await fetch("/api/orders/batch/delete?hard=true", {
         method: "DELETE",
-        headers: { "x-company-id": DEMO_COMPANY_ID },
+        headers: { "x-company-id": companyId ?? "" },
       });
 
       const result = await response.json();
@@ -216,6 +222,14 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter((order) => order.active);
   const totalPages = Math.ceil(totalOrders / PAGE_SIZE);
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -330,7 +344,7 @@ export default function OrdersPage() {
         </div>
       ) : viewMode === "map" ? (
         <OrderMap
-          companyId={DEMO_COMPANY_ID}
+          companyId={companyId ?? ""}
           statusFilter={filterStatus || "ALL"}
           searchQuery={searchQuery}
           onOrderClick={(orderId) => {
@@ -493,5 +507,13 @@ export default function OrdersPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <ProtectedPage requiredPermission="orders:VIEW">
+      <OrdersPageContent />
+    </ProtectedPage>
   );
 }

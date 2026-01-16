@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { DriverForm } from "@/components/drivers/driver-form";
 import { DriverStatusModal } from "@/components/drivers/driver-status-modal";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 import type { DriverInput } from "@/lib/validations/driver";
 import { isExpired, isExpiringSoon } from "@/lib/validations/driver";
 import type { DriverStatusTransitionInput } from "@/lib/validations/driver-status";
@@ -55,7 +57,8 @@ const getLicenseStatusLabel = (expiryDate: string) => {
   return new Date(expiryDate).toLocaleDateString();
 };
 
-export default function DriversPage() {
+function DriversPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,10 +69,11 @@ export default function DriversPage() {
   );
 
   const fetchDrivers = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/drivers", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -79,13 +83,14 @@ export default function DriversPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchFleets = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -93,19 +98,19 @@ export default function DriversPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchDrivers();
     fetchFleets();
-  }, [fetchDrivers, fetchFleets]);
+  }, [fetchDrivers, fetchFleets, companyId]);
 
   const handleCreate = async (data: DriverInput) => {
     const response = await fetch("/api/drivers", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -126,7 +131,7 @@ export default function DriversPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -146,7 +151,7 @@ export default function DriversPage() {
     const response = await fetch(`/api/drivers/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -167,7 +172,7 @@ export default function DriversPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -184,6 +189,14 @@ export default function DriversPage() {
     const fleet = fleets.find((f) => f.id === fleetId);
     return fleet?.name || "Desconocida";
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingDriver) {
     return (
@@ -394,5 +407,13 @@ export default function DriversPage() {
         />
       )}
     </>
+  );
+}
+
+export default function DriversPage() {
+  return (
+    <ProtectedPage requiredPermission="drivers:VIEW">
+      <DriversPageContent />
+    </ProtectedPage>
   );
 }

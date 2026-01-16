@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { Button } from "@/components/ui/button";
 import { UserForm } from "@/components/users/user-form";
+import { useAuth } from "@/hooks/use-auth";
 import type { CreateUserInput } from "@/lib/validations/user";
 import {
   DRIVER_STATUS_LABELS,
@@ -37,12 +39,28 @@ interface Fleet {
   name: string;
 }
 
+interface CustomRole {
+  id: string;
+  name: string;
+  description?: string | null;
+  code?: string | null;
+  isSystem: boolean;
+}
+
+interface Company {
+  id: string;
+  legalName: string;
+  commercialName: string;
+  active: boolean;
+}
+
 const ROLE_TABS = [
   { key: "all", label: "Todos" },
-  { key: "ADMIN", label: "Administradores" },
-  { key: "CONDUCTOR", label: "Conductores" },
-  { key: "AGENTE_SEGUIMIENTO", label: "Agentes" },
+  { key: "ADMIN_SISTEMA", label: "Admin Sistema" },
+  { key: "ADMIN_FLOTA", label: "Admin Flota" },
   { key: "PLANIFICADOR", label: "Planificadores" },
+  { key: "MONITOR", label: "Monitores" },
+  { key: "CONDUCTOR", label: "Conductores" },
 ];
 
 const STATUS_COLOR_CLASSES: Record<string, string> = {
@@ -73,21 +91,33 @@ const getLicenseStatusLabel = (expiryDate: string | null | undefined) => {
   return new Date(expiryDate).toLocaleDateString();
 };
 
-export default function UsersPage() {
+function UsersPageContent() {
+  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
+  const [roles, setRoles] = useState<CustomRole[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+
+  // Check if user is system admin (can manage users across companies)
+  const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
+
+  // Use selected company for system admins, otherwise use auth company
+  const effectiveCompanyId = isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
 
   const fetchUsers = useCallback(async () => {
+    if (!effectiveCompanyId) return;
     try {
       const url =
         activeTab === "all" ? "/api/users" : `/api/users?role=${activeTab}`;
       const response = await fetch(url, {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": effectiveCompanyId,
         },
       });
       const data = await response.json();
@@ -97,13 +127,14 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, effectiveCompanyId]);
 
   const fetchFleets = useCallback(async () => {
+    if (!effectiveCompanyId) return;
     try {
       const response = await fetch("/api/fleets", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": effectiveCompanyId,
         },
       });
       const data = await response.json();
@@ -111,23 +142,115 @@ export default function UsersPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  }, []);
+  }, [effectiveCompanyId]);
 
+  const fetchRoles = useCallback(async () => {
+    if (!effectiveCompanyId) return;
+    try {
+      const response = await fetch("/api/roles", {
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
+      const data = await response.json();
+      setRoles(data.data || []);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+    }
+  }, [effectiveCompanyId]);
+
+  // Fetch companies (only for system admins)
+  const fetchCompanies = useCallback(async () => {
+    if (!authCompanyId) return;
+    try {
+      const response = await fetch("/api/companies?active=true", {
+        headers: {
+          "x-company-id": authCompanyId,
+        },
+      });
+      const data = await response.json();
+      setCompanies(data.data || []);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  }, [authCompanyId]);
+
+  const fetchUserRoles = useCallback(async (userId: string) => {
+    if (!effectiveCompanyId) return [];
+    try {
+      const response = await fetch(`/api/users/${userId}/roles`, {
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
+      const data = await response.json();
+      return (data.data || []).map((ur: { roleId: string }) => ur.roleId);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      return [];
+    }
+  }, [effectiveCompanyId]);
+
+  // Fetch companies for system admins
   useEffect(() => {
-    fetchFleets();
-  }, [fetchFleets]);
+    if (isSystemAdmin && authCompanyId) {
+      fetchCompanies();
+    }
+  }, [isSystemAdmin, authCompanyId, fetchCompanies]);
 
+  // Fetch fleets and roles when company changes
   useEffect(() => {
-    setIsLoading(true);
-    fetchUsers();
-  }, [fetchUsers]);
+    if (effectiveCompanyId) {
+      fetchFleets();
+      fetchRoles();
+    }
+  }, [effectiveCompanyId, fetchFleets, fetchRoles]);
 
-  const handleCreate = async (data: CreateUserInput) => {
+  // Fetch users when company or tab changes
+  useEffect(() => {
+    if (effectiveCompanyId) {
+      setIsLoading(true);
+      fetchUsers();
+    }
+  }, [effectiveCompanyId, fetchUsers]);
+
+  const assignRolesToUser = async (userId: string, roleIds: string[], currentRoleIds: string[] = []) => {
+    if (!effectiveCompanyId) return;
+    // Roles to add
+    const rolesToAdd = roleIds.filter(id => !currentRoleIds.includes(id));
+    // Roles to remove
+    const rolesToRemove = currentRoleIds.filter(id => !roleIds.includes(id));
+
+    // Add new roles
+    for (const roleId of rolesToAdd) {
+      await fetch(`/api/users/${userId}/roles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
+        body: JSON.stringify({ roleId, isPrimary: rolesToAdd.indexOf(roleId) === 0 }),
+      });
+    }
+
+    // Remove roles
+    for (const roleId of rolesToRemove) {
+      await fetch(`/api/users/${userId}/roles?roleId=${roleId}`, {
+        method: "DELETE",
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
+    }
+  };
+
+  const handleCreate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+    if (!effectiveCompanyId) return;
     const response = await fetch("/api/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": effectiveCompanyId,
       },
       body: JSON.stringify(data),
     });
@@ -137,12 +260,20 @@ export default function UsersPage() {
       throw error;
     }
 
+    const result = await response.json();
+    const userId = result.data?.id;
+
+    // Assign roles if any selected
+    if (userId && selectedRoleIds.length > 0) {
+      await assignRolesToUser(userId, selectedRoleIds);
+    }
+
     await fetchUsers();
     setShowForm(false);
   };
 
-  const handleUpdate = async (data: CreateUserInput) => {
-    if (!editingUser) return;
+  const handleUpdate = async (data: CreateUserInput, selectedRoleIds: string[]) => {
+    if (!editingUser || !effectiveCompanyId) return;
 
     // Remove password from update if empty
     const updateData = { ...data };
@@ -154,7 +285,7 @@ export default function UsersPage() {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": effectiveCompanyId,
       },
       body: JSON.stringify(updateData),
     });
@@ -164,17 +295,22 @@ export default function UsersPage() {
       throw error;
     }
 
+    // Update roles
+    await assignRolesToUser(editingUser.id, selectedRoleIds, editingUserRoleIds);
+
     await fetchUsers();
     setEditingUser(null);
+    setEditingUserRoleIds([]);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Está seguro de desactivar este usuario?")) return;
+    if (!effectiveCompanyId) return;
 
     const response = await fetch(`/api/users/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": effectiveCompanyId,
       },
     });
 
@@ -193,10 +329,25 @@ export default function UsersPage() {
     return fleet?.name || "Desconocida";
   };
 
+  const handleEditUser = async (user: User) => {
+    const userRoleIds = await fetchUserRoles(user.id);
+    setEditingUserRoleIds(userRoleIds);
+    setEditingUser(user);
+  };
+
   const filteredUsers = users.filter((user) => {
     if (activeTab === "all") return true;
     return user.role === activeTab;
   });
+
+  // Show loading state while auth is loading
+  if (isAuthLoading || !authCompanyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingUser) {
     return (
@@ -237,6 +388,8 @@ export default function UsersPage() {
                 : undefined
             }
             fleets={fleets}
+            roles={roles}
+            initialRoleIds={editingUserRoleIds}
             submitLabel={editingUser ? "Actualizar" : "Crear"}
             isEditing={!!editingUser}
           />
@@ -247,6 +400,7 @@ export default function UsersPage() {
               onClick={() => {
                 setShowForm(false);
                 setEditingUser(null);
+                setEditingUserRoleIds([]);
               }}
             >
               Cancelar
@@ -270,6 +424,32 @@ export default function UsersPage() {
         </div>
         <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
       </div>
+
+      {/* Company selector for system admins */}
+      {isSystemAdmin && companies.length > 0 && (
+        <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
+          <label htmlFor="company-select" className="text-sm font-medium text-foreground">
+            Empresa:
+          </label>
+          <select
+            id="company-select"
+            value={selectedCompanyId || authCompanyId || ""}
+            onChange={(e) => setSelectedCompanyId(e.target.value || null)}
+            className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.commercialName} ({company.legalName})
+              </option>
+            ))}
+          </select>
+          {selectedCompanyId && selectedCompanyId !== authCompanyId && (
+            <span className="text-xs text-muted-foreground">
+              Viendo usuarios de otra empresa
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Role Tabs */}
       <div className="flex gap-2 border-b border-border pb-2">
@@ -423,7 +603,7 @@ export default function UsersPage() {
                     <td className="whitespace-nowrap px-4 py-4 text-right text-sm">
                       <button
                         type="button"
-                        onClick={() => setEditingUser(user)}
+                        onClick={() => handleEditUser(user)}
                         className="text-muted-foreground hover:text-foreground mr-4 transition-colors"
                       >
                         Editar
@@ -446,5 +626,13 @@ export default function UsersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <ProtectedPage requiredPermission="users:VIEW">
+      <UsersPageContent />
+    </ProtectedPage>
   );
 }

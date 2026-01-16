@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { DriverSkillForm } from "@/components/driver-skills/driver-skill-form";
 import { Button } from "@/components/ui/button";
 import type { DriverSkillInput } from "@/lib/validations/driver-skill";
+import { useAuth } from "@/hooks/use-auth";
 
 interface DriverSkill {
   id: string;
@@ -83,7 +85,8 @@ const getCategoryColor = (category: string) => {
   }
 };
 
-export default function DriverSkillsPage() {
+function DriverSkillsPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [driverSkills, setDriverSkills] = useState<DriverSkill[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
@@ -97,6 +100,7 @@ export default function DriverSkillsPage() {
   const [filterExpiry, setFilterExpiry] = useState<string>("");
 
   const fetchDriverSkills = useCallback(async () => {
+    if (!companyId) return;
     try {
       const params = new URLSearchParams();
       if (filterDriver) params.append("driverId", filterDriver);
@@ -105,7 +109,7 @@ export default function DriverSkillsPage() {
 
       const response = await fetch(`/api/driver-skills?${params.toString()}`, {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -115,13 +119,14 @@ export default function DriverSkillsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterDriver, filterStatus, filterExpiry]);
+  }, [companyId, filterDriver, filterStatus, filterExpiry]);
 
   const fetchDrivers = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/drivers?active=true", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -129,13 +134,14 @@ export default function DriverSkillsPage() {
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchSkills = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -143,7 +149,7 @@ export default function DriverSkillsPage() {
     } catch (error) {
       console.error("Error fetching vehicle skills:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchDriverSkills();
@@ -156,7 +162,7 @@ export default function DriverSkillsPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -179,7 +185,7 @@ export default function DriverSkillsPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
         body: JSON.stringify(data),
       },
@@ -201,7 +207,7 @@ export default function DriverSkillsPage() {
     const response = await fetch(`/api/driver-skills/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -219,7 +225,7 @@ export default function DriverSkillsPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify({ active: !currentActive }),
     });
@@ -243,6 +249,14 @@ export default function DriverSkillsPage() {
     const driver = drivers.find((d) => d.id === driverId);
     return driver?.name || "Desconocido";
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingDriverSkill) {
     return (
@@ -535,5 +549,13 @@ export default function DriverSkillsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DriverSkillsPage() {
+  return (
+    <ProtectedPage requiredPermission="driver_skills:VIEW">
+      <DriverSkillsPageContent />
+    </ProtectedPage>
   );
 }

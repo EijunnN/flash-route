@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/use-auth";
 import type {
   ORDER_STATUS,
   TIME_WINDOW_STRICTNESS,
@@ -86,14 +87,13 @@ const defaultData: OrderFormData = {
   active: true,
 };
 
-const DEMO_COMPANY_ID = "demo-company-id";
-
 export function OrderForm({
   onSubmit,
   initialData,
   submitLabel = "Create Order",
   onCancel,
 }: FormProps) {
+  const { companyId } = useAuth();
   const [formData, setFormData] = useState<OrderFormData>(defaultData);
   const [timeWindowPresets, setTimeWindowPresets] = useState<
     TimeWindowPreset[]
@@ -108,9 +108,10 @@ export function OrderForm({
   useEffect(() => {
     // Fetch time window presets
     const fetchPresets = async () => {
+      if (!companyId) return;
       try {
         const response = await fetch("/api/time-window-presets", {
-          headers: { "x-company-id": DEMO_COMPANY_ID },
+          headers: { "x-company-id": companyId ?? "" },
         });
         const result = await response.json();
         setTimeWindowPresets(result.data || []);
@@ -121,7 +122,7 @@ export function OrderForm({
       }
     };
     fetchPresets();
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     if (initialData) {

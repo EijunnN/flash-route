@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { UserSkillForm } from "@/components/user-skills/user-skill-form";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
@@ -84,7 +86,8 @@ const getCategoryColor = (category: string) => {
   }
 };
 
-export default function UserSkillsPage() {
+function UserSkillsPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [skills, setSkills] = useState<VehicleSkill[]>([]);
@@ -99,6 +102,7 @@ export default function UserSkillsPage() {
   const [filterExpiry, setFilterExpiry] = useState<string>("");
 
   const fetchUserSkills = useCallback(async () => {
+    if (!companyId) return;
     try {
       const params = new URLSearchParams();
       if (filterUser) params.append("userId", filterUser);
@@ -107,7 +111,7 @@ export default function UserSkillsPage() {
 
       const response = await fetch(`/api/user-skills?${params.toString()}`, {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -117,14 +121,15 @@ export default function UserSkillsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterUser, filterStatus, filterExpiry]);
+  }, [companyId, filterUser, filterStatus, filterExpiry]);
 
   const fetchUsers = useCallback(async () => {
+    if (!companyId) return;
     try {
       // Fetch users with role CONDUCTOR
       const response = await fetch("/api/users?active=true", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -136,13 +141,14 @@ export default function UserSkillsPage() {
     } catch (error) {
       console.error("Error fetching users:", error);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchSkills = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/vehicle-skills?active=true", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -150,7 +156,7 @@ export default function UserSkillsPage() {
     } catch (error) {
       console.error("Error fetching vehicle skills:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchUserSkills();
@@ -163,7 +169,7 @@ export default function UserSkillsPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -184,7 +190,7 @@ export default function UserSkillsPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -205,7 +211,7 @@ export default function UserSkillsPage() {
     const response = await fetch(`/api/user-skills/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -223,7 +229,7 @@ export default function UserSkillsPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify({ active: !currentActive }),
     });
@@ -242,6 +248,14 @@ export default function UserSkillsPage() {
     if (!filterCategory) return userSkills;
     return userSkills.filter((us) => us.skill.category === filterCategory);
   }, [userSkills, filterCategory]);
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingUserSkill) {
     return (
@@ -531,5 +545,13 @@ export default function UserSkillsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function UserSkillsPage() {
+  return (
+    <ProtectedPage requiredPermission="user_skills:VIEW">
+      <UserSkillsPageContent />
+    </ProtectedPage>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
+import { useAuth } from "@/hooks/use-auth";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import type { VehicleStatusTransitionInput } from "@/lib/validations/vehicle-status";
 
@@ -62,7 +64,8 @@ const VEHICLE_STATUS_LABELS: Record<string, string> = {
   INACTIVE: "Inactivo",
 };
 
-export default function VehiclesPage() {
+function VehiclesPageContent() {
+  const { companyId, isLoading: isAuthLoading } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [fleets, setFleets] = useState<Fleet[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -74,10 +77,11 @@ export default function VehiclesPage() {
   );
 
   const fetchVehicles = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/vehicles", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -94,13 +98,14 @@ export default function VehiclesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchFleets = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/fleets", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -108,13 +113,14 @@ export default function VehiclesPage() {
     } catch (error) {
       console.error("Error fetching fleets:", error);
     }
-  }, []);
+  }, [companyId]);
 
   const fetchDrivers = useCallback(async () => {
+    if (!companyId) return;
     try {
       const response = await fetch("/api/users?role=CONDUCTOR", {
         headers: {
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
       });
       const data = await response.json();
@@ -127,20 +133,20 @@ export default function VehiclesPage() {
     } catch (error) {
       console.error("Error fetching drivers:", error);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchVehicles();
     fetchFleets();
     fetchDrivers();
-  }, [fetchDrivers, fetchFleets, fetchVehicles]);
+  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles]);
 
   const handleCreate = async (data: VehicleInput) => {
     const response = await fetch("/api/vehicles", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -161,7 +167,7 @@ export default function VehiclesPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
       body: JSON.stringify(data),
     });
@@ -181,7 +187,7 @@ export default function VehiclesPage() {
     const response = await fetch(`/api/vehicles/${id}`, {
       method: "DELETE",
       headers: {
-        "x-company-id": "demo-company-id",
+        "x-company-id": companyId ?? "",
       },
     });
 
@@ -204,7 +210,7 @@ export default function VehiclesPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-company-id": "demo-company-id",
+          "x-company-id": companyId ?? "",
         },
         body: JSON.stringify(data),
       },
@@ -223,6 +229,14 @@ export default function VehiclesPage() {
     }
     return "-";
   };
+
+  if (isAuthLoading || !companyId) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm || editingVehicle) {
     return (
@@ -436,5 +450,13 @@ export default function VehiclesPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <ProtectedPage requiredPermission="vehicles:VIEW">
+      <VehiclesPageContent />
+    </ProtectedPage>
   );
 }
