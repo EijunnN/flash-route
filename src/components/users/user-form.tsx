@@ -403,53 +403,60 @@ export function UserForm({
         </div>
       </div>
 
-      {/* Custom Roles Assignment */}
+      {/* Custom Roles Assignment - Two Column Layout */}
       {roles.length > 0 && (
-        <Card className="border-t-0 rounded-t-none">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Roles y Permisos
-            </CardTitle>
-            <CardDescription>
-              Active los roles que desea asignar al usuario. Expanda cada rol para ver sus permisos.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {roles.map((role) => {
-              const isSelected = selectedRoleIds.includes(role.id);
-              const isExpanded = expandedRoleId === role.id;
-              const permissions = rolePermissions[role.id];
-              const isLoading = loadingPermissions === role.id;
-              const totalPermissions = permissions
-                ? Object.values(permissions).flat().filter(p => p.enabled).length
-                : role.permissionsCount || 0;
+        <div className="border-t pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="h-5 w-5" />
+            <h3 className="text-lg font-medium">Roles y Permisos</h3>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Active los roles que desea asignar. Seleccione un rol para ver sus permisos.
+          </p>
 
-              return (
-                <div
-                  key={role.id}
-                  className={`rounded-lg border transition-all ${
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                  }`}
-                >
-                  {/* Role Header */}
-                  <div className="flex items-center justify-between p-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Left Column - Roles List */}
+            <div className="lg:col-span-2 space-y-2">
+              {roles.map((role) => {
+                const isSelected = selectedRoleIds.includes(role.id);
+                const isExpanded = expandedRoleId === role.id;
+                const permissions = rolePermissions[role.id];
+                const totalPermissions = permissions
+                  ? Object.values(permissions).flat().filter(p => p.enabled).length
+                  : role.permissionsCount || 0;
+
+                return (
+                  <div
+                    key={role.id}
+                    className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                      isExpanded
+                        ? "border-primary ring-2 ring-primary/20"
+                        : isSelected
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    }`}
+                    onClick={() => handleExpandRole(role.id)}
+                  >
+                    <div className="flex items-center gap-3">
                       <Switch
                         checked={isSelected}
                         onCheckedChange={() => toggleRole(role.id)}
+                        onClick={(e) => e.stopPropagation()}
                         disabled={isSubmitting}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm">{role.name}</span>
                           {role.isSystem && (
                             <Badge variant="secondary" className="text-xs">
                               Sistema
                             </Badge>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {totalPermissions} permisos
+                          </span>
                           {isSelected && (
                             <Badge variant="default" className="text-xs">
                               <ShieldCheck className="h-3 w-3 mr-1" />
@@ -457,94 +464,98 @@ export function UserForm({
                             </Badge>
                           )}
                         </div>
-                        {role.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                            {role.description}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleExpandRole(role.id)}
-                      className="ml-2"
-                    >
-                      <span className="text-xs text-muted-foreground mr-1">
-                        {totalPermissions} permisos
-                      </span>
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        className={`h-4 w-4 text-muted-foreground transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
                       />
-                    </Button>
+                    </div>
                   </div>
+                );
+              })}
 
-                  {/* Permissions Panel (Collapsible) */}
-                  {isExpanded && (
-                    <div className="border-t px-4 py-3 bg-muted/30">
-                      {isLoading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                          <span className="ml-2 text-sm text-muted-foreground">Cargando permisos...</span>
-                        </div>
-                      ) : permissions && Object.keys(permissions).length > 0 ? (
-                        <div className="space-y-4">
-                          {Object.entries(permissions).map(([category, perms]) => {
-                            const enabledCount = perms.filter(p => p.enabled).length;
-                            return (
-                              <div key={category}>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                                    {category}
+              {selectedRoleIds.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                  Sin roles adicionales asignados
+                </p>
+              )}
+            </div>
+
+            {/* Right Column - Permissions Panel */}
+            <div className="lg:col-span-3">
+              <Card className="h-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">
+                    {expandedRoleId
+                      ? `Permisos: ${roles.find(r => r.id === expandedRoleId)?.name}`
+                      : "Permisos del Rol"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!expandedRoleId ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Shield className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Seleccione un rol para ver sus permisos
+                      </p>
+                    </div>
+                  ) : loadingPermissions === expandedRoleId ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                      <span className="ml-2 text-sm text-muted-foreground">Cargando...</span>
+                    </div>
+                  ) : rolePermissions[expandedRoleId] && Object.keys(rolePermissions[expandedRoleId]).length > 0 ? (
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                      {Object.entries(rolePermissions[expandedRoleId]).map(([category, perms]) => {
+                        const enabledCount = perms.filter(p => p.enabled).length;
+                        return (
+                          <div key={category}>
+                            <div className="flex items-center justify-between mb-2 sticky top-0 bg-card py-1">
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                {category}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {enabledCount}/{perms.length}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-1.5">
+                              {perms.map((perm) => (
+                                <div
+                                  key={perm.id}
+                                  className={`flex items-center gap-2 text-sm px-2 py-1.5 rounded ${
+                                    perm.enabled
+                                      ? "bg-green-50 dark:bg-green-900/20"
+                                      : "bg-muted/30"
+                                  }`}
+                                >
+                                  <div className={`h-2 w-2 rounded-full shrink-0 ${
+                                    perm.enabled
+                                      ? "bg-green-500"
+                                      : "bg-muted-foreground/30"
+                                  }`} />
+                                  <span className={`truncate ${perm.enabled ? "" : "text-muted-foreground"}`}>
+                                    {perm.name}
                                   </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {enabledCount}/{perms.length}
-                                  </Badge>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {perms.map((perm) => (
-                                    <div
-                                      key={perm.id}
-                                      className={`flex items-center gap-2 text-sm p-2 rounded ${
-                                        perm.enabled
-                                          ? "bg-green-50 dark:bg-green-900/20"
-                                          : "bg-muted/50"
-                                      }`}
-                                    >
-                                      <div className={`h-2 w-2 rounded-full ${
-                                        perm.enabled
-                                          ? "bg-green-500"
-                                          : "bg-muted-foreground/30"
-                                      }`} />
-                                      <span className={perm.enabled ? "" : "text-muted-foreground"}>
-                                        {perm.name}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center py-2">
-                          Este rol no tiene permisos configurados.
-                        </p>
-                      )}
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Este rol no tiene permisos configurados
+                      </p>
                     </div>
                   )}
-                </div>
-              );
-            })}
-
-            {selectedRoleIds.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-2">
-                No hay roles adicionales asignados. El usuario tendrá los permisos del rol base.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Driver-specific fields - Only show if role is CONDUCTOR */}
