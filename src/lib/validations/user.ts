@@ -1,11 +1,12 @@
 import { z } from "zod";
 
-// User roles
+// User roles - Unified with schema.ts
 export const USER_ROLES = [
-  "ADMIN",
-  "CONDUCTOR",
-  "AGENTE_SEGUIMIENTO",
+  "ADMIN_SISTEMA",
+  "ADMIN_FLOTA",
   "PLANIFICADOR",
+  "MONITOR",
+  "CONDUCTOR",
 ] as const;
 
 // Driver status (only for users with role CONDUCTOR)
@@ -66,7 +67,7 @@ const baseUserFields = {
       "Solo se permiten letras, números y guiones bajos",
     ),
   role: z.enum(USER_ROLES, {
-    message: "Rol debe ser ADMIN, CONDUCTOR, AGENTE_SEGUIMIENTO o PLANIFICADOR",
+    message: "Rol inválido",
   }),
   phone: z.string().max(50, "Teléfono demasiado largo").optional().nullable(),
   active: z.boolean().default(true),
@@ -248,10 +249,11 @@ export type UserInput = z.infer<typeof userSchema>;
 
 // Role display names for UI
 export const ROLE_LABELS: Record<(typeof USER_ROLES)[number], string> = {
-  ADMIN: "Administrador",
-  CONDUCTOR: "Conductor",
-  AGENTE_SEGUIMIENTO: "Agente de Seguimiento",
+  ADMIN_SISTEMA: "Administrador del Sistema",
+  ADMIN_FLOTA: "Administrador de Flota",
   PLANIFICADOR: "Planificador",
+  MONITOR: "Monitor",
+  CONDUCTOR: "Conductor",
 };
 
 // Driver status display names for UI

@@ -3,6 +3,7 @@
 import { AlertCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import {
   JobProgress,
   type OptimizationJobData,
@@ -372,14 +373,16 @@ function ResultsPageContent() {
 
 export default function PlanificacionResultsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
-      }
-    >
-      <ResultsPageContent />
-    </Suspense>
+    <ProtectedPage requiredPermission="planificacion:VIEW">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        }
+      >
+        <ResultsPageContent />
+      </Suspense>
+    </ProtectedPage>
   );
 }

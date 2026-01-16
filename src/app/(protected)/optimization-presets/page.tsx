@@ -8,6 +8,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,7 +94,7 @@ const defaultPreset: Partial<OptimizationPreset> = {
   isDefault: false,
 };
 
-export default function OptimizationPresetsPage() {
+function OptimizationPresetsPageContent() {
   const { companyId } = useAuth();
   const [presets, setPresets] = useState<OptimizationPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -615,5 +616,13 @@ export default function OptimizationPresetsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function OptimizationPresetsPage() {
+  return (
+    <ProtectedPage requiredPermission="optimization_presets:VIEW">
+      <OptimizationPresetsPageContent />
+    </ProtectedPage>
   );
 }

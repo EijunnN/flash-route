@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   verifyToken,
 } from "@/lib/auth";
+import { getUserPermissionsFromDB } from "@/lib/authorization";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**
@@ -61,6 +62,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get user permissions from database
+    const permissions = await getUserPermissionsFromDB(user.id, user.companyId);
+
     return NextResponse.json({
       id: user.id,
       companyId: user.companyId,
@@ -69,6 +73,7 @@ export async function GET(request: NextRequest) {
       role: user.role,
       active: user.active,
       createdAt: user.createdAt,
+      permissions,
     });
   } catch (error) {
     console.error("Get current user error:", error);

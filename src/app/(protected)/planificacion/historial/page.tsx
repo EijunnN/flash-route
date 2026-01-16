@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -186,7 +187,7 @@ function CompareValue({
   );
 }
 
-export default function PlanificacionHistorialPage() {
+function PlanificacionHistorialPageContent() {
   const router = useRouter();
   const { companyId, isLoading: isAuthLoading } = useAuth();
   const [jobs, setJobs] = useState<OptimizationJob[]>([]);
@@ -735,5 +736,13 @@ export default function PlanificacionHistorialPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PlanificacionHistorialPage() {
+  return (
+    <ProtectedPage requiredPermission="planificacion:VIEW">
+      <PlanificacionHistorialPageContent />
+    </ProtectedPage>
   );
 }

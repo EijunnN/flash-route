@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -147,7 +148,7 @@ const OBJECTIVES = [
   },
 ];
 
-export default function PlanificacionPage() {
+function PlanificacionPageContent() {
   const router = useRouter();
   const { companyId, isLoading: isAuthLoading } = useAuth();
 
@@ -1678,5 +1679,13 @@ export default function PlanificacionPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function PlanificacionPage() {
+  return (
+    <ProtectedPage requiredPermission="planificacion:VIEW">
+      <PlanificacionPageContent />
+    </ProtectedPage>
   );
 }

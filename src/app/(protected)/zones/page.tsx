@@ -14,6 +14,7 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +89,7 @@ const DAY_LABELS: Record<string, string> = {
   SUNDAY: "Dom",
 };
 
-export default function ZonesPage() {
+function ZonesPageContent() {
   const { companyId, isLoading: isAuthLoading } = useAuth();
   const [zones, setZones] = useState<Zone[]>([]);
   const [vehicles, setVehicles] = useState<VehicleOption[]>([]);
@@ -644,5 +645,13 @@ export default function ZonesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ZonesPage() {
+  return (
+    <ProtectedPage requiredPermission="zones:VIEW">
+      <ZonesPageContent />
+    </ProtectedPage>
   );
 }

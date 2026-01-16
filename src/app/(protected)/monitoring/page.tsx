@@ -2,6 +2,7 @@
 
 import { AlertCircle, Bell, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { AlertPanel } from "@/components/alerts/alert-panel";
 import { DriverListItem } from "@/components/monitoring/driver-list-item";
 import { DriverRouteDetail } from "@/components/monitoring/driver-route-detail";
@@ -107,7 +108,7 @@ interface DriverDetailData {
   } | null;
 }
 
-export default function MonitoringPage() {
+function MonitoringPageContent() {
   const { companyId, isLoading: isAuthLoading } = useAuth();
   const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(
     null,
@@ -394,5 +395,13 @@ export default function MonitoringPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function MonitoringPage() {
+  return (
+    <ProtectedPage requiredPermission="monitoring:VIEW">
+      <MonitoringPageContent />
+    </ProtectedPage>
   );
 }

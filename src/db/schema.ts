@@ -34,12 +34,15 @@ export const companiesRelations = relations(companies, ({ many }) => ({
   fleets: many(fleets),
 }));
 
-// User roles
+// User roles - Unified with system roles
+// These are the legacy role codes stored in users.role field
+// New system uses roles table with dynamic permissions
 export const USER_ROLES = {
-  ADMIN: "ADMIN",
-  CONDUCTOR: "CONDUCTOR",
-  AGENTE_SEGUIMIENTO: "AGENTE_SEGUIMIENTO",
+  ADMIN_SISTEMA: "ADMIN_SISTEMA",
+  ADMIN_FLOTA: "ADMIN_FLOTA",
   PLANIFICADOR: "PLANIFICADOR",
+  MONITOR: "MONITOR",
+  CONDUCTOR: "CONDUCTOR",
 } as const;
 
 export const users = pgTable("users", {
@@ -93,6 +96,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   statusHistory: many(userDriverStatusHistory),
   fleetPermissions: many(userFleetPermissions),
   assignedVehicles: many(vehicles),
+  userRoles: many(userRoles),
 }));
 
 export const auditLogs = pgTable("audit_logs", {
@@ -1457,3 +1461,142 @@ export const optimizationPresetsRelations = relations(
     }),
   }),
 );
+
+// ============================================
+// ROLES & PERMISSIONS - Configurable RBAC system
+// ============================================
+
+// Permission categories for UI grouping
+export const PERMISSION_CATEGORIES = {
+  ORDERS: "ORDERS",
+  VEHICLES: "VEHICLES",
+  DRIVERS: "DRIVERS",
+  FLEETS: "FLEETS",
+  ROUTES: "ROUTES",
+  OPTIMIZATION: "OPTIMIZATION",
+  ALERTS: "ALERTS",
+  USERS: "USERS",
+  SETTINGS: "SETTINGS",
+  REPORTS: "REPORTS",
+} as const;
+
+// Permission actions
+export const PERMISSION_ACTIONS = {
+  VIEW: "VIEW",
+  CREATE: "CREATE",
+  EDIT: "EDIT",
+  DELETE: "DELETE",
+  IMPORT: "IMPORT",
+  EXPORT: "EXPORT",
+  ASSIGN: "ASSIGN",
+  CONFIRM: "CONFIRM",
+  CANCEL: "CANCEL",
+  MANAGE: "MANAGE",
+} as const;
+
+// Roles - Custom roles per company
+export const roles = pgTable("roles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  // System roles cannot be edited or deleted by users
+  isSystem: boolean("is_system").notNull().default(false),
+  // Code for system roles (ADMIN, PLANIFICADOR, etc.)
+  code: varchar("code", { length: 50 }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const rolesRelations = relations(roles, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [roles.companyId],
+    references: [companies.id],
+  }),
+  rolePermissions: many(rolePermissions),
+  users: many(userRoles),
+}));
+
+// Permissions - System-wide permission catalog
+export const permissions = pgTable("permissions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  // Entity this permission applies to (orders, vehicles, etc.)
+  entity: varchar("entity", { length: 50 }).notNull(),
+  // Action (view, create, edit, delete, etc.)
+  action: varchar("action", { length: 50 }).notNull(),
+  // Human-readable name for UI
+  name: varchar("name", { length: 100 }).notNull(),
+  // Description for UI tooltips
+  description: text("description"),
+  // Category for grouping in UI
+  category: varchar("category", { length: 50 })
+    .notNull()
+    .$type<keyof typeof PERMISSION_CATEGORIES>(),
+  // Order for display in UI
+  displayOrder: integer("display_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const permissionsRelations = relations(permissions, ({ many }) => ({
+  rolePermissions: many(rolePermissions),
+}));
+
+// Role Permissions - The ON/OFF switches
+export const rolePermissions = pgTable("role_permissions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  roleId: uuid("role_id")
+    .notNull()
+    .references(() => roles.id, { onDelete: "cascade" }),
+  permissionId: uuid("permission_id")
+    .notNull()
+    .references(() => permissions.id, { onDelete: "cascade" }),
+  // The switch: true = ON, false = OFF
+  enabled: boolean("enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const rolePermissionsRelations = relations(
+  rolePermissions,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [rolePermissions.roleId],
+      references: [roles.id],
+    }),
+    permission: one(permissions, {
+      fields: [rolePermissions.permissionId],
+      references: [permissions.id],
+    }),
+  }),
+);
+
+// User Roles - Many-to-many relationship between users and roles
+export const userRoles = pgTable("user_roles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  roleId: uuid("role_id")
+    .notNull()
+    .references(() => roles.id, { onDelete: "cascade" }),
+  // Is this the primary role for the user?
+  isPrimary: boolean("is_primary").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userRoles.userId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [userRoles.roleId],
+    references: [roles.id],
+  }),
+}));

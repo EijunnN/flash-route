@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ProtectedPage } from "@/components/auth/protected-page";
 import { CompanyForm } from "@/components/companies/company-form";
 import { Button } from "@/components/ui/button";
 import type { CompanyInput } from "@/lib/validations/company";
@@ -21,7 +22,7 @@ interface Company {
   updatedAt: string;
 }
 
-export default function CompaniesPage() {
+function CompaniesPageContent() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -240,5 +241,13 @@ export default function CompaniesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CompaniesPage() {
+  return (
+    <ProtectedPage requiredPermission="companies:VIEW">
+      <CompaniesPageContent />
+    </ProtectedPage>
   );
 }

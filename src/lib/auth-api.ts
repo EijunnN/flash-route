@@ -89,79 +89,8 @@ export function requireRole(
 }
 
 /**
- * User roles enum
+ * User roles enum - Unified with schema.ts
+ * Legacy roles for backwards compatibility
+ * New system uses roles table with dynamic permissions
  */
-export const USER_ROLES = {
-  PLANIFICADOR: "PLANIFICADOR",
-  MONITOR: "MONITOR",
-  ADMIN_FLOTA: "ADMIN_FLOTA",
-  ADMIN_SISTEMA: "ADMIN_SISTEMA",
-} as const;
-
-/**
- * Role permissions mapping
- * Using readonly string arrays to avoid type issues
- */
-export const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
-  PLANIFICADOR: [
-    "plans:create",
-    "plans:read",
-    "plans:update",
-    "plans:delete",
-    "orders:read",
-    "orders:create",
-    "drivers:read",
-    "vehicles:read",
-  ],
-  MONITOR: [
-    "monitoring:read",
-    "drivers:read",
-    "vehicles:read",
-    "alerts:read",
-    "alerts:acknowledge",
-  ],
-  ADMIN_FLOTA: [
-    "fleets:read",
-    "fleets:create",
-    "fleets:update",
-    "fleets:delete",
-    "drivers:read",
-    "drivers:create",
-    "drivers:update",
-    "drivers:delete",
-    "vehicles:read",
-    "vehicles:create",
-    "vehicles:update",
-    "vehicles:delete",
-  ],
-  ADMIN_SISTEMA: ["*"],
-};
-
-/**
- * Check if user has permission
- */
-export function hasPermission(
-  user: AuthenticatedUser,
-  permission: string,
-): boolean {
-  const permissions = ROLE_PERMISSIONS[user.role] || [];
-
-  // Check for wildcard permission (admin)
-  if (permissions.includes("*")) {
-    return true;
-  }
-
-  return permissions.includes(permission);
-}
-
-/**
- * Require user to have permission, throw error if not
- */
-export function requirePermission(
-  user: AuthenticatedUser,
-  permission: string,
-): void {
-  if (!hasPermission(user, permission)) {
-    throw new Error(`Permission denied: ${permission}`);
-  }
-}
+export { USER_ROLES } from "@/db/schema";

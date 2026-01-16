@@ -21,7 +21,7 @@ function AppShellContent({ children, title }: AppShellProps) {
         <main
           className={cn(
             "flex-1 overflow-y-auto bg-muted/30",
-            fullWidth ? "p-0" : "p-0",
+            fullWidth ? "p-0" : "p-4",
           )}
         >
           {children}

@@ -34,6 +34,9 @@ export enum EntityType {
   METRICS = "metrics",
   SESSION = "session",
   CACHE = "cache",
+  // RBAC entities
+  ROLE = "role",
+  PERMISSION = "permission",
 }
 
 /**
@@ -165,6 +168,13 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Full access - wildcard grants all permissions
     "*",
   ],
+
+  [USER_ROLES.CONDUCTOR]: [
+    // Drivers have limited access - mainly to view their assigned routes
+    `${EntityType.ROUTE}:${Action.READ}`,
+    `${EntityType.ROUTE_STOP}:${Action.READ}`,
+    `${EntityType.ORDER}:${Action.READ}`,
+  ],
 };
 
 /**
@@ -261,6 +271,211 @@ export interface PermissionCheckResult {
   allowed: boolean;
   requiresConfirmation: boolean;
   reason?: string;
+}
+
+// ============================================
+// DATABASE-BASED PERMISSION CHECKING
+// ============================================
+
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  userRoles,
+  rolePermissions,
+  permissions as permissionsTable,
+  roles,
+} from "@/db/schema";
+
+/**
+ * Cache for user permissions to avoid repeated DB queries
+ * Key: `${userId}:${entity}:${action}`
+ */
+const permissionCache = new Map<string, { allowed: boolean; expiresAt: number }>();
+const CACHE_TTL_MS = 60000; // 1 minute cache
+
+/**
+ * Clear permission cache for a user (call when roles change)
+ */
+export function clearUserPermissionCache(userId: string): void {
+  for (const key of permissionCache.keys()) {
+    if (key.startsWith(`${userId}:`)) {
+      permissionCache.delete(key);
+    }
+  }
+}
+
+/**
+ * Check if user has permission by querying the database
+ * Uses role_permissions table for dynamic permission checking
+ */
+export async function hasPermissionFromDB(
+  userId: string,
+  companyId: string,
+  entity: string,
+  action: string,
+): Promise<boolean> {
+  const cacheKey = `${userId}:${entity}:${action}`;
+  const cached = permissionCache.get(cacheKey);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.allowed;
+  }
+
+  try {
+    // Get user's active roles
+    const userRolesData = await db
+      .select({ roleId: userRoles.roleId })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(
+        and(
+          eq(userRoles.userId, userId),
+          eq(userRoles.active, true),
+          eq(roles.companyId, companyId),
+          eq(roles.active, true),
+        ),
+      );
+
+    if (userRolesData.length === 0) {
+      // No roles assigned, fall back to legacy role check
+      permissionCache.set(cacheKey, { allowed: false, expiresAt: Date.now() + CACHE_TTL_MS });
+      return false;
+    }
+
+    const roleIds = userRolesData.map((r) => r.roleId);
+
+    // Check if any role is a system admin role (has all permissions)
+    const systemAdminRoles = await db
+      .select()
+      .from(roles)
+      .where(
+        and(
+          eq(roles.code, "ADMIN_SISTEMA"),
+          eq(roles.active, true),
+        ),
+      );
+
+    const adminRoleIds = systemAdminRoles.map((r) => r.id);
+    const isAdmin = roleIds.some((id) => adminRoleIds.includes(id));
+
+    if (isAdmin) {
+      permissionCache.set(cacheKey, { allowed: true, expiresAt: Date.now() + CACHE_TTL_MS });
+      return true;
+    }
+
+    // Check for specific permission in role_permissions
+    for (const roleId of roleIds) {
+      const permissionCheck = await db
+        .select()
+        .from(rolePermissions)
+        .innerJoin(
+          permissionsTable,
+          eq(rolePermissions.permissionId, permissionsTable.id),
+        )
+        .where(
+          and(
+            eq(rolePermissions.roleId, roleId),
+            eq(rolePermissions.enabled, true),
+            eq(permissionsTable.entity, entity),
+            eq(permissionsTable.action, action),
+            eq(permissionsTable.active, true),
+          ),
+        )
+        .limit(1);
+
+      if (permissionCheck.length > 0) {
+        permissionCache.set(cacheKey, { allowed: true, expiresAt: Date.now() + CACHE_TTL_MS });
+        return true;
+      }
+    }
+
+    permissionCache.set(cacheKey, { allowed: false, expiresAt: Date.now() + CACHE_TTL_MS });
+    return false;
+  } catch (error) {
+    console.error("Error checking permission from DB:", error);
+    // Fall back to false on error
+    return false;
+  }
+}
+
+/**
+ * Get all permissions for a user from the database
+ * Returns array of "entity:action" strings
+ */
+export async function getUserPermissionsFromDB(
+  userId: string,
+  companyId: string,
+): Promise<string[]> {
+  try {
+    // Get user's active roles
+    const userRolesData = await db
+      .select({ roleId: userRoles.roleId })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(
+        and(
+          eq(userRoles.userId, userId),
+          eq(userRoles.active, true),
+          eq(roles.companyId, companyId),
+          eq(roles.active, true),
+        ),
+      );
+
+    if (userRolesData.length === 0) {
+      return [];
+    }
+
+    const roleIds = userRolesData.map((r) => r.roleId);
+
+    // Check if user is admin
+    const systemAdminRoles = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.code, "ADMIN_SISTEMA"));
+
+    const adminRoleIds = systemAdminRoles.map((r) => r.id);
+    const isAdmin = roleIds.some((id) => adminRoleIds.includes(id));
+
+    if (isAdmin) {
+      // Return wildcard for admin
+      return ["*"];
+    }
+
+    // Get all enabled permissions for user's roles
+    const enabledPermissions: string[] = [];
+
+    for (const roleId of roleIds) {
+      const perms = await db
+        .select({
+          entity: permissionsTable.entity,
+          action: permissionsTable.action,
+        })
+        .from(rolePermissions)
+        .innerJoin(
+          permissionsTable,
+          eq(rolePermissions.permissionId, permissionsTable.id),
+        )
+        .where(
+          and(
+            eq(rolePermissions.roleId, roleId),
+            eq(rolePermissions.enabled, true),
+            eq(permissionsTable.active, true),
+          ),
+        );
+
+      for (const perm of perms) {
+        const permString = `${perm.entity}:${perm.action}`;
+        if (!enabledPermissions.includes(permString)) {
+          enabledPermissions.push(permString);
+        }
+      }
+    }
+
+    return enabledPermissions;
+  } catch (error) {
+    console.error("Error getting user permissions from DB:", error);
+    return [];
+  }
 }
 
 /**
