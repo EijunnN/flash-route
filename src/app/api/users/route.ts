@@ -3,7 +3,6 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { withTenantFilter } from "@/db/tenant-aware";
 import { logCreate } from "@/lib/audit";
 import { setTenantContext } from "@/lib/tenant";
 import {
@@ -118,7 +117,12 @@ export async function GET(request: NextRequest) {
     const validConditions = conditions.filter(
       (c): c is NonNullable<typeof c> => c !== undefined,
     );
-    const whereClause = withTenantFilter(users, validConditions);
+
+    // Directly filter by companyId from header (more reliable than AsyncLocalStorage)
+    const whereClause = and(
+      eq(users.companyId, tenantCtx.companyId),
+      ...validConditions
+    );
 
     const [data, totalResult] = await Promise.all([
       db
