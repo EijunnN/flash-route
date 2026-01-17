@@ -330,62 +330,54 @@ function VehiclesPageContent() {
           </div>
           <Card>
             <CardContent className="pt-6">
-            <VehicleForm
-              onSubmit={editingVehicle ? handleUpdate : handleCreate}
-              initialData={
-                editingVehicle
-                  ? {
-                      name: editingVehicle.name,
-                      useNameAsPlate: editingVehicle.useNameAsPlate,
-                      plate: editingVehicle.plate || "",
-                      loadType:
-                        editingVehicle.loadType as VehicleInput["loadType"],
-                      maxOrders: editingVehicle.maxOrders,
-                      originAddress: editingVehicle.originAddress || "",
-                      originLatitude: editingVehicle.originLatitude || "",
-                      originLongitude: editingVehicle.originLongitude || "",
-                      assignedDriverId: editingVehicle.assignedDriverId,
-                      workdayStart: editingVehicle.workdayStart || "",
-                      workdayEnd: editingVehicle.workdayEnd || "",
-                      hasBreakTime: editingVehicle.hasBreakTime,
-                      breakDuration: editingVehicle.breakDuration,
-                      breakTimeStart: editingVehicle.breakTimeStart || "",
-                      breakTimeEnd: editingVehicle.breakTimeEnd || "",
-                      fleetIds: editingVehicle.fleetIds || [],
-                      brand: editingVehicle.brand || "",
-                      model: editingVehicle.model || "",
-                      year: editingVehicle.year,
-                      type: editingVehicle.type as VehicleInput["type"],
-                      weightCapacity: editingVehicle.weightCapacity,
-                      volumeCapacity: editingVehicle.volumeCapacity,
-                      refrigerated: editingVehicle.refrigerated,
-                      heated: editingVehicle.heated,
-                      lifting: editingVehicle.lifting,
-                      licenseRequired:
-                        editingVehicle.licenseRequired as VehicleInput["licenseRequired"],
-                      insuranceExpiry: editingVehicle.insuranceExpiry || "",
-                      inspectionExpiry: editingVehicle.inspectionExpiry || "",
-                      status: editingVehicle.status as VehicleInput["status"],
-                      active: editingVehicle.active,
-                    }
-                  : undefined
-              }
-              fleets={fleets}
-              drivers={drivers}
-              submitLabel={editingVehicle ? "Actualizar" : "Crear"}
-            />
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingVehicle(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </div>
+              <VehicleForm
+                onSubmit={editingVehicle ? handleUpdate : handleCreate}
+                initialData={
+                  editingVehicle
+                    ? {
+                        name: editingVehicle.name,
+                        useNameAsPlate: editingVehicle.useNameAsPlate,
+                        plate: editingVehicle.plate || "",
+                        loadType:
+                          editingVehicle.loadType as VehicleInput["loadType"],
+                        maxOrders: editingVehicle.maxOrders,
+                        originAddress: editingVehicle.originAddress || "",
+                        originLatitude: editingVehicle.originLatitude || "",
+                        originLongitude: editingVehicle.originLongitude || "",
+                        assignedDriverId: editingVehicle.assignedDriverId,
+                        workdayStart: editingVehicle.workdayStart || "",
+                        workdayEnd: editingVehicle.workdayEnd || "",
+                        hasBreakTime: editingVehicle.hasBreakTime,
+                        breakDuration: editingVehicle.breakDuration,
+                        breakTimeStart: editingVehicle.breakTimeStart || "",
+                        breakTimeEnd: editingVehicle.breakTimeEnd || "",
+                        fleetIds: editingVehicle.fleetIds || [],
+                        brand: editingVehicle.brand || "",
+                        model: editingVehicle.model || "",
+                        year: editingVehicle.year,
+                        type: editingVehicle.type as VehicleInput["type"],
+                        weightCapacity: editingVehicle.weightCapacity,
+                        volumeCapacity: editingVehicle.volumeCapacity,
+                        refrigerated: editingVehicle.refrigerated,
+                        heated: editingVehicle.heated,
+                        lifting: editingVehicle.lifting,
+                        licenseRequired:
+                          editingVehicle.licenseRequired as VehicleInput["licenseRequired"],
+                        insuranceExpiry: editingVehicle.insuranceExpiry || "",
+                        inspectionExpiry: editingVehicle.inspectionExpiry || "",
+                        status: editingVehicle.status as VehicleInput["status"],
+                        active: editingVehicle.active,
+                      }
+                    : undefined
+                }
+                fleets={fleets}
+                drivers={drivers}
+                submitLabel={editingVehicle ? "Actualizar" : "Crear"}
+                onCancel={() => {
+                  setShowForm(false);
+                  setEditingVehicle(null);
+                }}
+              />
             </CardContent>
           </Card>
         </div>
