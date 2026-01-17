@@ -43,7 +43,8 @@
       "Bash(bun drizzle-kit:*)",
       "Bash(bun tsc:*)",
       "Bash(taskkill:*)",
-      "Skill(react-best-practices)"
+      "Skill(react-best-practices)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
