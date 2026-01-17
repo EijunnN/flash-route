@@ -521,7 +521,7 @@ function ZonesPageContent() {
                 <div
                   key={zone.id}
                   onClick={() => setSelectedZoneId(zone.id)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
                     selectedZoneId === zone.id
                       ? "border-primary bg-primary/5 shadow-sm"
                       : "border-border hover:border-primary/50 hover:bg-muted/50"

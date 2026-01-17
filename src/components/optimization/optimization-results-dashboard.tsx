@@ -258,7 +258,7 @@ function CompactRouteCard({
   return (
     <div
       className={cn(
-        "border rounded-lg transition-all overflow-hidden",
+        "border rounded-lg transition-shadow overflow-hidden",
         isSelected && "ring-2",
         hasViolations && "border-orange-300",
       )}
@@ -314,6 +314,7 @@ function CompactRouteCard({
               e.stopPropagation();
               onToggle();
             }}
+            aria-label={isExpanded ? "Colapsar ruta" : "Expandir ruta"}
           >
             {isExpanded ? (
               <ChevronUp className="h-4 w-4" />
@@ -912,7 +913,7 @@ export function OptimizationResultsDashboard({
               <button
                 type="button"
                 onClick={() => setShowZones(!showZones)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
                   showZones
                     ? "bg-primary text-primary-foreground"
                     : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"

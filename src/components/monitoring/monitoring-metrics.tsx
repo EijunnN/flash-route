@@ -108,7 +108,7 @@ export function MonitoringMetrics({ metrics }: MonitoringMetricsProps) {
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${metric.color} transition-all duration-500`}
+                    className={`h-full ${metric.color} transition-[width] duration-500`}
                     style={{ width: `${metric.percentage}%` }}
                   />
                 </div>

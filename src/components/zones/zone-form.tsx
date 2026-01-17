@@ -305,7 +305,7 @@ export function ZoneForm({
                 type="button"
                 onClick={() => updateField("color", color)}
                 disabled={isSubmitting}
-                className={`w-8 h-8 rounded-full border-2 transition-all ${
+                className={`w-8 h-8 rounded-full border-2 transition-transform ${
                   formData.color === color
                     ? "border-foreground scale-110"
                     : "border-transparent hover:scale-105"

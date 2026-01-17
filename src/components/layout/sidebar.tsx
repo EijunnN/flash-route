@@ -88,7 +88,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+        "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
         collapsed ? "w-16" : "w-64",
       )}
     >
@@ -109,6 +109,7 @@ export function Sidebar() {
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
           className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />

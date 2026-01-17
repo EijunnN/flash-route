@@ -166,6 +166,7 @@ export function CompanyForm({
             value={formData.email}
             onChange={(e) => updateField("email", e.target.value)}
             disabled={isSubmitting}
+            autoComplete="email"
             className={
               errors.email
                 ? "border-destructive focus-visible:ring-destructive"

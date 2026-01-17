@@ -904,7 +904,7 @@ function PlanificacionPageContent() {
                   key={step.id}
                   type="button"
                   onClick={() => goToStep(step.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     isActive
                       ? "bg-primary text-primary-foreground shadow-md"
                       : isCompleted
@@ -1048,7 +1048,7 @@ function PlanificacionPageContent() {
                     <label
                       key={vehicle.id}
                       htmlFor={`vehicle-${vehicle.id}`}
-                      className={`block p-3 rounded-lg border cursor-pointer transition-all ${
+                      className={`block p-3 rounded-lg border cursor-pointer transition-colors ${
                         selectedVehicleIdsSet.has(vehicle.id)
                           ? "border-primary bg-primary/5 shadow-sm"
                           : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -1208,7 +1208,7 @@ function PlanificacionPageContent() {
                     return (
                       <div
                         key={order.id}
-                        className={`p-3 rounded-lg border transition-all ${
+                        className={`p-3 rounded-lg border transition-colors ${
                           selectedOrderIdsSet.has(order.id)
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -1337,7 +1337,7 @@ function PlanificacionPageContent() {
                       key={opt.value}
                       type="button"
                       onClick={() => setObjective(opt.value)}
-                      className={`w-full p-3 rounded-lg border text-left transition-all ${
+                      className={`w-full p-3 rounded-lg border text-left transition-colors ${
                         objective === opt.value
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/50"
@@ -1458,7 +1458,7 @@ function PlanificacionPageContent() {
               <button
                 type="button"
                 onClick={() => setShowZones(!showZones)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
                   showZones
                     ? "bg-primary text-primary-foreground"
                     : "bg-background/95 backdrop-blur text-muted-foreground hover:text-foreground"

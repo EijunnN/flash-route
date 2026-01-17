@@ -336,7 +336,7 @@ export default async function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
         <Link href="/orders">
-          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+          <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart1}`}>
                 <Package className="h-6 w-6 text-primary-foreground" />
@@ -351,7 +351,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
         <Link href="/planificacion">
-          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+          <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart2}`}>
                 <Route className="h-6 w-6 text-primary-foreground" />
@@ -366,7 +366,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
         <Link href="/monitoring">
-          <Card className="cursor-pointer transition-all hover:border-primary hover:shadow-md">
+          <Card className="cursor-pointer transition-shadow hover:border-primary hover:shadow-md">
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-xl p-3 ${iconBgStyles.chart4}`}>
                 <TrendingUp className="h-6 w-6 text-primary-foreground" />

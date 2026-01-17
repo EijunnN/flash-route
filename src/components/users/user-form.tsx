@@ -356,6 +356,7 @@ export function UserForm({
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
               disabled={isSubmitting}
+              autoComplete="email"
               className={
                 errors.email
                   ? "border-destructive focus-visible:ring-destructive"
@@ -424,6 +425,7 @@ export function UserForm({
               value={formData.phone ?? ""}
               onChange={(e) => updateField("phone", e.target.value || null)}
               disabled={isSubmitting}
+              autoComplete="tel"
               className={
                 errors.phone
                   ? "border-destructive focus-visible:ring-destructive"
@@ -447,6 +449,7 @@ export function UserForm({
               value={formData.password}
               onChange={(e) => updateField("password", e.target.value)}
               disabled={isSubmitting}
+              autoComplete={isEditing ? "new-password" : "new-password"}
               className={
                 errors.password
                   ? "border-destructive focus-visible:ring-destructive"
@@ -778,7 +781,7 @@ export function UserForm({
                   return (
                     <div
                       key={role.id}
-                      className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                      className={`rounded-lg border p-3 cursor-pointer transition-colors ${
                         isExpanded
                           ? "border-primary ring-2 ring-primary/20"
                           : isSelected

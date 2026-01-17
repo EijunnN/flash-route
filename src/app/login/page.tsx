@@ -141,6 +141,7 @@ export default function LoginPage() {
                 onChange={(e) => handleEmailChange(e.target.value)}
                 className={errors.email ? "border-destructive" : ""}
                 disabled={isPending}
+                autoComplete="email"
               />
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email}</p>
@@ -159,6 +160,7 @@ export default function LoginPage() {
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   className={`pr-10 ${errors.password ? "border-destructive" : ""}`}
                   disabled={isPending}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

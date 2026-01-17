@@ -423,7 +423,7 @@ function OptimizationPresetsPageContent() {
                         key={option.key}
                         type="button"
                         onClick={() => setEditingPreset({ ...editingPreset, [option.key]: !isChecked })}
-                        className="flex items-center justify-between p-3 rounded-lg border-2 transition-all"
+                        className="flex items-center justify-between p-3 rounded-lg border-2 transition-colors"
                         style={{
                           backgroundColor: isChecked ? '#22c55e20' : '#71717a15',
                           borderColor: isChecked ? '#22c55e' : '#71717a40',
@@ -520,7 +520,7 @@ function OptimizationPresetsPageContent() {
                       key={mode.value}
                       type="button"
                       onClick={() => setEditingPreset({ ...editingPreset, routeEndMode: mode.value })}
-                      className={`w-full p-3 rounded-lg border text-left transition-all ${
+                      className={`w-full p-3 rounded-lg border text-left transition-colors ${
                         editingPreset.routeEndMode === mode.value
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/50"
@@ -579,7 +579,7 @@ function OptimizationPresetsPageContent() {
               <button
                 type="button"
                 onClick={() => setEditingPreset({ ...editingPreset, isDefault: !editingPreset.isDefault })}
-                className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
                   editingPreset.isDefault
                     ? "bg-primary/10 border-primary"
                     : "bg-muted border-transparent hover:border-muted-foreground/20"

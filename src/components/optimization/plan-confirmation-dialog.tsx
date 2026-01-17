@@ -299,7 +299,7 @@ export function PlanConfirmationDialog({
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
-                      className="bg-primary h-2 rounded-full transition-all"
+                      className="bg-primary h-2 rounded-full transition-[width]"
                       style={{
                         width: `${validationResult.metrics.driverAssignmentCoverage}%`,
                       }}
@@ -317,7 +317,7 @@ export function PlanConfirmationDialog({
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-full transition-[width] ${
                         validationResult.metrics.timeWindowCompliance >= 80
                           ? "bg-green-600"
                           : validationResult.metrics.timeWindowCompliance >= 60
@@ -343,7 +343,7 @@ export function PlanConfirmationDialog({
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-2 rounded-full transition-[width] ${
                         validationResult.metrics.averageAssignmentQuality >= 70
                           ? "bg-green-600"
                           : validationResult.metrics.averageAssignmentQuality >=

@@ -203,7 +203,7 @@ export function StopStatusUpdateDialog({
                       disabled={isCurrent}
                       onClick={() => setSelectedStatus(option.value)}
                       className={`
-                        flex items-start gap-3 p-3 rounded-lg border text-left transition-all
+                        flex items-start gap-3 p-3 rounded-lg border text-left transition-colors
                         ${
                           isSelected
                             ? `border-primary bg-primary/5 ring-2 ring-primary/20`

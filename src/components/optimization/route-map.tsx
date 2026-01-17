@@ -981,7 +981,7 @@ export function RouteMap({
                     selectedRouteId === route.routeId ? null : route.routeId,
                   )
                 }
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-opacity ${
                   selectedRouteId === route.routeId
                     ? "bg-gray-700 ring-2 ring-offset-1 ring-offset-[#1a1a2e]"
                     : selectedRouteId

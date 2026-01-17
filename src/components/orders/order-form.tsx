@@ -308,6 +308,7 @@ export function OrderForm({
                 value={formData.customerEmail}
                 onChange={(e) => handleChange("customerEmail", e.target.value)}
                 placeholder="john@example.com"
+                autoComplete="email"
               />
               {errors.customerEmail && (
                 <p className="text-sm text-destructive mt-1">

@@ -66,7 +66,7 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card p-4 shadow-sm transition-all hover:shadow-md",
+        "rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md",
         className,
       )}
     >

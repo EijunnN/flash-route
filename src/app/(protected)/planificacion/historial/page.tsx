@@ -589,7 +589,7 @@ function PlanificacionHistorialPageContent() {
               return (
                 <Card
                   key={job.id}
-                  className={`transition-all cursor-pointer hover:shadow-md ${
+                  className={`transition-shadow cursor-pointer hover:shadow-md ${
                     isSelected ? "ring-2 ring-primary" : ""
                   } ${job.status === "CANCELLED" ? "border-orange-500/50" : ""}`}
                   onClick={() => hasResult && toggleJobSelection(job.id)}

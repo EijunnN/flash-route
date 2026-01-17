@@ -272,7 +272,7 @@ export function ZonePreviewMap({
           size="icon"
           className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleZoomIn}
-          title="Acercar"
+          aria-label="Acercar"
         >
           <ZoomIn className="h-4 w-4" />
         </Button>
@@ -281,7 +281,7 @@ export function ZonePreviewMap({
           size="icon"
           className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleZoomOut}
-          title="Alejar"
+          aria-label="Alejar"
         >
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -290,7 +290,7 @@ export function ZonePreviewMap({
           size="icon"
           className="h-8 w-8 bg-background/90 backdrop-blur-sm hover:bg-background"
           onClick={handleFitAll}
-          title="Ver todas las zonas"
+          aria-label="Ver todas las zonas"
         >
           <Layers className="h-4 w-4" />
         </Button>
