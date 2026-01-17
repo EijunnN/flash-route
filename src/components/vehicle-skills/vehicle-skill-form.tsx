@@ -2,8 +2,17 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { VehicleSkillInput } from "@/lib/validations/vehicle-skill";
 import { VEHICLE_SKILL_CATEGORY_LABELS } from "@/lib/validations/vehicle-skill";
 
@@ -11,6 +20,7 @@ interface VehicleSkillFormProps {
   onSubmit: (data: VehicleSkillInput) => Promise<void>;
   initialData?: Partial<VehicleSkillInput>;
   submitLabel?: string;
+  onCancel?: () => void;
 }
 
 const VEHICLE_SKILL_CATEGORIES_LIST = Object.entries(
@@ -24,6 +34,7 @@ export function VehicleSkillForm({
   onSubmit,
   initialData,
   submitLabel = "Guardar",
+  onCancel,
 }: VehicleSkillFormProps) {
   const defaultData: VehicleSkillInput = {
     code: initialData?.code ?? "",
@@ -137,19 +148,22 @@ export function VehicleSkillForm({
         {/* Category */}
         <div className="space-y-2">
           <Label htmlFor="category">Categoría *</Label>
-          <select
-            id="category"
+          <Select
             value={formData.category}
-            onChange={(e) => updateField("category", e.target.value)}
+            onValueChange={(value) => updateField("category", value)}
             disabled={isSubmitting}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
-            {VEHICLE_SKILL_CATEGORIES_LIST.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              {VEHICLE_SKILL_CATEGORIES_LIST.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {errors.category && (
             <p className="text-sm text-destructive">{errors.category}</p>
           )}
@@ -157,34 +171,32 @@ export function VehicleSkillForm({
 
         {/* Active status */}
         <div className="space-y-2">
-          <Label htmlFor="active">Estado del Registro</Label>
+          <Label>Estado del Registro</Label>
           <div className="flex items-center gap-2 h-10">
-            <input
+            <Checkbox
               id="active"
-              type="checkbox"
               checked={formData.active}
-              onChange={(e) => updateField("active", e.target.checked)}
+              onCheckedChange={(checked) => updateField("active", checked === true)}
               disabled={isSubmitting}
-              className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
             />
-            <span className="text-sm text-muted-foreground">
+            <Label htmlFor="active" className="text-sm cursor-pointer">
               {formData.active ? "Activo" : "Inactivo"}
-            </span>
+            </Label>
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="description">Descripción</Label>
-          <textarea
+          <Textarea
             id="description"
             value={formData.description}
             onChange={(e) => updateField("description", e.target.value)}
             disabled={isSubmitting}
             className={
               errors.description
-                ? "flex min-h-[80px] w-full rounded-md border border-destructive bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                : "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                ? "border-destructive focus-visible:ring-destructive"
+                : ""
             }
             placeholder="Describe brevemente esta habilidad..."
             rows={3}
@@ -195,7 +207,17 @@ export function VehicleSkillForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-4">
+      <div className="flex justify-end gap-4 pt-4 border-t">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+        )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : submitLabel}
         </Button>

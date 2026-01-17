@@ -2,8 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TimePicker } from "@/components/ui/time-picker";
 import type {
   TIME_WINDOW_STRICTNESS,
   TIME_WINDOW_TYPES,
@@ -39,6 +54,17 @@ interface FormProps {
   onCancel?: () => void;
 }
 
+const TYPE_OPTIONS = [
+  { value: "SHIFT", label: "Turno (rango horario recurrente)" },
+  { value: "RANGE", label: "Rango (rango de tiempo único)" },
+  { value: "EXACT", label: "Exacto (hora específica con tolerancia)" },
+];
+
+const STRICTNESS_OPTIONS = [
+  { value: "HARD", label: "Estricto (rechazar violaciones)" },
+  { value: "SOFT", label: "Flexible (minimizar retrasos)" },
+];
+
 const defaultData: TimeWindowPresetFormData = {
   name: "",
   type: "SHIFT",
@@ -53,7 +79,7 @@ const defaultData: TimeWindowPresetFormData = {
 export function TimeWindowPresetForm({
   onSubmit,
   initialData,
-  submitLabel = "Create Preset",
+  submitLabel = "Crear Preset",
   onCancel,
 }: FormProps) {
   const [formData, setFormData] = useState<TimeWindowPresetFormData>(
@@ -91,10 +117,9 @@ export function TimeWindowPresetForm({
 
   const handleChange = (
     field: keyof TimeWindowPresetFormData,
-    value: string | number | boolean,
+    value: string | number | boolean | undefined,
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -124,7 +149,7 @@ export function TimeWindowPresetForm({
         });
         setErrors(fieldErrors);
       } else {
-        setErrors({ form: err.message || "Failed to save preset" });
+        setErrors({ form: err.message || "Error al guardar el preset" });
       }
     } finally {
       setIsSubmitting(false);
@@ -134,166 +159,175 @@ export function TimeWindowPresetForm({
   const isShiftOrRange = formData.type === "SHIFT" || formData.type === "RANGE";
   const isExact = formData.type === "EXACT";
 
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    handleChange("type", e.target.value as (typeof TIME_WINDOW_TYPES)[number]);
-  };
-
-  const handleStrictnessChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    handleChange(
-      "strictness",
-      e.target.value as (typeof TIME_WINDOW_STRICTNESS)[number],
-    );
-  };
-
-  const handleToleranceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleChange("toleranceMinutes", parseInt(e.target.value, 10) || 0);
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          {initialData
-            ? "Edit Time Window Preset"
-            : "Create Time Window Preset"}
-        </h2>
+    <Dialog open onOpenChange={(open) => !open && onCancel?.()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {initialData
+              ? "Editar Preset de Ventana de Tiempo"
+              : "Crear Preset de Ventana de Tiempo"}
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
-          <div>
-            <Label htmlFor="name">Name</Label>
+          <div className="space-y-2">
+            <Label htmlFor="name">Nombre *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleChange("name", e.target.value)}
-              placeholder="e.g., Morning Delivery, Afternoon Pickup"
+              placeholder="Ej: Entrega Mañana, Recogida Tarde"
+              disabled={isSubmitting}
             />
             {errors.name && (
-              <p className="text-sm text-destructive mt-1">{errors.name}</p>
+              <p className="text-sm text-destructive">{errors.name}</p>
             )}
           </div>
 
           {/* Type */}
-          <div>
-            <Label htmlFor="type">Type</Label>
-            <select
-              id="type"
+          <div className="space-y-2">
+            <Label htmlFor="type">Tipo *</Label>
+            <Select
               value={formData.type}
-              onChange={handleTypeChange}
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              onValueChange={(value) =>
+                handleChange("type", value as (typeof TIME_WINDOW_TYPES)[number])
+              }
+              disabled={isSubmitting}
             >
-              <option value="SHIFT">Shift (recurring time range)</option>
-              <option value="RANGE">Range (one-time time range)</option>
-              <option value="EXACT">
-                Exact (specific time with tolerance)
-              </option>
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.type && (
-              <p className="text-sm text-destructive mt-1">{errors.type}</p>
+              <p className="text-sm text-destructive">{errors.type}</p>
             )}
           </div>
 
           {/* SHIFT and RANGE fields */}
           {isShiftOrRange && (
-            <>
-              <div>
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Hora Inicio *</Label>
+                <TimePicker
                   id="startTime"
-                  type="time"
-                  value={formData.startTime || ""}
-                  onChange={(e) => handleChange("startTime", e.target.value)}
+                  value={formData.startTime || null}
+                  onChange={(time) => handleChange("startTime", time || undefined)}
+                  placeholder="Seleccionar"
+                  disabled={isSubmitting}
                 />
                 {errors.startTime && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.startTime}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.startTime}</p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
+              <div className="space-y-2">
+                <Label htmlFor="endTime">Hora Fin *</Label>
+                <TimePicker
                   id="endTime"
-                  type="time"
-                  value={formData.endTime || ""}
-                  onChange={(e) => handleChange("endTime", e.target.value)}
+                  value={formData.endTime || null}
+                  onChange={(time) => handleChange("endTime", time || undefined)}
+                  placeholder="Seleccionar"
+                  disabled={isSubmitting}
                 />
                 {errors.endTime && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.endTime}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.endTime}</p>
                 )}
               </div>
-            </>
+            </div>
           )}
 
           {/* EXACT fields */}
           {isExact && (
-            <>
-              <div>
-                <Label htmlFor="exactTime">Exact Time</Label>
-                <Input
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="exactTime">Hora Exacta *</Label>
+                <TimePicker
                   id="exactTime"
-                  type="time"
-                  value={formData.exactTime || ""}
-                  onChange={(e) => handleChange("exactTime", e.target.value)}
+                  value={formData.exactTime || null}
+                  onChange={(time) => handleChange("exactTime", time || undefined)}
+                  placeholder="Seleccionar"
+                  disabled={isSubmitting}
                 />
                 {errors.exactTime && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.exactTime}
-                  </p>
+                  <p className="text-sm text-destructive">{errors.exactTime}</p>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="toleranceMinutes">Tolerance (minutes)</Label>
+              <div className="space-y-2">
+                <Label htmlFor="toleranceMinutes">Tolerancia (min) *</Label>
                 <Input
                   id="toleranceMinutes"
                   type="number"
                   min="0"
                   value={formData.toleranceMinutes || ""}
-                  onChange={handleToleranceChange}
+                  onChange={(e) =>
+                    handleChange(
+                      "toleranceMinutes",
+                      parseInt(e.target.value, 10) || undefined,
+                    )
+                  }
+                  disabled={isSubmitting}
                 />
                 {errors.toleranceMinutes && (
-                  <p className="text-sm text-destructive mt-1">
+                  <p className="text-sm text-destructive">
                     {errors.toleranceMinutes}
                   </p>
                 )}
               </div>
-            </>
+            </div>
           )}
 
           {/* Strictness */}
-          <div>
-            <Label htmlFor="strictness">Strictness</Label>
-            <select
-              id="strictness"
+          <div className="space-y-2">
+            <Label htmlFor="strictness">Rigurosidad *</Label>
+            <Select
               value={formData.strictness}
-              onChange={handleStrictnessChange}
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              onValueChange={(value) =>
+                handleChange(
+                  "strictness",
+                  value as (typeof TIME_WINDOW_STRICTNESS)[number],
+                )
+              }
+              disabled={isSubmitting}
             >
-              <option value="HARD">Hard (reject violations)</option>
-              <option value="SOFT">Soft (minimize delays)</option>
-            </select>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar rigurosidad" />
+              </SelectTrigger>
+              <SelectContent>
+                {STRICTNESS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.strictness && (
-              <p className="text-sm text-destructive mt-1">
-                {errors.strictness}
-              </p>
+              <p className="text-sm text-destructive">{errors.strictness}</p>
             )}
           </div>
 
           {/* Active (only for edit) */}
           {initialData && (
             <div className="flex items-center gap-2">
-              <input
+              <Checkbox
                 id="active"
-                type="checkbox"
                 checked={formData.active ?? true}
-                onChange={(e) => handleChange("active", e.target.checked)}
+                onCheckedChange={(checked) =>
+                  handleChange("active", checked === true)
+                }
+                disabled={isSubmitting}
               />
               <Label htmlFor="active" className="cursor-pointer">
-                Active
+                Activo
               </Label>
             </div>
           )}
@@ -304,16 +338,21 @@ export function TimeWindowPresetForm({
 
           <div className="flex justify-end gap-2 pt-2">
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                Cancelar
               </Button>
             )}
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : submitLabel}
+              {isSubmitting ? "Guardando..." : submitLabel}
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

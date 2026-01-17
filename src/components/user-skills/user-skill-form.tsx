@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { UserSkillInput } from "@/lib/validations/user-skill";
 import { isExpired, isExpiringSoon } from "@/lib/validations/user-skill";
 
@@ -13,6 +21,7 @@ interface UserSkillFormProps {
   users: Array<{ id: string; name: string; identification: string | null }>;
   skills: Array<{ id: string; code: string; name: string; category: string }>;
   submitLabel?: string;
+  onCancel?: () => void;
 }
 
 const VEHICLE_SKILL_CATEGORY_LABELS: Record<string, string> = {
@@ -28,6 +37,7 @@ export function UserSkillForm({
   users,
   skills,
   submitLabel = "Guardar",
+  onCancel,
 }: UserSkillFormProps) {
   const defaultData: UserSkillInput = {
     userId: initialData?.userId ?? users[0]?.id ?? "",
@@ -108,24 +118,29 @@ export function UserSkillForm({
         {/* User Selection */}
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="userId">Usuario (Conductor) *</Label>
-          <select
-            id="userId"
+          <Select
             value={formData.userId}
-            onChange={(e) => updateField("userId", e.target.value)}
+            onValueChange={(value) => updateField("userId", value)}
             disabled={isSubmitting || !!initialData?.userId}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
-            {users.length === 0 ? (
-              <option value="">No hay usuarios disponibles</option>
-            ) : (
-              users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                  {user.identification ? ` (${user.identification})` : ""}
-                </option>
-              ))
-            )}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar usuario" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.length === 0 ? (
+                <SelectItem value="__none__" disabled>
+                  No hay usuarios disponibles
+                </SelectItem>
+              ) : (
+                users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.name}
+                    {user.identification ? ` (${user.identification})` : ""}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
           {errors.userId && (
             <p className="text-sm text-destructive">{errors.userId}</p>
           )}
@@ -134,24 +149,29 @@ export function UserSkillForm({
         {/* Skill Selection */}
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="skillId">Habilidad *</Label>
-          <select
-            id="skillId"
+          <Select
             value={formData.skillId}
-            onChange={(e) => updateField("skillId", e.target.value)}
+            onValueChange={(value) => updateField("skillId", value)}
             disabled={isSubmitting || !!initialData?.skillId}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors"
           >
-            {skills.length === 0 ? (
-              <option value="">No hay habilidades disponibles</option>
-            ) : (
-              skills.map((skill) => (
-                <option key={skill.id} value={skill.id}>
-                  {skill.code} - {skill.name} (
-                  {getSkillCategoryLabel(skill.category)})
-                </option>
-              ))
-            )}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar habilidad" />
+            </SelectTrigger>
+            <SelectContent>
+              {skills.length === 0 ? (
+                <SelectItem value="__none__" disabled>
+                  No hay habilidades disponibles
+                </SelectItem>
+              ) : (
+                skills.map((skill) => (
+                  <SelectItem key={skill.id} value={skill.id}>
+                    {skill.code} - {skill.name} (
+                    {getSkillCategoryLabel(skill.category)})
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
           {errors.skillId && (
             <p className="text-sm text-destructive">{errors.skillId}</p>
           )}
@@ -159,18 +179,15 @@ export function UserSkillForm({
 
         {/* Obtained At */}
         <div className="space-y-2">
-          <Label htmlFor="obtainedAt">Fecha de Obtencion</Label>
-          <Input
+          <Label htmlFor="obtainedAt">Fecha de Obtención</Label>
+          <DatePicker
             id="obtainedAt"
-            type="datetime-local"
-            value={formData.obtainedAt ? formData.obtainedAt.slice(0, 16) : ""}
-            onChange={(e) => updateField("obtainedAt", e.target.value)}
-            disabled={isSubmitting}
-            className={
-              errors.obtainedAt
-                ? "border-destructive focus-visible:ring-destructive"
-                : ""
+            value={formData.obtainedAt ? new Date(formData.obtainedAt) : null}
+            onChange={(date) =>
+              updateField("obtainedAt", date ? date.toISOString() : "")
             }
+            placeholder="Seleccionar fecha"
+            disabled={isSubmitting}
           />
           {errors.obtainedAt && (
             <p className="text-sm text-destructive">{errors.obtainedAt}</p>
@@ -180,53 +197,60 @@ export function UserSkillForm({
         {/* Expires At */}
         <div className="space-y-2">
           <Label htmlFor="expiresAt">Fecha de Vencimiento</Label>
-          <Input
+          <DatePicker
             id="expiresAt"
-            type="datetime-local"
-            value={formData.expiresAt ? formData.expiresAt.slice(0, 16) : ""}
-            onChange={(e) => updateField("expiresAt", e.target.value || "")}
-            disabled={isSubmitting}
-            className={
-              errors.expiresAt
-                ? "border-destructive focus-visible:ring-destructive"
-                : ""
+            value={formData.expiresAt ? new Date(formData.expiresAt) : null}
+            onChange={(date) =>
+              updateField("expiresAt", date ? date.toISOString() : "")
             }
+            placeholder="Sin vencimiento"
+            disabled={isSubmitting}
           />
           {errors.expiresAt && (
             <p className="text-sm text-destructive">{errors.expiresAt}</p>
           )}
           {expiryStatus === "expired" && (
             <p className="text-sm text-destructive font-medium">
-              Habilidad vencida!
+              ¡Habilidad vencida!
             </p>
           )}
           {expiryStatus === "expiring_soon" && (
             <p className="text-sm text-orange-500 font-medium">
-              La habilidad vence en menos de 30 dias.
+              La habilidad vence en menos de 30 días.
             </p>
           )}
         </div>
 
         {/* Active status */}
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="active">Estado del Registro</Label>
+          <Label>Estado del Registro</Label>
           <div className="flex items-center gap-2">
-            <input
+            <Checkbox
               id="active"
-              type="checkbox"
               checked={formData.active}
-              onChange={(e) => updateField("active", e.target.checked)}
+              onCheckedChange={(checked) =>
+                updateField("active", checked === true)
+              }
               disabled={isSubmitting}
-              className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
             />
-            <span className="text-sm text-muted-foreground">
+            <Label htmlFor="active" className="text-sm cursor-pointer">
               {formData.active ? "Activo" : "Inactivo"}
-            </span>
+            </Label>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-4">
+      <div className="flex justify-end gap-4 pt-4 border-t">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+        )}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : submitLabel}
         </Button>

@@ -1,14 +1,36 @@
 "use client";
 
+import { AlertCircle, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useCompanyContext } from "@/hooks/use-company-context";
-import { CompanySelector } from "@/components/company-selector";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
   TimeWindowPresetForm,
   type TimeWindowPresetFormData,
 } from "@/components/time-window-presets/time-window-preset-form";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 import type {
   TIME_WINDOW_STRICTNESS,
   TIME_WINDOW_TYPES,
@@ -28,22 +50,30 @@ interface TimeWindowPreset {
   updatedAt: string;
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  SHIFT: "Turno",
+  RANGE: "Rango",
+  EXACT: "Exacto",
+};
+
+const STRICTNESS_LABELS: Record<string, string> = {
+  HARD: "Estricto",
+  SOFT: "Flexible",
+};
+
 function TimeWindowPresetsPageContent() {
   const {
     effectiveCompanyId: companyId,
     isReady,
-    isSystemAdmin,
-    companies,
-    selectedCompanyId,
-    setSelectedCompanyId,
-    authCompanyId,
   } = useCompanyContext();
+  const { toast } = useToast();
   const [presets, setPresets] = useState<TimeWindowPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPreset, setEditingPreset] = useState<TimeWindowPreset | null>(
     null,
   );
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchPresets = useCallback(async () => {
     if (!companyId) return;
@@ -55,11 +85,16 @@ function TimeWindowPresetsPageContent() {
       const result = await response.json();
       setPresets(result.data || []);
     } catch (error) {
-      console.error("Failed to fetch presets:", error);
+      console.error("Error al cargar presets:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los presets",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, toast]);
 
   useEffect(() => {
     fetchPresets();
@@ -67,48 +102,73 @@ function TimeWindowPresetsPageContent() {
 
   const handleCreate = async (data: TimeWindowPresetFormData) => {
     if (!companyId) return;
-    const response = await fetch("/api/time-window-presets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-company-id": companyId ?? "",
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create preset");
-    }
-
-    await fetchPresets();
-    setShowForm(false);
-  };
-
-  const handleUpdate = async (data: TimeWindowPresetFormData) => {
-    if (!editingPreset) return;
-    if (!companyId) return;
-
-    const response = await fetch(
-      `/api/time-window-presets/${editingPreset.id}`,
-      {
-        method: "PATCH",
+    try {
+      const response = await fetch("/api/time-window-presets", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-company-id": companyId ?? "",
         },
-        body: JSON.stringify({ ...data, id: editingPreset.id }),
-      },
-    );
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to update preset");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al crear el preset");
+      }
+
+      await fetchPresets();
+      setShowForm(false);
+      toast({
+        title: "Preset creado",
+        description: `El preset "${data.name}" ha sido creado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al crear preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
     }
+  };
 
-    await fetchPresets();
-    setEditingPreset(null);
-    setShowForm(false);
+  const handleUpdate = async (data: TimeWindowPresetFormData) => {
+    if (!editingPreset || !companyId) return;
+
+    try {
+      const response = await fetch(
+        `/api/time-window-presets/${editingPreset.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": companyId ?? "",
+          },
+          body: JSON.stringify({ ...data, id: editingPreset.id }),
+        },
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al actualizar el preset");
+      }
+
+      await fetchPresets();
+      setEditingPreset(null);
+      setShowForm(false);
+      toast({
+        title: "Preset actualizado",
+        description: `El preset "${data.name}" ha sido actualizado exitosamente.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error al actualizar preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+      throw err;
+    }
   };
 
   const handleEdit = (preset: TimeWindowPreset) => {
@@ -117,21 +177,37 @@ function TimeWindowPresetsPageContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this preset?")) return;
     if (!companyId) return;
+    setDeletingId(id);
+    const preset = presets.find((p) => p.id === id);
 
-    const response = await fetch(`/api/time-window-presets/${id}`, {
-      method: "DELETE",
-      headers: { "x-company-id": companyId ?? "" },
-    });
+    try {
+      const response = await fetch(`/api/time-window-presets/${id}`, {
+        method: "DELETE",
+        headers: { "x-company-id": companyId ?? "" },
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      alert(error.error || "Failed to delete preset");
-      return;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al eliminar el preset");
+      }
+
+      await fetchPresets();
+      toast({
+        title: "Preset eliminado",
+        description: preset
+          ? `El preset "${preset.name}" ha sido eliminado.`
+          : "El preset ha sido eliminado.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error al eliminar preset",
+        description: err instanceof Error ? err.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
-
-    await fetchPresets();
   };
 
   const handleCloseForm = () => {
@@ -155,108 +231,150 @@ function TimeWindowPresetsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Time Window Presets</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage reusable time window configurations for delivery scheduling
-            </p>
-          </div>
-          <Button onClick={() => setShowForm(true)}>Create Preset</Button>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Presets de Ventanas de Tiempo
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Administre configuraciones reutilizables de ventanas de tiempo para programación de entregas
+          </p>
         </div>
+        <Button onClick={() => setShowForm(true)}>Crear Preset</Button>
+      </div>
 
-        {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
-        ) : presets.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-muted/30">
+      {isLoading ? (
+        <Card>
+          <CardContent className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      ) : presets.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              No time window presets found.
+              No hay presets de ventanas de tiempo registrados.
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Create your first preset to get started.
+              Cree su primer preset para comenzar.
             </p>
-          </div>
-        ) : (
-          <div className="border rounded-lg">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="text-left p-4 font-medium">Name</th>
-                  <th className="text-left p-4 font-medium">Type</th>
-                  <th className="text-left p-4 font-medium">Time Window</th>
-                  <th className="text-left p-4 font-medium">Strictness</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-right p-4 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {presets.map((preset) => (
-                  <tr key={preset.id} className="border-t">
-                    <td className="p-4">{preset.name}</td>
-                    <td className="p-4">
-                      <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                        {preset.type}
-                      </span>
-                    </td>
-                    <td className="p-4 font-mono text-sm">
-                      {formatTimeDisplay(preset)}
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          preset.strictness === "HARD"
-                            ? "bg-destructive/10 text-destructive"
-                            : "bg-yellow-500/10 text-yellow-600"
-                        }`}
-                      >
-                        {preset.strictness}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          preset.active
-                            ? "bg-green-500/10 text-green-600"
-                            : "bg-gray-500/10 text-gray-600"
-                        }`}
-                      >
-                        {preset.active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(preset)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(preset.id)}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Ventana de Tiempo</TableHead>
+                <TableHead>Rigurosidad</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {presets.map((preset) => (
+                <TableRow
+                  key={preset.id}
+                  className={deletingId === preset.id ? "opacity-50" : ""}
+                >
+                  <TableCell className="font-medium">{preset.name}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {TYPE_LABELS[preset.type] || preset.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {formatTimeDisplay(preset)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={preset.strictness === "HARD" ? "destructive" : "outline"}
+                      className={
+                        preset.strictness === "SOFT"
+                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          : ""
+                      }
+                    >
+                      {STRICTNESS_LABELS[preset.strictness] || preset.strictness}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={preset.active ? "default" : "secondary"}
+                      className={
+                        preset.active
+                          ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400"
+                          : ""
+                      }
+                    >
+                      {preset.active ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(preset)}
+                      disabled={deletingId === preset.id}
+                    >
+                      Editar
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deletingId === preset.id}
+                        >
+                          {deletingId === preset.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            ¿Eliminar preset?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción eliminará permanentemente el preset{" "}
+                            <strong>{preset.name}</strong>. Esta acción no se puede deshacer.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(preset.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
-        {showForm && (
-          <TimeWindowPresetForm
-            onSubmit={editingPreset ? handleUpdate : handleCreate}
-            initialData={editingPreset || undefined}
-            submitLabel={editingPreset ? "Update Preset" : "Create Preset"}
-            onCancel={handleCloseForm}
-          />
-        )}
-      </div>
+      {showForm && (
+        <TimeWindowPresetForm
+          onSubmit={editingPreset ? handleUpdate : handleCreate}
+          initialData={editingPreset || undefined}
+          submitLabel={editingPreset ? "Actualizar" : "Crear Preset"}
+          onCancel={handleCloseForm}
+        />
+      )}
     </div>
   );
 }
