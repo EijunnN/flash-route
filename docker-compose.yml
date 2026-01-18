@@ -10,7 +10,9 @@ services:
       - "5001:5000"
     volumes:
       - ./docker/osrm:/data
-    command: osrm-routed --algorithm mld /data/peru-latest.osrm
+    # --max-table-size: Max coordinates for distance matrix (default ~100)
+    # Set to 1000 to support 300+ delivery points
+    command: osrm-routed --algorithm mld --max-table-size 1000 /data/peru-latest.osrm
     profiles:
       - routing
 

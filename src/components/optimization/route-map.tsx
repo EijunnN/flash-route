@@ -379,8 +379,17 @@ export function RouteMap({
             if (route.geometry) {
               coordinates = decodePolyline(route.geometry);
             } else {
-              if (depot) {
-                coordinates.push([depot.longitude, depot.latitude]);
+              // Fallback: draw straight lines when no VROOM geometry
+              // Use route's driverOrigin if available, otherwise depot
+              const routeOrigin = route.driverOrigin
+                ? {
+                    longitude: parseFloat(route.driverOrigin.longitude),
+                    latitude: parseFloat(route.driverOrigin.latitude),
+                  }
+                : depot;
+
+              if (routeOrigin) {
+                coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
               }
               route.stops
                 .toSorted((a, b) => a.sequence - b.sequence)
@@ -390,8 +399,8 @@ export function RouteMap({
                     parseFloat(stop.latitude),
                   ]);
                 });
-              if (depot) {
-                coordinates.push([depot.longitude, depot.latitude]);
+              if (routeOrigin) {
+                coordinates.push([routeOrigin.longitude, routeOrigin.latitude]);
               }
             }
 

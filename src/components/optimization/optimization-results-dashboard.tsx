@@ -79,6 +79,8 @@ interface RouteData {
   }>;
   totalDistance: number;
   totalDuration: number;
+  totalServiceTime?: number; // Time at stops
+  totalTravelTime?: number; // Time traveling
   totalWeight: number;
   totalVolume: number;
   utilizationPercentage: number;
@@ -333,9 +335,14 @@ function CompactRouteCard({
               <Ruler className="h-3 w-3 text-muted-foreground" />
               <span className="font-medium">{formatDistance(route.totalDistance)}</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" title="Tiempo total (viaje + servicio)">
               <Clock className="h-3 w-3 text-muted-foreground" />
               <span className="font-medium">{formatDuration(route.totalDuration)}</span>
+              {(route.totalTravelTime !== undefined && route.totalServiceTime !== undefined) && (
+                <span className="text-muted-foreground">
+                  ({formatDuration(route.totalTravelTime)} viaje + {formatDuration(route.totalServiceTime)} servicio)
+                </span>
+              )}
             </div>
             {route.totalWeight > 0 && (
               <div className="flex items-center gap-1">

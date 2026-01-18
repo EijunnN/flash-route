@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LocationPicker } from "@/components/ui/location-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -355,6 +356,8 @@ export function VehicleForm({
           <Card>
             <CardContent className="pt-4 space-y-4">
               <h4 className="font-medium text-sm">Punto de Origen</h4>
+
+              {/* Campos manuales */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="originAddress">Dirección</Label>
@@ -371,9 +374,19 @@ export function VehicleForm({
                   <Input
                     id="originLatitude"
                     value={formData.originLatitude ?? ""}
-                    onChange={(e) => updateField("originLatitude", e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Detectar si se pegó "lat, lng" o "lat,lng"
+                      const coordsMatch = value.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+                      if (coordsMatch) {
+                        updateField("originLatitude", coordsMatch[1]);
+                        updateField("originLongitude", coordsMatch[2]);
+                      } else {
+                        updateField("originLatitude", value);
+                      }
+                    }}
                     disabled={isSubmitting}
-                    placeholder="-12.0464"
+                    placeholder="-12.0464 o pega lat, lng"
                   />
                 </div>
                 <div className="space-y-2">
@@ -386,6 +399,29 @@ export function VehicleForm({
                     placeholder="-77.0428"
                   />
                 </div>
+              </div>
+
+              {/* Mapa interactivo */}
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground mb-2">
+                  O selecciona en el mapa:
+                </p>
+                <LocationPicker
+                  value={{
+                    lat: formData.originLatitude ?? "",
+                    lng: formData.originLongitude ?? "",
+                    address: formData.originAddress ?? "",
+                  }}
+                  onChange={(location) => {
+                    updateField("originLatitude", location.lat);
+                    updateField("originLongitude", location.lng);
+                    if (location.address) {
+                      updateField("originAddress", location.address);
+                    }
+                  }}
+                  height="250px"
+                  disabled={isSubmitting}
+                />
               </div>
             </CardContent>
           </Card>

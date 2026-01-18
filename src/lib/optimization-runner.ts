@@ -138,7 +138,9 @@ export interface OptimizationRoute {
   };
   stops: OptimizationStop[];
   totalDistance: number;
-  totalDuration: number;
+  totalDuration: number; // Total time (travel + service + waiting)
+  totalServiceTime: number; // Time spent at stops (service)
+  totalTravelTime: number; // Time spent traveling between stops
   totalWeight: number;
   totalVolume: number;
   utilizationPercentage: number;
@@ -388,6 +390,11 @@ export async function runOptimization(
   const optimizationDate = new Date();
   const dayOfWeek: DayOfWeek = getDayOfWeek(optimizationDate);
 
+  // Get service time from config (in minutes), convert to seconds
+  // Default to 10 minutes (600 seconds) if not set
+  const serviceTimeSeconds = (config.serviceTimeMinutes || 10) * 60;
+  console.log(`[Optimization] Service time configured: ${config.serviceTimeMinutes} minutes (${serviceTimeSeconds} seconds)`);
+
   // Prepare orders with location info
   const ordersWithLocation = pendingOrders.map((order) => ({
     id: order.id,
@@ -398,7 +405,7 @@ export async function runOptimization(
     weightRequired: order.weightRequired || 0,
     volumeRequired: order.volumeRequired || 0,
     promisedDate: order.promisedDate,
-    serviceTime: 300, // 5 minutes default
+    serviceTime: serviceTimeSeconds,
   }));
 
   // Create lookup map for order details (used when populating unassigned orders)
@@ -715,6 +722,8 @@ export async function runOptimization(
           stops: routeStops,
           totalDistance: vroomRoute.totalDistance,
           totalDuration: vroomRoute.totalDuration,
+          totalServiceTime: vroomRoute.totalServiceTime,
+          totalTravelTime: vroomRoute.totalTravelTime,
           totalWeight: vroomRoute.totalWeight,
           totalVolume: vroomRoute.totalVolume,
           utilizationPercentage: Math.round(
@@ -897,6 +906,8 @@ export async function runOptimization(
         stops: routeStops,
         totalDistance: vroomRoute.totalDistance,
         totalDuration: vroomRoute.totalDuration,
+        totalServiceTime: vroomRoute.totalServiceTime,
+        totalTravelTime: vroomRoute.totalTravelTime,
         totalWeight: vroomRoute.totalWeight,
         totalVolume: vroomRoute.totalVolume,
         utilizationPercentage: Math.round(
@@ -918,49 +929,97 @@ export async function runOptimization(
   checkAbort();
 
   // Build driver assignment requests from routes
+  // IMPORTANT: Respect pre-assigned drivers from vehicles
   const routeAssignments: DriverAssignmentRequest[] = [];
   const assignedDrivers = new Map<string, string>();
 
-  for (const route of routes) {
-    routeAssignments.push({
-      companyId: input.companyId,
-      vehicleId: route.vehicleId,
-      routeStops: route.stops.map((s) => ({
-        orderId: s.orderId,
-        promisedDate: undefined,
-      })),
-      candidateDriverIds: selectedDrivers.map((d) => d.id),
-      assignedDrivers,
-    });
+  // Create a map of vehicleId -> assignedDriverId for quick lookup
+  const vehicleDriverMap = new Map<string, string>();
+  for (const vehicle of selectedVehicles) {
+    if (vehicle.assignedDriverId) {
+      vehicleDriverMap.set(vehicle.id, vehicle.assignedDriverId);
+    }
   }
 
-  // Perform intelligent driver assignment
+  // Create a map of driverId -> driver details for direct assignment
+  const driverDetailsMap = new Map(selectedDrivers.map((d) => [d.id, d]));
+
+  // Create a set of selected driver IDs for validation
+  const selectedDriverIds = new Set(selectedDrivers.map((d) => d.id));
+
+  // Track which vehicles have pre-assigned drivers (to skip scoring for them)
+  const vehiclesWithPreAssignedDrivers = new Set<string>();
+
+  for (const route of routes) {
+    // Check if this vehicle has a pre-assigned driver
+    const preAssignedDriverId = vehicleDriverMap.get(route.vehicleId);
+
+    if (preAssignedDriverId && selectedDriverIds.has(preAssignedDriverId)) {
+      // Vehicle has a pre-assigned driver - mark to skip scoring
+      vehiclesWithPreAssignedDrivers.add(route.vehicleId);
+    } else {
+      // No pre-assigned driver - add to scoring queue
+      routeAssignments.push({
+        companyId: input.companyId,
+        vehicleId: route.vehicleId,
+        routeStops: route.stops.map((s) => ({
+          orderId: s.orderId,
+          promisedDate: undefined,
+        })),
+        candidateDriverIds: selectedDrivers.map((d) => d.id),
+        assignedDrivers,
+      });
+    }
+  }
+
+  // Perform intelligent driver assignment ONLY for vehicles without pre-assigned drivers
   checkAbort();
   const strategy = config?.objective === "TIME" ? "AVAILABILITY" : "BALANCED";
-  const driverAssignments = await assignDriversToRoutes(routeAssignments, {
-    ...DEFAULT_ASSIGNMENT_CONFIG,
-    strategy,
-  });
+  const driverAssignments = routeAssignments.length > 0
+    ? await assignDriversToRoutes(routeAssignments, {
+        ...DEFAULT_ASSIGNMENT_CONFIG,
+        strategy,
+      })
+    : new Map<string, DriverAssignmentResult>();
 
   // Update routes with assigned drivers and vehicle origin
   for (const route of routes) {
-    const assignment = driverAssignments.get(route.vehicleId);
-    if (assignment) {
-      route.driverId = assignment.driverId;
-      route.driverName = assignment.driverName;
-      route.assignmentQuality = {
-        score: assignment.score.score,
-        warnings: assignment.score.warnings,
-        errors: assignment.score.errors,
-      };
+    const vehicle = selectedVehicles.find((v) => v.id === route.vehicleId);
+    const preAssignedDriverId = vehicleDriverMap.get(route.vehicleId);
+
+    // Check if this vehicle has a pre-assigned driver that should be used directly
+    if (preAssignedDriverId && vehiclesWithPreAssignedDrivers.has(route.vehicleId)) {
+      // Use pre-assigned driver directly WITHOUT scoring
+      const driver = driverDetailsMap.get(preAssignedDriverId);
+      if (driver) {
+        route.driverId = driver.id;
+        route.driverName = driver.name;
+        route.assignmentQuality = {
+          score: 100, // Perfect score for pre-assigned
+          warnings: [],
+          errors: [],
+        };
+      }
+    } else {
+      // Use scored assignment
+      const assignment = driverAssignments.get(route.vehicleId);
+      if (assignment) {
+        route.driverId = assignment.driverId;
+        route.driverName = assignment.driverName;
+        route.assignmentQuality = {
+          score: assignment.score.score,
+          warnings: assignment.score.warnings,
+          errors: assignment.score.errors,
+        };
+      }
     }
 
     // Get vehicle origin from vehiclesWithZones
-    const vehicle = vehiclesWithZones.find((v) => v.id === route.vehicleId);
-    if (vehicle?.originLatitude && vehicle?.originLongitude) {
+    const vehicleWithZone = vehiclesWithZones.find((v) => v.id === route.vehicleId);
+    if (vehicleWithZone?.originLatitude && vehicleWithZone?.originLongitude) {
       route.driverOrigin = {
-        latitude: vehicle.originLatitude,
-        longitude: vehicle.originLongitude,
+        latitude: vehicleWithZone.originLatitude,
+        longitude: vehicleWithZone.originLongitude,
         address: undefined, // Vehicles don't have origin address
       };
     }

@@ -2,7 +2,6 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
-import { verifyTenantAccess, withTenantFilter } from "@/db/tenant-aware";
 import { Action, EntityType } from "@/lib/authorization";
 import {
   checkPermissionOrError,
@@ -12,6 +11,13 @@ import {
   unauthorizedResponse,
 } from "@/lib/route-helpers";
 import { updateCompanySchema } from "@/lib/validations/company";
+
+// Companies don't use tenant filtering - they ARE the tenants
+// ADMIN_SISTEMA can access all companies, others only their own
+function canAccessCompany(user: { role: string; companyId: string | null }, companyId: string): boolean {
+  if (user.role === "ADMIN_SISTEMA") return true;
+  return user.companyId === companyId;
+}
 
 export async function GET(
   request: NextRequest,
@@ -33,13 +39,15 @@ export async function GET(
 
     const { id } = await params;
 
-    // Apply tenant filtering
-    const whereClause = withTenantFilter(companies, [eq(companies.id, id)], authResult.user.companyId);
+    // Check access to this specific company
+    if (!canAccessCompany(authResult.user, id)) {
+      return unauthorizedResponse();
+    }
 
     const [company] = await db
       .select()
       .from(companies)
-      .where(whereClause)
+      .where(eq(companies.id, id))
       .limit(1);
 
     if (!company) {
@@ -71,30 +79,28 @@ export async function PATCH(
     if (permError) return permError;
 
     const { id } = await params;
+
+    // Check access to this specific company
+    if (!canAccessCompany(authResult.user, id)) {
+      return unauthorizedResponse();
+    }
+
     const body = await request.json();
     const validatedData = updateCompanySchema.parse({ ...body, id });
 
-    // Apply tenant filtering when fetching existing company
-    const existingWhereClause = withTenantFilter(companies, [
-      eq(companies.id, id),
-    ], authResult.user.companyId);
-
-    const existingCompany = await db
+    const [existingCompany] = await db
       .select()
       .from(companies)
-      .where(existingWhereClause)
+      .where(eq(companies.id, id))
       .limit(1);
 
-    if (existingCompany.length === 0) {
+    if (!existingCompany) {
       return notFoundResponse("Company");
     }
 
-    // Verify tenant access
-    verifyTenantAccess(existingCompany[0].id);
-
     if (
       validatedData.legalName &&
-      validatedData.legalName !== existingCompany[0].legalName
+      validatedData.legalName !== existingCompany.legalName
     ) {
       const duplicateLegalName = await db
         .select()
@@ -117,7 +123,7 @@ export async function PATCH(
 
     if (
       validatedData.email &&
-      validatedData.email !== existingCompany[0].email
+      validatedData.email !== existingCompany.email
     ) {
       const duplicateEmail = await db
         .select()
@@ -149,7 +155,7 @@ export async function PATCH(
         ...updateData,
         updatedAt: new Date(),
       })
-      .where(existingWhereClause)
+      .where(eq(companies.id, id))
       .returning();
 
     return NextResponse.json(updatedCompany);
@@ -178,21 +184,20 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Apply tenant filtering when fetching existing company
-    const whereClause = withTenantFilter(companies, [eq(companies.id, id)], authResult.user.companyId);
-
-    const existingCompany = await db
-      .select()
-      .from(companies)
-      .where(whereClause)
-      .limit(1);
-
-    if (existingCompany.length === 0) {
-      return notFoundResponse("Company");
+    // Check access to this specific company
+    if (!canAccessCompany(authResult.user, id)) {
+      return unauthorizedResponse();
     }
 
-    // Verify tenant access
-    verifyTenantAccess(existingCompany[0].id);
+    const [existingCompany] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, id))
+      .limit(1);
+
+    if (!existingCompany) {
+      return notFoundResponse("Company");
+    }
 
     await db
       .update(companies)
@@ -200,7 +205,7 @@ export async function DELETE(
         active: false,
         updatedAt: new Date(),
       })
-      .where(whereClause);
+      .where(eq(companies.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -63,6 +63,9 @@ export interface VroomRequest {
     g?: boolean; // Return geometry
     c?: boolean; // Return cost matrices
   };
+  // Optimization objectives: "min-cost" (minimize distance) or "min-duration" (minimize time)
+  // Can be combined with weights, e.g., [{"type": "min-cost", "weight": 1}, {"type": "min-duration", "weight": 2}]
+  objectives?: Array<{ type: "min-cost" | "min-duration"; weight?: number }>;
 }
 
 export interface VroomStep {

@@ -102,7 +102,9 @@ export interface OptimizedRoute {
   vehiclePlate: string;
   stops: OptimizedStop[];
   totalDistance: number;
-  totalDuration: number;
+  totalDuration: number; // Total time (travel + service + waiting)
+  totalServiceTime: number; // Time spent at stops
+  totalTravelTime: number; // Time spent traveling
   totalWeight: number;
   totalVolume: number;
   geometry?: string; // Encoded polyline from VROOM/OSRM
@@ -323,6 +325,28 @@ async function optimizeWithVroom(
     );
   });
 
+  // Map our objective to VROOM objectives
+  // DISTANCE -> min-cost (minimize distance/cost)
+  // TIME -> min-duration (minimize total time)
+  // BALANCED -> both with equal weight
+  const vroomObjectives = (() => {
+    switch (config.objective) {
+      case "DISTANCE":
+        return [{ type: "min-cost" as const, weight: 1 }];
+      case "TIME":
+        return [{ type: "min-duration" as const, weight: 1 }];
+      case "BALANCED":
+      default:
+        // Equal weight for both cost and duration
+        return [
+          { type: "min-cost" as const, weight: 1 },
+          { type: "min-duration" as const, weight: 1 },
+        ];
+    }
+  })();
+
+  console.log(`[VROOM] Optimization objective: ${config.objective} -> ${JSON.stringify(vroomObjectives)}`);
+
   // Build VROOM request
   const request: VroomRequest = {
     jobs,
@@ -330,6 +354,7 @@ async function optimizeWithVroom(
     options: {
       g: true, // Return geometry
     },
+    objectives: vroomObjectives,
   };
 
   // Call VROOM
@@ -483,12 +508,28 @@ function convertVroomResponse(
     }
 
     if (stops.length > 0) {
+      // VROOM returns:
+      // - duration: travel time only (NOT including service)
+      // - service: total service time at stops
+      // - waiting_time: time spent waiting for time windows
+      const vroomDuration = vroomRoute.duration || 0; // This is travel time
+      const totalServiceTime = vroomRoute.service || 0;
+      const waitingTime = vroomRoute.waiting_time || 0;
+
+      // Total duration = travel + service + waiting
+      const totalTravelTime = vroomDuration;
+      const totalDuration = totalTravelTime + totalServiceTime + waitingTime;
+
+      console.log(`[VROOM Route ${vehicle.plate}] VROOM duration: ${vroomDuration}s, service: ${totalServiceTime}s, waiting: ${waitingTime}s -> travel: ${totalTravelTime}s, total: ${totalDuration}s`);
+
       routes.push({
         vehicleId,
         vehiclePlate: vehicle.plate,
         stops,
         totalDistance: vroomRoute.distance || 0,
-        totalDuration: vroomRoute.duration || 0,
+        totalDuration,
+        totalServiceTime,
+        totalTravelTime,
         totalWeight,
         totalVolume,
         geometry: vroomRoute.geometry, // Encoded polyline from OSRM
@@ -658,12 +699,19 @@ function optimizeWithNearestNeighbor(
       ];
       const routeResult = calculateRouteDistance(routeCoords);
 
+      // Calculate service time from stops
+      const totalServiceTime = stops.reduce((sum, s) => sum + (s.serviceTime || 0), 0);
+      const totalTravelTime = routeResult.durationSeconds;
+      const totalDuration = totalTravelTime + totalServiceTime;
+
       routes.push({
         vehicleId: vehicle.id,
         vehiclePlate: vehicle.plate,
         stops,
         totalDistance: routeResult.distanceMeters,
-        totalDuration: routeResult.durationSeconds,
+        totalDuration,
+        totalServiceTime,
+        totalTravelTime,
         totalWeight: currentWeight,
         totalVolume: currentVolume,
       });

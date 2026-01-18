@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Loader2, Trash2 } from "lucide-react";
+import { Building2, Loader2, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserForm } from "@/components/users/user-form";
+import { UserImportDialog } from "@/components/users/user-import-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateUserInput } from "@/lib/validations/user";
@@ -123,6 +124,7 @@ function UsersPageContent() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserRoleIds, setEditingUserRoleIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
@@ -490,12 +492,22 @@ function UsersPageContent() {
             Administre los usuarios del sistema
           </p>
         </div>
-        <Button
-          onClick={() => setShowForm(true)}
-          disabled={isSystemAdmin && !effectiveCompanyId}
-        >
-          Nuevo Usuario
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowImportDialog(true)}
+            disabled={isSystemAdmin && !effectiveCompanyId}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Importar CSV
+          </Button>
+          <Button
+            onClick={() => setShowForm(true)}
+            disabled={isSystemAdmin && !effectiveCompanyId}
+          >
+            Nuevo Usuario
+          </Button>
+        </div>
       </div>
 
       {/* Loading companies message for system admins */}
@@ -738,6 +750,20 @@ function UsersPageContent() {
           </div>
         </div>
       )}
+
+      {/* Import Dialog */}
+      <UserImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImportComplete={() => {
+          fetchUsers();
+          toast({
+            title: "Importación completada",
+            description: "Los usuarios han sido importados exitosamente",
+          });
+        }}
+        companyId={effectiveCompanyId}
+      />
     </div>
   );
 }
