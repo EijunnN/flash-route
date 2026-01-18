@@ -161,13 +161,10 @@ export const VEHICLE_STATUS = {
   INACTIVE: "INACTIVE",
 } as const;
 
-// Load types for vehicles
+// Load types for vehicles (Liviano/Pesado)
 export const LOAD_TYPES = {
-  PACKAGES: "PACKAGES",
-  PALLETS: "PALLETS",
-  BULK: "BULK",
-  REFRIGERATED: "REFRIGERATED",
-  DANGEROUS: "DANGEROUS",
+  LIGHT: "LIGHT",
+  HEAVY: "HEAVY",
 } as const;
 
 export const vehicles = pgTable("vehicles", {

@@ -432,7 +432,7 @@ function UsersPageContent() {
     };
 
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
@@ -444,37 +444,37 @@ function UsersPageContent() {
           </p>
         </div>
         <UserForm
-          onSubmit={editingUser ? handleUpdate : handleCreate}
-          onCancel={handleCancel}
-          initialData={
-            editingUser
-              ? {
-                  name: editingUser.name,
-                  email: editingUser.email,
-                  username: editingUser.username,
-                  role: editingUser.role as CreateUserInput["role"],
-                  phone: editingUser.phone,
-                  identification: editingUser.identification,
-                  birthDate: editingUser.birthDate,
-                  photo: editingUser.photo,
-                  licenseNumber: editingUser.licenseNumber,
-                  licenseExpiry: editingUser.licenseExpiry,
-                  licenseCategories: editingUser.licenseCategories,
-                  certifications: editingUser.certifications,
-                  driverStatus:
-                    editingUser.driverStatus as CreateUserInput["driverStatus"],
-                  primaryFleetId: editingUser.primaryFleetId,
-                  active: editingUser.active,
-                }
-              : undefined
-          }
-          fleets={fleets}
-          roles={roles}
-          initialRoleIds={editingUserRoleIds}
-          submitLabel={editingUser ? "Actualizar" : "Crear"}
-          isEditing={!!editingUser}
-          companyId={effectiveCompanyId ?? undefined}
-        />
+            onSubmit={editingUser ? handleUpdate : handleCreate}
+            onCancel={handleCancel}
+            initialData={
+              editingUser
+                ? {
+                    name: editingUser.name,
+                    email: editingUser.email,
+                    username: editingUser.username,
+                    role: editingUser.role as CreateUserInput["role"],
+                    phone: editingUser.phone,
+                    identification: editingUser.identification,
+                    birthDate: editingUser.birthDate,
+                    photo: editingUser.photo,
+                    licenseNumber: editingUser.licenseNumber,
+                    licenseExpiry: editingUser.licenseExpiry,
+                    licenseCategories: editingUser.licenseCategories,
+                    certifications: editingUser.certifications,
+                    driverStatus:
+                      editingUser.driverStatus as CreateUserInput["driverStatus"],
+                    primaryFleetId: editingUser.primaryFleetId,
+                    active: editingUser.active,
+                  }
+                : undefined
+            }
+            fleets={fleets}
+            roles={roles}
+            initialRoleIds={editingUserRoleIds}
+            submitLabel={editingUser ? "Actualizar" : "Crear"}
+            isEditing={!!editingUser}
+            companyId={effectiveCompanyId ?? undefined}
+          />
       </div>
     );
   }
@@ -490,8 +490,23 @@ function UsersPageContent() {
             Administre los usuarios del sistema
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
+        <Button
+          onClick={() => setShowForm(true)}
+          disabled={isSystemAdmin && !effectiveCompanyId}
+        >
+          Nuevo Usuario
+        </Button>
       </div>
+
+      {/* Loading companies message for system admins */}
+      {isSystemAdmin && companies.length === 0 && (
+        <Card>
+          <CardContent className="flex items-center gap-4 py-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
+            <span className="text-sm text-muted-foreground">Cargando empresas...</span>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Company selector for system admins */}
       {isSystemAdmin && companies.length > 0 && (

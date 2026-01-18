@@ -1,12 +1,13 @@
 "use client";
 
-import { ChevronDown, Shield, ShieldCheck } from "lucide-react";
+import { Info, Shield, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -53,36 +54,30 @@ interface UserFormProps {
 }
 
 const USER_ROLES = [
-  { value: "ADMIN_SISTEMA", label: "Administrador del Sistema" },
-  { value: "ADMIN_FLOTA", label: "Administrador de Flota" },
+  { value: "ADMIN_SISTEMA", label: "Admin Sistema" },
+  { value: "ADMIN_FLOTA", label: "Admin Flota" },
   { value: "PLANIFICADOR", label: "Planificador" },
   { value: "MONITOR", label: "Monitor" },
   { value: "CONDUCTOR", label: "Conductor" },
 ];
+
+const ROLE_PERMISSIONS_INFO: Record<string, string> = {
+  ADMIN_SISTEMA: "Acceso completo a todas las empresas y funcionalidades",
+  ADMIN_FLOTA: "Gestión de flotas, vehículos y conductores",
+  PLANIFICADOR: "Planificación de rutas y optimización",
+  MONITOR: "Monitoreo en tiempo real",
+  CONDUCTOR: "Acceso a rutas asignadas",
+};
 
 const DRIVER_STATUS = [
   { value: "AVAILABLE", label: "Disponible" },
   { value: "ASSIGNED", label: "Asignado" },
   { value: "IN_ROUTE", label: "En Ruta" },
   { value: "ON_PAUSE", label: "En Pausa" },
-  { value: "COMPLETED", label: "Completado" },
   { value: "UNAVAILABLE", label: "No Disponible" },
-  { value: "ABSENT", label: "Ausente" },
 ];
 
-const LICENSE_CATEGORIES = [
-  { value: "A", label: "A" },
-  { value: "A1", label: "A1" },
-  { value: "A2", label: "A2" },
-  { value: "A3", label: "A3" },
-  { value: "B", label: "B" },
-  { value: "C", label: "C" },
-  { value: "C1", label: "C1" },
-  { value: "CE", label: "CE" },
-  { value: "D", label: "D" },
-  { value: "D1", label: "D1" },
-  { value: "DE", label: "DE" },
-];
+const LICENSE_CATEGORIES = ["A", "A1", "A2", "B", "C", "C1", "CE", "D", "D1", "DE"];
 
 export function UserForm({
   onSubmit,
@@ -102,7 +97,6 @@ export function UserForm({
     password: "",
     role: initialData?.role ?? "CONDUCTOR",
     phone: initialData?.phone ?? "",
-    // Driver-specific fields
     identification: initialData?.identification ?? "",
     birthDate: initialData?.birthDate ?? null,
     photo: initialData?.photo ?? "",
@@ -111,70 +105,38 @@ export function UserForm({
     licenseCategories: initialData?.licenseCategories ?? "",
     certifications: initialData?.certifications ?? "",
     driverStatus: initialData?.driverStatus ?? "AVAILABLE",
-    primaryFleetId: initialData?.primaryFleetId ?? (fleets[0]?.id || null),
+    primaryFleetId: initialData?.primaryFleetId ?? null,
     active: initialData?.active ?? true,
   };
 
   const [formData, setFormData] = useState<CreateUserInput>(defaultData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedLicenseCategories, setSelectedLicenseCategories] = useState<
-    string[]
-  >(
-    initialData?.licenseCategories
-      ?.split(",")
-      .map((c) => c.trim())
-      .filter(Boolean) || [],
+  const [selectedLicenseCategories, setSelectedLicenseCategories] = useState<string[]>(
+    initialData?.licenseCategories?.split(",").map((c) => c.trim()).filter(Boolean) || [],
   );
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>(initialRoleIds);
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<Record<string, GroupedPermissions>>({});
-  const [loadingPermissions, setLoadingPermissions] = useState<string | null>(null);
   const [isLoadingAllPermissions, setIsLoadingAllPermissions] = useState(false);
+  const [activeTab, setActiveTab] = useState("basic");
 
-  // Fetch permissions for a single role
-  const fetchRolePermissions = useCallback(async (roleId: string) => {
-    if (rolePermissions[roleId] || !companyId) return;
+  const showRolesColumn = formData.role !== "ADMIN_SISTEMA";
+  const showRolesSection = roles.length > 0 && formData.role !== "ADMIN_SISTEMA";
+  const isConductor = formData.role === "CONDUCTOR";
 
-    setLoadingPermissions(roleId);
-    try {
-      const response = await fetch(`/api/roles/${roleId}/permissions`, {
-        headers: {
-          "x-company-id": companyId,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRolePermissions(prev => ({
-          ...prev,
-          [roleId]: data.permissions || {}
-        }));
-      }
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-    } finally {
-      setLoadingPermissions(null);
-    }
-  }, [rolePermissions, companyId]);
-
-  // Stable reference to role IDs
   const roleIds = useMemo(() => roles.map(r => r.id).join(","), [roles]);
 
-  // Pre-fetch all role permissions when form loads
   useEffect(() => {
     if (!companyId || roles.length === 0) return;
-
     const fetchAllPermissions = async () => {
       setIsLoadingAllPermissions(true);
       const permissionsMap: Record<string, GroupedPermissions> = {};
-
       await Promise.all(
         roles.map(async (role) => {
           try {
             const response = await fetch(`/api/roles/${role.id}/permissions`, {
-              headers: {
-                "x-company-id": companyId,
-              },
+              headers: { "x-company-id": companyId },
             });
             if (response.ok) {
               const data = await response.json();
@@ -185,32 +147,17 @@ export function UserForm({
           }
         })
       );
-
       setRolePermissions(permissionsMap);
       setIsLoadingAllPermissions(false);
     };
-
     fetchAllPermissions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, roleIds]);
 
-  // Handle role expansion
   const handleExpandRole = useCallback((roleId: string) => {
-    if (expandedRoleId === roleId) {
-      setExpandedRoleId(null);
-    } else {
-      setExpandedRoleId(roleId);
-      // Fetch if not already loaded (fallback)
-      if (!rolePermissions[roleId]) {
-        fetchRolePermissions(roleId);
-      }
-    }
-  }, [expandedRoleId, rolePermissions, fetchRolePermissions]);
+    setExpandedRoleId(prev => prev === roleId ? null : roleId);
+  }, []);
 
-  // Check if current role is CONDUCTOR
-  const isConductor = formData.role === "CONDUCTOR";
-
-  // Calculate license status for alert display
   const licenseStatus = useMemo(() => {
     if (!formData.licenseExpiry) return null;
     if (isExpired(formData.licenseExpiry)) return "expired";
@@ -223,18 +170,13 @@ export function UserForm({
     setErrors({});
     setIsSubmitting(true);
 
-    // Helper to convert empty strings to null
     const emptyToNull = (value: string | null | undefined): string | null => {
-      if (value === undefined || value === null || value.trim() === "") {
-        return null;
-      }
+      if (value === undefined || value === null || value.trim() === "") return null;
       return value;
     };
 
-    // Prepare submit data
     const submitData: CreateUserInput = {
       ...formData,
-      // Convert empty strings to null for optional fields
       phone: emptyToNull(formData.phone),
       photo: emptyToNull(formData.photo),
       birthDate: emptyToNull(formData.birthDate),
@@ -242,7 +184,6 @@ export function UserForm({
       licenseCategories: isConductor
         ? (selectedLicenseCategories.length > 0 ? selectedLicenseCategories.join(", ") : null)
         : null,
-      // Clear driver fields if not a conductor
       identification: isConductor ? emptyToNull(formData.identification) : null,
       licenseNumber: isConductor ? emptyToNull(formData.licenseNumber) : null,
       licenseExpiry: isConductor ? emptyToNull(formData.licenseExpiry) : null,
@@ -253,10 +194,7 @@ export function UserForm({
     try {
       await onSubmit(submitData, selectedRoleIds);
     } catch (error: unknown) {
-      const err = error as {
-        details?: Array<{ path?: string[]; field?: string; message: string }>;
-        error?: string;
-      };
+      const err = error as { details?: Array<{ path?: string[]; field?: string; message: string }>; error?: string };
       if (err.details && Array.isArray(err.details)) {
         const fieldErrors: Record<string, string> = {};
         err.details.forEach((detail) => {
@@ -272,624 +210,387 @@ export function UserForm({
     }
   };
 
-  const updateField = (
-    field: keyof CreateUserInput,
-    value: CreateUserInput[keyof CreateUserInput],
-  ) => {
+  const updateField = (field: keyof CreateUserInput, value: CreateUserInput[keyof CreateUserInput]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
+      setErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
     }
   };
 
   const toggleLicenseCategory = (category: string) => {
-    setSelectedLicenseCategories((prev) => {
-      if (prev.includes(category)) {
-        return prev.filter((c) => c !== category);
-      } else {
-        return [...prev, category];
-      }
-    });
+    setSelectedLicenseCategories((prev) =>
+      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
+    );
   };
 
   const toggleRole = (roleId: string) => {
-    setSelectedRoleIds((prev) => {
-      if (prev.includes(roleId)) {
-        return prev.filter((id) => id !== roleId);
-      } else {
-        return [...prev, roleId];
-      }
-    });
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="space-y-4">
       {errors.form && (
-        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive mb-6">
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {errors.form}
         </div>
       )}
 
-      {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+      <div className={showRolesColumn ? "grid grid-cols-1 lg:grid-cols-3 gap-4" : ""}>
         {/* LEFT COLUMN - User Information */}
-        <div className="xl:col-span-3">
+        <div className={showRolesColumn ? "lg:col-span-2" : ""}>
           <Card>
-            <CardHeader className="pb-4">
-              <CardTitle>Información del Usuario</CardTitle>
-              <CardDescription>Datos básicos y credenciales de acceso</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Información del Usuario</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-          {/* Basic User Information */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => updateField("name", e.target.value)}
-              disabled={isSubmitting}
-              className={
-                errors.name
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }
-              placeholder="Ej: Juan Pérez"
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
-          </div>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className={`grid w-full ${isConductor ? "grid-cols-2" : "grid-cols-1"}`}>
+                  <TabsTrigger value="basic">Datos Básicos</TabsTrigger>
+                  {isConductor && <TabsTrigger value="driver">Conductor</TabsTrigger>}
+                </TabsList>
 
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo Electrónico *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => updateField("email", e.target.value)}
-              disabled={isSubmitting}
-              autoComplete="email"
-              className={
-                errors.email
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }
-              placeholder="Ej: juan.perez@empresa.com"
-            />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
-            )}
-          </div>
+                {/* Tab: Basic Info */}
+                <TabsContent value="basic" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="name" className="text-xs">Nombre *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => updateField("name", e.target.value)}
+                        disabled={isSubmitting}
+                        className={errors.name ? "border-destructive" : ""}
+                        placeholder="Juan Pérez"
+                      />
+                      {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                    </div>
 
-          {/* Username */}
-          <div className="space-y-2">
-            <Label htmlFor="username">Nombre de Usuario *</Label>
-            <Input
-              id="username"
-              value={formData.username}
-              onChange={(e) => updateField("username", e.target.value)}
-              disabled={isSubmitting}
-              className={
-                errors.username
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }
-              placeholder="Ej: juan_perez"
-            />
-            <p className="text-xs text-muted-foreground">
-              Solo letras, números y guiones bajos
-            </p>
-            {errors.username && (
-              <p className="text-sm text-destructive">{errors.username}</p>
-            )}
-          </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="email" className="text-xs">Correo *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => updateField("email", e.target.value)}
+                        disabled={isSubmitting}
+                        className={errors.email ? "border-destructive" : ""}
+                        placeholder="juan@empresa.com"
+                      />
+                      {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                    </div>
 
-          {/* Role */}
-          <div className="space-y-2">
-            <Label htmlFor="role">Rol Base *</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(value) => updateField("role", value)}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar rol" />
-              </SelectTrigger>
-              <SelectContent>
-                {USER_ROLES.map((role) => (
-                  <SelectItem key={role.value} value={role.value}>
-                    {role.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role}</p>
-            )}
-          </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="username" className="text-xs">Usuario *</Label>
+                      <Input
+                        id="username"
+                        value={formData.username}
+                        onChange={(e) => updateField("username", e.target.value)}
+                        disabled={isSubmitting}
+                        className={errors.username ? "border-destructive" : ""}
+                        placeholder="juan_perez"
+                      />
+                      {errors.username && <p className="text-xs text-destructive">{errors.username}</p>}
+                    </div>
 
-          {/* Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono (opcional)</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={formData.phone ?? ""}
-              onChange={(e) => updateField("phone", e.target.value || null)}
-              disabled={isSubmitting}
-              autoComplete="tel"
-              className={
-                errors.phone
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }
-              placeholder="Ej: +51 999 999 999"
-            />
-            {errors.phone && (
-              <p className="text-sm text-destructive">{errors.phone}</p>
-            )}
-          </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="password" className="text-xs">
+                        Contraseña {isEditing ? "(vacío = mantener)" : "*"}
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => updateField("password", e.target.value)}
+                        disabled={isSubmitting}
+                        className={errors.password ? "border-destructive" : ""}
+                        placeholder={isEditing ? "••••••••" : "Mín. 8 caracteres"}
+                      />
+                      {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+                    </div>
 
-          {/* Password */}
-          <div className="space-y-2">
-            <Label htmlFor="password">
-              Contraseña {isEditing ? "(dejar vacío para mantener)" : "*"}
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => updateField("password", e.target.value)}
-              disabled={isSubmitting}
-              autoComplete={isEditing ? "new-password" : "new-password"}
-              className={
-                errors.password
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
-              }
-              placeholder={isEditing ? "••••••••" : "Mínimo 8 caracteres"}
-            />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
-            )}
-          </div>
-            </div>
-          </div>
-
-      {/* Driver-specific fields - Only show if role is CONDUCTOR */}
-      {isConductor && (
-        <div className="space-y-4 border-t pt-6">
-          <h3 className="text-lg font-medium">Información de Conductor</h3>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {/* Primary Fleet Selection */}
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="primaryFleetId">Flota Principal</Label>
-              <Select
-                value={formData.primaryFleetId ?? "none"}
-                onValueChange={(value) =>
-                  updateField("primaryFleetId", value === "none" ? null : value)
-                }
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sin flota asignada" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin flota asignada</SelectItem>
-                  {fleets.map((fleet) => (
-                    <SelectItem key={fleet.id} value={fleet.id}>
-                      {fleet.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.primaryFleetId && (
-                <p className="text-sm text-destructive">
-                  {errors.primaryFleetId}
-                </p>
-              )}
-            </div>
-
-            {/* Identification */}
-            <div className="space-y-2">
-              <Label htmlFor="identification">Identificación *</Label>
-              <Input
-                id="identification"
-                value={formData.identification ?? ""}
-                onChange={(e) => updateField("identification", e.target.value)}
-                disabled={isSubmitting}
-                className={
-                  errors.identification
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
-                }
-                placeholder="Ej: 12345678"
-              />
-              {errors.identification && (
-                <p className="text-sm text-destructive">
-                  {errors.identification}
-                </p>
-              )}
-            </div>
-
-            {/* Birth Date */}
-            <div className="space-y-2">
-              <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input
-                id="birthDate"
-                type="date"
-                value={
-                  formData.birthDate ? formData.birthDate.slice(0, 10) : ""
-                }
-                onChange={(e) =>
-                  updateField(
-                    "birthDate",
-                    e.target.value ? `${e.target.value}T00:00:00.000Z` : null,
-                  )
-                }
-                disabled={isSubmitting}
-                className={
-                  errors.birthDate
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
-                }
-              />
-              {errors.birthDate && (
-                <p className="text-sm text-destructive">{errors.birthDate}</p>
-              )}
-            </div>
-
-            {/* Photo URL */}
-            <div className="space-y-2">
-              <Label htmlFor="photo">URL de Fotografía</Label>
-              <Input
-                id="photo"
-                type="url"
-                value={formData.photo ?? ""}
-                onChange={(e) => updateField("photo", e.target.value || null)}
-                disabled={isSubmitting}
-                className={
-                  errors.photo
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
-                }
-                placeholder="Ej: https://ejemplo.com/foto.jpg"
-              />
-              {errors.photo && (
-                <p className="text-sm text-destructive">{errors.photo}</p>
-              )}
-            </div>
-
-            {/* License Number */}
-            <div className="space-y-2">
-              <Label htmlFor="licenseNumber">Número de Licencia *</Label>
-              <Input
-                id="licenseNumber"
-                value={formData.licenseNumber ?? ""}
-                onChange={(e) => updateField("licenseNumber", e.target.value)}
-                disabled={isSubmitting}
-                className={
-                  errors.licenseNumber
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
-                }
-                placeholder="Ej: LIC-12345"
-              />
-              {errors.licenseNumber && (
-                <p className="text-sm text-destructive">
-                  {errors.licenseNumber}
-                </p>
-              )}
-            </div>
-
-            {/* License Expiry */}
-            <div className="space-y-2">
-              <Label htmlFor="licenseExpiry">Vencimiento de Licencia *</Label>
-              <Input
-                id="licenseExpiry"
-                type="datetime-local"
-                value={
-                  formData.licenseExpiry
-                    ? formData.licenseExpiry.slice(0, 16)
-                    : ""
-                }
-                onChange={(e) =>
-                  updateField(
-                    "licenseExpiry",
-                    e.target.value ? `${e.target.value}:00.000Z` : null,
-                  )
-                }
-                disabled={isSubmitting}
-                className={
-                  errors.licenseExpiry
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : ""
-                }
-              />
-              {errors.licenseExpiry && (
-                <p className="text-sm text-destructive">
-                  {errors.licenseExpiry}
-                </p>
-              )}
-              {licenseStatus === "expired" && (
-                <p className="text-sm text-destructive font-medium">
-                  La licencia está vencida. El conductor será marcado como NO
-                  DISPONIBLE.
-                </p>
-              )}
-              {licenseStatus === "expiring_soon" && (
-                <p className="text-sm text-orange-500 font-medium">
-                  La licencia vence en menos de 30 días.
-                </p>
-              )}
-            </div>
-
-            {/* Driver Status */}
-            <div className="space-y-2">
-              <Label htmlFor="driverStatus">Estado de Conductor</Label>
-              <Select
-                value={formData.driverStatus ?? "AVAILABLE"}
-                onValueChange={(value) => updateField("driverStatus", value)}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DRIVER_STATUS.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.driverStatus && (
-                <p className="text-sm text-destructive">
-                  {errors.driverStatus}
-                </p>
-              )}
-            </div>
-
-            {/* License Categories */}
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Categorías de Licencia</Label>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {LICENSE_CATEGORIES.map((category) => (
-                  <div key={category.value} className="flex items-center gap-2">
-                    <input
-                      id={`license-${category.value}`}
-                      type="checkbox"
-                      checked={selectedLicenseCategories.includes(
-                        category.value,
+                    <div className="space-y-1">
+                      <Label htmlFor="role" className="text-xs">Rol Base *</Label>
+                      <Select
+                        value={formData.role}
+                        onValueChange={(value) => updateField("role", value)}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {USER_ROLES.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.role && ROLE_PERMISSIONS_INFO[formData.role] && (
+                        <p className="text-xs text-muted-foreground flex items-start gap-1 mt-1">
+                          <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                          {ROLE_PERMISSIONS_INFO[formData.role]}
+                        </p>
                       )}
-                      onChange={() => toggleLicenseCategory(category.value)}
-                      disabled={isSubmitting}
-                      className="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring"
-                    />
-                    <Label
-                      htmlFor={`license-${category.value}`}
-                      className="text-sm cursor-pointer"
-                    >
-                      {category.label}
-                    </Label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="phone" className="text-xs">Teléfono</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone ?? ""}
+                        onChange={(e) => updateField("phone", e.target.value || null)}
+                        disabled={isSubmitting}
+                        placeholder="+51 999 999 999"
+                      />
+                    </div>
                   </div>
-                ))}
-              </div>
-              {errors.licenseCategories && (
-                <p className="text-sm text-destructive">
-                  {errors.licenseCategories}
-                </p>
-              )}
-            </div>
 
-            {/* Certifications */}
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="certifications">Certificaciones</Label>
-              <textarea
-                id="certifications"
-                value={formData.certifications ?? ""}
-                onChange={(e) =>
-                  updateField("certifications", e.target.value || null)
-                }
-                disabled={isSubmitting}
-                rows={3}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm transition-colors resize-y"
-                placeholder="Ej: Certificación de carga peligrosa, Primeros auxilios, etc."
-              />
-              {errors.certifications && (
-                <p className="text-sm text-destructive">
-                  {errors.certifications}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+                  <div className="flex items-center justify-between pt-3 border-t">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="active"
+                        checked={formData.active}
+                        onCheckedChange={(checked) => updateField("active", checked)}
+                        disabled={isSubmitting}
+                      />
+                      <Label htmlFor="active" className="text-sm cursor-pointer">
+                        {formData.active ? "Activo" : "Inactivo"}
+                      </Label>
+                    </div>
+                  </div>
+                </TabsContent>
 
-          {/* Active status */}
-          <div className="space-y-2 border-t pt-6">
-            <Label htmlFor="active">Estado del Registro</Label>
-            <div className="flex items-center gap-3">
-              <Switch
-                id="active"
-                checked={formData.active}
-                onCheckedChange={(checked) => updateField("active", checked)}
-                disabled={isSubmitting}
-              />
-              <span className="text-sm">
-                {formData.active ? (
-                  <Badge variant="default">Activo</Badge>
-                ) : (
-                  <Badge variant="secondary">Inactivo</Badge>
+                {/* Tab: Driver Info */}
+                {isConductor && (
+                  <TabsContent value="driver" className="space-y-4 mt-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="primaryFleetId" className="text-xs">Flota Principal</Label>
+                        <Select
+                          value={formData.primaryFleetId ?? "none"}
+                          onValueChange={(value) => updateField("primaryFleetId", value === "none" ? null : value)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sin flota" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sin flota</SelectItem>
+                            {fleets.map((fleet) => (
+                              <SelectItem key={fleet.id} value={fleet.id}>{fleet.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="driverStatus" className="text-xs">Estado</Label>
+                        <Select
+                          value={formData.driverStatus ?? "AVAILABLE"}
+                          onValueChange={(value) => updateField("driverStatus", value)}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DRIVER_STATUS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="identification" className="text-xs">Identificación *</Label>
+                        <Input
+                          id="identification"
+                          value={formData.identification ?? ""}
+                          onChange={(e) => updateField("identification", e.target.value)}
+                          disabled={isSubmitting}
+                          className={errors.identification ? "border-destructive" : ""}
+                          placeholder="12345678"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="birthDate" className="text-xs">Fecha Nacimiento</Label>
+                        <Input
+                          id="birthDate"
+                          type="date"
+                          value={formData.birthDate ? formData.birthDate.slice(0, 10) : ""}
+                          onChange={(e) => updateField("birthDate", e.target.value ? `${e.target.value}T00:00:00.000Z` : null)}
+                          disabled={isSubmitting}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="licenseNumber" className="text-xs">Nº Licencia *</Label>
+                        <Input
+                          id="licenseNumber"
+                          value={formData.licenseNumber ?? ""}
+                          onChange={(e) => updateField("licenseNumber", e.target.value)}
+                          disabled={isSubmitting}
+                          className={errors.licenseNumber ? "border-destructive" : ""}
+                          placeholder="LIC-12345"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="licenseExpiry" className="text-xs">Vencimiento Licencia *</Label>
+                        <Input
+                          id="licenseExpiry"
+                          type="date"
+                          value={formData.licenseExpiry ? formData.licenseExpiry.slice(0, 10) : ""}
+                          onChange={(e) => updateField("licenseExpiry", e.target.value ? `${e.target.value}T00:00:00.000Z` : null)}
+                          disabled={isSubmitting}
+                          className={errors.licenseExpiry ? "border-destructive" : ""}
+                        />
+                        {licenseStatus === "expired" && (
+                          <p className="text-xs text-destructive">Licencia vencida</p>
+                        )}
+                        {licenseStatus === "expiring_soon" && (
+                          <p className="text-xs text-orange-500">Vence pronto</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 pt-2">
+                      <Label className="text-xs">Categorías de Licencia</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {LICENSE_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => toggleLicenseCategory(cat)}
+                            disabled={isSubmitting}
+                            className={`px-2 py-1 text-xs rounded border transition-colors ${
+                              selectedLicenseCategories.includes(cat)
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background border-input hover:bg-muted"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label htmlFor="certifications" className="text-xs">Certificaciones</Label>
+                      <Input
+                        id="certifications"
+                        value={formData.certifications ?? ""}
+                        onChange={(e) => updateField("certifications", e.target.value || null)}
+                        disabled={isSubmitting}
+                        placeholder="Carga peligrosa, Primeros auxilios..."
+                      />
+                    </div>
+                  </TabsContent>
                 )}
-              </span>
-            </div>
-          </div>
+              </Tabs>
 
-          {/* Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-                Cancelar
-              </Button>
-            )}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Guardando..." : submitLabel}
-            </Button>
-          </div>
+              {/* Buttons */}
+              <div className="flex justify-end gap-3 pt-4 mt-4 border-t">
+                {onCancel && (
+                  <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                    Cancelar
+                  </Button>
+                )}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Guardando..." : submitLabel}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* RIGHT COLUMN - Roles and Permissions */}
-        {roles.length > 0 && (
-          <div className="xl:col-span-2">
-            <div className="sticky top-4">
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Roles y Permisos
-                  </CardTitle>
-                  <CardDescription>Asigne roles adicionales al usuario</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-              {/* Roles List */}
-              <div className="space-y-2">
-                {isLoadingAllPermissions && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                    Cargando permisos...
-                  </div>
+        {/* RIGHT COLUMN - Roles */}
+        {showRolesColumn && (
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Roles
+                </CardTitle>
+                {showRolesSection && (
+                  <CardDescription className="text-xs">Roles adicionales</CardDescription>
                 )}
-                {roles.map((role) => {
-                  const isSelected = selectedRoleIds.includes(role.id);
-                  const isExpanded = expandedRoleId === role.id;
-                  const permissions = rolePermissions[role.id];
-                  const totalPermissions = permissions
-                    ? Object.values(permissions).flat().filter(p => p.enabled).length
-                    : role.permissionsCount || 0;
-
-                  return (
-                    <div
-                      key={role.id}
-                      className={`rounded-lg border p-3 cursor-pointer transition-colors ${
-                        isExpanded
-                          ? "border-primary ring-2 ring-primary/20"
-                          : isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-muted-foreground/50"
-                      }`}
-                      onClick={() => handleExpandRole(role.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRole(role.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          disabled={isSubmitting}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm">{role.name}</span>
-                            {role.isSystem && (
-                              <Badge variant="secondary" className="text-xs">
-                                Sistema
-                              </Badge>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground">
-                            {isLoadingAllPermissions ? "..." : `${totalPermissions} permisos`}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <Badge variant="default" className="text-xs shrink-0">
-                            <ShieldCheck className="h-3 w-3" />
-                          </Badge>
-                        )}
+              </CardHeader>
+              <CardContent>
+                {!showRolesSection ? (
+                  <p className="text-xs text-muted-foreground">
+                    No hay roles personalizados disponibles.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {isLoadingAllPermissions && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                        Cargando...
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    )}
+                    {roles.map((role) => {
+                      const isSelected = selectedRoleIds.includes(role.id);
+                      const permissions = rolePermissions[role.id];
+                      const totalPermissions = permissions
+                        ? Object.values(permissions).flat().filter(p => p.enabled).length
+                        : role.permissionsCount || 0;
 
-              {selectedRoleIds.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  {selectedRoleIds.length} rol{selectedRoleIds.length > 1 ? "es" : ""} asignado{selectedRoleIds.length > 1 ? "s" : ""}
-                </p>
-              )}
-                </CardContent>
-              </Card>
-
-              {/* Permissions Panel */}
-              {expandedRoleId && (
-                <Card className="mt-4">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      Permisos: {roles.find(r => r.id === expandedRoleId)?.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {loadingPermissions === expandedRoleId ? (
-                      <div className="flex items-center justify-center py-6">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-primary" />
-                      </div>
-                    ) : rolePermissions[expandedRoleId] && Object.keys(rolePermissions[expandedRoleId]).length > 0 ? (
-                      <div className="space-y-3 max-h-[350px] overflow-y-auto">
-                        {Object.entries(rolePermissions[expandedRoleId]).map(([category, perms]) => {
-                          const enabledCount = perms.filter(p => p.enabled).length;
-                          return (
-                            <div key={category}>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                                  {category}
-                                </span>
-                                <Badge variant="outline" className="text-xs h-5">
-                                  {enabledCount}/{perms.length}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-1 gap-1">
-                                {perms.map((perm) => (
-                                  <div
-                                    key={perm.id}
-                                    className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${
-                                      perm.enabled
-                                        ? "bg-green-50 dark:bg-green-900/20"
-                                        : "bg-muted/30"
-                                    }`}
-                                  >
-                                    <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                                      perm.enabled
-                                        ? "bg-green-500"
-                                        : "bg-muted-foreground/30"
-                                    }`} />
-                                    <span className={`truncate ${perm.enabled ? "" : "text-muted-foreground"}`}>
-                                      {perm.name}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                      return (
+                        <div
+                          key={role.id}
+                          className={`rounded-lg border p-2 cursor-pointer transition-colors ${
+                            isSelected ? "border-primary bg-primary/5" : "hover:border-muted-foreground/50"
+                          }`}
+                          onClick={() => handleExpandRole(role.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRole(role.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={isSubmitting}
+                              className="scale-75"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium">{role.name}</span>
+                              <p className="text-xs text-muted-foreground">
+                                {totalPermissions} permisos
+                              </p>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground text-center py-4">
-                        Sin permisos configurados
+                            {isSelected && <ShieldCheck className="h-4 w-4 text-primary shrink-0" />}
+                          </div>
+
+                          {expandedRoleId === role.id && permissions && (
+                            <div className="mt-2 pt-2 border-t space-y-1 max-h-40 overflow-y-auto">
+                              {Object.entries(permissions).map(([category, perms]) => (
+                                <div key={category}>
+                                  <p className="text-xs font-medium text-muted-foreground uppercase">{category}</p>
+                                  {perms.filter(p => p.enabled).map((perm) => (
+                                    <p key={perm.id} className="text-xs pl-2">• {perm.name}</p>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {selectedRoleIds.length > 0 && (
+                      <p className="text-xs text-muted-foreground pt-2">
+                        {selectedRoleIds.length} rol{selectedRoleIds.length > 1 ? "es" : ""} asignado{selectedRoleIds.length > 1 ? "s" : ""}
                       </p>
                     )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

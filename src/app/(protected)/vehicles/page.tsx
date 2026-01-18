@@ -316,71 +316,69 @@ function VehiclesPageContent() {
 
   if (showForm || editingVehicle) {
     return (
-      <div className="min-h-screen bg-background p-8">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              {editingVehicle ? "Editar Vehículo" : "Nuevo Vehículo"}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {editingVehicle
-                ? "Actualice la información del vehículo"
-                : "Complete el formulario para crear un nuevo vehículo"}
-            </p>
-          </div>
-          <Card>
-            <CardContent className="pt-6">
-              <VehicleForm
-                onSubmit={editingVehicle ? handleUpdate : handleCreate}
-                initialData={
-                  editingVehicle
-                    ? {
-                        name: editingVehicle.name,
-                        useNameAsPlate: editingVehicle.useNameAsPlate,
-                        plate: editingVehicle.plate || "",
-                        loadType:
-                          editingVehicle.loadType as VehicleInput["loadType"],
-                        maxOrders: editingVehicle.maxOrders,
-                        originAddress: editingVehicle.originAddress || "",
-                        originLatitude: editingVehicle.originLatitude || "",
-                        originLongitude: editingVehicle.originLongitude || "",
-                        assignedDriverId: editingVehicle.assignedDriverId,
-                        workdayStart: editingVehicle.workdayStart || "",
-                        workdayEnd: editingVehicle.workdayEnd || "",
-                        hasBreakTime: editingVehicle.hasBreakTime,
-                        breakDuration: editingVehicle.breakDuration,
-                        breakTimeStart: editingVehicle.breakTimeStart || "",
-                        breakTimeEnd: editingVehicle.breakTimeEnd || "",
-                        fleetIds: editingVehicle.fleetIds || [],
-                        brand: editingVehicle.brand || "",
-                        model: editingVehicle.model || "",
-                        year: editingVehicle.year,
-                        type: editingVehicle.type as VehicleInput["type"],
-                        weightCapacity: editingVehicle.weightCapacity,
-                        volumeCapacity: editingVehicle.volumeCapacity,
-                        refrigerated: editingVehicle.refrigerated,
-                        heated: editingVehicle.heated,
-                        lifting: editingVehicle.lifting,
-                        licenseRequired:
-                          editingVehicle.licenseRequired as VehicleInput["licenseRequired"],
-                        insuranceExpiry: editingVehicle.insuranceExpiry || "",
-                        inspectionExpiry: editingVehicle.inspectionExpiry || "",
-                        status: editingVehicle.status as VehicleInput["status"],
-                        active: editingVehicle.active,
-                      }
-                    : undefined
-                }
-                fleets={fleets}
-                drivers={drivers}
-                submitLabel={editingVehicle ? "Actualizar" : "Crear"}
-                onCancel={() => {
-                  setShowForm(false);
-                  setEditingVehicle(null);
-                }}
-              />
-            </CardContent>
-          </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {editingVehicle ? "Editar Vehículo" : "Nuevo Vehículo"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {editingVehicle
+              ? "Actualice la información del vehículo"
+              : "Complete el formulario para crear un nuevo vehículo"}
+          </p>
         </div>
+        <Card>
+          <CardContent className="pt-6">
+            <VehicleForm
+              onSubmit={editingVehicle ? handleUpdate : handleCreate}
+              initialData={
+                editingVehicle
+                  ? {
+                      name: editingVehicle.name,
+                      useNameAsPlate: editingVehicle.useNameAsPlate,
+                      plate: editingVehicle.plate || "",
+                      loadType:
+                        editingVehicle.loadType as VehicleInput["loadType"],
+                      maxOrders: editingVehicle.maxOrders,
+                      originAddress: editingVehicle.originAddress || "",
+                      originLatitude: editingVehicle.originLatitude || "",
+                      originLongitude: editingVehicle.originLongitude || "",
+                      assignedDriverId: editingVehicle.assignedDriverId,
+                      workdayStart: editingVehicle.workdayStart || "",
+                      workdayEnd: editingVehicle.workdayEnd || "",
+                      hasBreakTime: editingVehicle.hasBreakTime,
+                      breakDuration: editingVehicle.breakDuration,
+                      breakTimeStart: editingVehicle.breakTimeStart || "",
+                      breakTimeEnd: editingVehicle.breakTimeEnd || "",
+                      fleetIds: editingVehicle.fleetIds || [],
+                      brand: editingVehicle.brand || "",
+                      model: editingVehicle.model || "",
+                      year: editingVehicle.year,
+                      type: editingVehicle.type as VehicleInput["type"],
+                      weightCapacity: editingVehicle.weightCapacity,
+                      volumeCapacity: editingVehicle.volumeCapacity,
+                      refrigerated: editingVehicle.refrigerated,
+                      heated: editingVehicle.heated,
+                      lifting: editingVehicle.lifting,
+                      licenseRequired:
+                        editingVehicle.licenseRequired as VehicleInput["licenseRequired"],
+                      insuranceExpiry: editingVehicle.insuranceExpiry || "",
+                      inspectionExpiry: editingVehicle.inspectionExpiry || "",
+                      status: editingVehicle.status as VehicleInput["status"],
+                      active: editingVehicle.active,
+                    }
+                  : undefined
+              }
+              fleets={fleets}
+              drivers={drivers}
+              submitLabel={editingVehicle ? "Actualizar" : "Crear"}
+              onCancel={() => {
+                setShowForm(false);
+                setEditingVehicle(null);
+              }}
+            />
+          </CardContent>
+        </Card>
       </div>
     );
   }

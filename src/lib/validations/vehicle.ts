@@ -26,11 +26,8 @@ export const LICENSE_CATEGORIES = [
 
 // Load types for vehicles
 export const LOAD_TYPES = [
-  "PACKAGES",
-  "PALLETS",
-  "BULK",
-  "REFRIGERATED",
-  "DANGEROUS",
+  "LIGHT",
+  "HEAVY",
 ] as const;
 
 // Time format regex (HH:MM or HH:MM:SS)
@@ -68,8 +65,7 @@ export const vehicleSchema = z
       emptyStringToNull,
       z
         .enum(LOAD_TYPES, {
-          message:
-            "Tipo de carga debe ser PACKAGES, PALLETS, BULK, REFRIGERATED o DANGEROUS",
+          message: "Tipo de carga debe ser LIGHT o HEAVY",
         })
         .optional()
         .nullable()
@@ -328,11 +324,8 @@ export type VehicleQuery = z.infer<typeof vehicleQuerySchema>;
 
 // Load type display names for UI
 export const LOAD_TYPE_LABELS: Record<(typeof LOAD_TYPES)[number], string> = {
-  PACKAGES: "Paquetes",
-  PALLETS: "Pallets",
-  BULK: "Granel",
-  REFRIGERATED: "Refrigerado",
-  DANGEROUS: "Peligroso",
+  LIGHT: "Liviano",
+  HEAVY: "Pesado",
 };
 
 // Vehicle status display names for UI

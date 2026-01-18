@@ -213,7 +213,13 @@ export async function PUT(
       updateData.email = validatedData.email;
     if (validatedData.username !== undefined)
       updateData.username = validatedData.username;
-    if (validatedData.role !== undefined) updateData.role = validatedData.role;
+    if (validatedData.role !== undefined) {
+      updateData.role = validatedData.role;
+      // ADMIN_SISTEMA users should not have a companyId
+      if (validatedData.role === "ADMIN_SISTEMA") {
+        updateData.companyId = null;
+      }
+    }
     if (validatedData.phone !== undefined)
       updateData.phone = validatedData.phone;
     if (validatedData.identification !== undefined)

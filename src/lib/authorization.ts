@@ -407,28 +407,45 @@ export async function hasPermissionFromDB(
 /**
  * Get all permissions for a user from the database
  * Returns array of "entity:action" strings
+ *
+ * Combines two permission sources:
+ * 1. Base role permissions (from ROLE_PERMISSIONS static mapping)
+ * 2. Custom role permissions (from database roles assigned to user)
  */
 export async function getUserPermissionsFromDB(
   userId: string,
   companyId: string | null,
 ): Promise<string[]> {
   try {
-    // For users without a companyId (ADMIN_SISTEMA), grant all permissions
-    if (!companyId) {
-      // Check if this user has ADMIN_SISTEMA role in the users table
-      const [user] = await db
-        .select({ role: users.role })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+    // Get user's base role from users table
+    const [user] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-      if (user?.role === "ADMIN_SISTEMA") {
-        return ["*"]; // Grant all permissions to system admin
-      }
-      return []; // No permissions for users without company and not admin
+    if (!user) {
+      return [];
     }
 
-    // Get user's active roles
+    // For ADMIN_SISTEMA (with or without companyId), grant all permissions
+    if (user.role === "ADMIN_SISTEMA") {
+      return ["*"];
+    }
+
+    // Start with base role permissions (static mapping)
+    const enabledPermissionsSet = new Set<string>();
+    const baseRolePermissions = ROLE_PERMISSIONS[user.role] || [];
+    for (const perm of baseRolePermissions) {
+      enabledPermissionsSet.add(perm);
+    }
+
+    // If no companyId, return only base role permissions
+    if (!companyId) {
+      return Array.from(enabledPermissionsSet);
+    }
+
+    // Get user's custom roles from database
     const userRolesData = await db
       .select({ roleId: userRoles.roleId })
       .from(userRoles)
@@ -442,30 +459,20 @@ export async function getUserPermissionsFromDB(
         ),
       );
 
-    if (userRolesData.length === 0) {
-      return [];
-    }
+    // Add permissions from custom roles
+    for (const { roleId } of userRolesData) {
+      // Check if custom role is admin
+      const [customRole] = await db
+        .select({ code: roles.code })
+        .from(roles)
+        .where(eq(roles.id, roleId))
+        .limit(1);
 
-    const roleIds = userRolesData.map((r) => r.roleId);
+      if (customRole?.code === "ADMIN_SISTEMA") {
+        return ["*"]; // Admin role grants all permissions
+      }
 
-    // Check if user is admin
-    const systemAdminRoles = await db
-      .select()
-      .from(roles)
-      .where(eq(roles.code, "ADMIN_SISTEMA"));
-
-    const adminRoleIdsSet = new Set(systemAdminRoles.map((r) => r.id));
-    const isAdmin = roleIds.some((id) => adminRoleIdsSet.has(id));
-
-    if (isAdmin) {
-      // Return wildcard for admin
-      return ["*"];
-    }
-
-    // Get all enabled permissions for user's roles using Set for O(1) deduplication
-    const enabledPermissionsSet = new Set<string>();
-
-    for (const roleId of roleIds) {
+      // Get enabled permissions for this custom role
       const perms = await db
         .select({
           entity: permissionsTable.entity,

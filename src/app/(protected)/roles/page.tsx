@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
+import { Building2, Loader2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { ProtectedPage } from "@/components/auth/protected-page";
 import {
@@ -14,8 +14,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
 interface Role {
@@ -49,6 +59,13 @@ interface RolePermissionsResponse {
   permissions: GroupedPermissions;
 }
 
+interface Company {
+  id: string;
+  legalName: string;
+  commercialName: string;
+  active: boolean;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   ORDERS: "Pedidos",
   VEHICLES: "Vehículos",
@@ -63,8 +80,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function RolesPageContent() {
+  const { user: authUser, companyId: authCompanyId, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -81,9 +101,34 @@ function RolesPageContent() {
   });
   const [formError, setFormError] = useState("");
 
-  const fetchRoles = useCallback(async () => {
+  // Check if user is system admin
+  const isSystemAdmin = authUser?.role === "ADMIN_SISTEMA";
+
+  // Use selected company for system admins, otherwise use auth company
+  const effectiveCompanyId = isSystemAdmin && selectedCompanyId ? selectedCompanyId : authCompanyId;
+
+  // Fetch companies (only for system admins)
+  const fetchCompanies = useCallback(async () => {
+    if (!isSystemAdmin) return;
     try {
-      const response = await fetch("/api/roles");
+      const response = await fetch("/api/companies?active=true", {
+        credentials: "include",
+      });
+      const data = await response.json();
+      setCompanies(data.data || []);
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+  }, [isSystemAdmin]);
+
+  const fetchRoles = useCallback(async () => {
+    if (!effectiveCompanyId) return;
+    try {
+      const response = await fetch("/api/roles", {
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
       const data = await response.json();
       setRoles(data.data || []);
     } catch (error) {
@@ -91,12 +136,17 @@ function RolesPageContent() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [effectiveCompanyId]);
 
   const fetchRolePermissions = useCallback(async (roleId: string) => {
+    if (!effectiveCompanyId) return;
     setIsLoadingPermissions(true);
     try {
-      const response = await fetch(`/api/roles/${roleId}/permissions`);
+      const response = await fetch(`/api/roles/${roleId}/permissions`, {
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
+      });
       const data = await response.json();
       setRolePermissions(data);
     } catch (error) {
@@ -104,11 +154,31 @@ function RolesPageContent() {
     } finally {
       setIsLoadingPermissions(false);
     }
-  }, []);
+  }, [effectiveCompanyId]);
 
+  // Fetch companies for system admins
   useEffect(() => {
-    fetchRoles();
-  }, [fetchRoles]);
+    if (isSystemAdmin) {
+      fetchCompanies();
+    }
+  }, [isSystemAdmin, fetchCompanies]);
+
+  // Auto-select first company for system admins when companies load
+  useEffect(() => {
+    if (isSystemAdmin && !authCompanyId && !selectedCompanyId && companies.length > 0) {
+      setSelectedCompanyId(companies[0].id);
+    }
+  }, [isSystemAdmin, authCompanyId, selectedCompanyId, companies]);
+
+  // Fetch roles when company changes
+  useEffect(() => {
+    if (effectiveCompanyId) {
+      setIsLoading(true);
+      setSelectedRole(null);
+      setRolePermissions(null);
+      fetchRoles();
+    }
+  }, [effectiveCompanyId, fetchRoles]);
 
   useEffect(() => {
     if (selectedRole) {
@@ -127,10 +197,18 @@ function RolesPageContent() {
       return;
     }
 
+    if (!effectiveCompanyId) {
+      setFormError("Debe seleccionar una empresa primero");
+      return;
+    }
+
     try {
       const response = await fetch("/api/roles", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": effectiveCompanyId,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -158,12 +236,16 @@ function RolesPageContent() {
   };
 
   const handleDeleteRole = async (id: string) => {
+    if (!effectiveCompanyId) return;
     setDeletingId(id);
     const role = roles.find((r) => r.id === id);
 
     try {
       const response = await fetch(`/api/roles/${id}`, {
         method: "DELETE",
+        headers: {
+          "x-company-id": effectiveCompanyId,
+        },
       });
 
       if (!response.ok) {
@@ -196,7 +278,7 @@ function RolesPageContent() {
     permissionId: string,
     enabled: boolean,
   ) => {
-    if (!selectedRole || selectedRole.isSystem) return;
+    if (!selectedRole || selectedRole.isSystem || !effectiveCompanyId) return;
 
     setSavingPermission(permissionId);
 
@@ -205,7 +287,10 @@ function RolesPageContent() {
         `/api/roles/${selectedRole.id}/permissions`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": effectiveCompanyId,
+          },
           body: JSON.stringify({ permissionId, enabled }),
         },
       );
@@ -247,7 +332,7 @@ function RolesPageContent() {
     category: string,
     enable: boolean,
   ) => {
-    if (!selectedRole || !rolePermissions || selectedRole.isSystem) return;
+    if (!selectedRole || !rolePermissions || selectedRole.isSystem || !effectiveCompanyId) return;
 
     const permsInCategory = rolePermissions.permissions[category] || [];
     const updates = permsInCategory
@@ -256,25 +341,62 @@ function RolesPageContent() {
 
     if (updates.length === 0) return;
 
+    // Optimistically update local state first (for smooth animation)
+    const permissionIdsToUpdate = new Set(updates.map(u => u.permissionId));
+    setRolePermissions((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      updated.permissions = { ...updated.permissions };
+      updated.permissions[category] = updated.permissions[category].map((p) =>
+        permissionIdsToUpdate.has(p.id) ? { ...p, enabled: enable } : p
+      );
+      return updated;
+    });
+
+    // Update role count in list
+    const countDelta = enable ? updates.length : -updates.length;
+    setRoles((prev) =>
+      prev.map((r) =>
+        r.id === selectedRole.id
+          ? { ...r, enabledPermissionsCount: r.enabledPermissionsCount + countDelta }
+          : r
+      )
+    );
+
     try {
       const response = await fetch(
         `/api/roles/${selectedRole.id}/permissions`,
         {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-company-id": effectiveCompanyId,
+          },
           body: JSON.stringify({ permissions: updates }),
         },
       );
 
-      if (response.ok) {
-        // Refresh permissions
+      if (!response.ok) {
+        // Revert on error by refetching
         await fetchRolePermissions(selectedRole.id);
         await fetchRoles();
       }
     } catch (error) {
       console.error("Error toggling category permissions:", error);
+      // Revert on error by refetching
+      await fetchRolePermissions(selectedRole.id);
+      await fetchRoles();
     }
   };
+
+  // Show loading state while auth is loading
+  if (isAuthLoading || (!authCompanyId && !isSystemAdmin)) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    );
+  }
 
   if (showForm) {
     return (
@@ -360,8 +482,55 @@ function RolesPageContent() {
             Configure roles y permisos personalizados para su empresa
           </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>Nuevo Rol</Button>
+        <Button
+          onClick={() => setShowForm(true)}
+          disabled={isSystemAdmin && !effectiveCompanyId}
+        >
+          Nuevo Rol
+        </Button>
       </div>
+
+      {/* Loading companies message for system admins */}
+      {isSystemAdmin && companies.length === 0 && (
+        <Card>
+          <CardContent className="flex items-center gap-4 py-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-primary" />
+            <span className="text-sm text-muted-foreground">Cargando empresas...</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Company selector for system admins */}
+      {isSystemAdmin && companies.length > 0 && (
+        <Card>
+          <CardContent className="flex items-center gap-4 py-3">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Building2 className="h-4 w-4" />
+              <span className="text-sm font-medium">Empresa:</span>
+            </div>
+            <Select
+              value={selectedCompanyId || authCompanyId || ""}
+              onValueChange={(value) => setSelectedCompanyId(value || null)}
+            >
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Seleccionar empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.commercialName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedCompanyId && selectedCompanyId !== authCompanyId && (
+              <Badge variant="secondary" className="text-xs">
+                Viendo otra empresa
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Roles List */}

@@ -268,10 +268,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ADMIN_SISTEMA users should not have a companyId - they can access all companies
+    const userCompanyId = validatedData.role === "ADMIN_SISTEMA" ? null : tenantCtx.companyId;
+
     const [newUser] = await db
       .insert(users)
       .values({
-        companyId: tenantCtx.companyId,
+        companyId: userCompanyId,
         name: validatedData.name,
         email: validatedData.email,
         username: validatedData.username,
