@@ -7,7 +7,7 @@ import {
   getRefreshToken,
   setAuthCookies,
   verifyToken,
-} from "@/lib/auth";
+} from "@/lib/auth/auth";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**

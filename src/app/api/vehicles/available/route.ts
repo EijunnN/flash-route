@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleFleets, vehicles } from "@/db/schema";
-import { setTenantContext } from "@/lib/tenant";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { vehicleAvailabilityQuerySchema } from "@/lib/validations/vehicle-status";
 
 function extractTenantContext(request: NextRequest) {

@@ -4,8 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { updateZoneSchema } from "@/lib/validations/zone";
 
 function extractTenantContext(request: NextRequest) {

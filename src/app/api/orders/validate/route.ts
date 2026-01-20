@@ -2,12 +2,12 @@ import { and, eq, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, timeWindowPresets } from "@/db/schema";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   getEffectiveStrictness,
   isStrictnessOverridden,
   validateTimeWindowStrictness,
-} from "@/lib/time-window-strictness";
+} from "@/lib/optimization/time-window-strictness";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

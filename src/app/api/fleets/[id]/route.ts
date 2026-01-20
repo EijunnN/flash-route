@@ -10,8 +10,8 @@ import {
   vehicles,
 } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { updateFleetSchema } from "@/lib/validations/fleet";
 
 function extractTenantContext(request: NextRequest) {

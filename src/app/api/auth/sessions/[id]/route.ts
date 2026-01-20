@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/auth-api";
-import { Action, authorize, EntityType } from "@/lib/authorization";
-import { getSession, invalidateSession } from "@/lib/session";
+import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import { Action, authorize, EntityType } from "@/lib/auth/authorization";
+import { getSession, invalidateSession } from "@/lib/auth/session";
 
 interface RouteContext {
   params: Promise<{ id: string }>;

@@ -2,14 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
-import { Action, EntityType } from "@/lib/authorization";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import {
   checkPermissionOrError,
   handleError,
   notFoundResponse,
   setupAuthContext,
   unauthorizedResponse,
-} from "@/lib/route-helpers";
+} from "@/lib/routing/route-helpers";
 import { updateCompanySchema } from "@/lib/validations/company";
 
 // Companies don't use tenant filtering - they ARE the tenants

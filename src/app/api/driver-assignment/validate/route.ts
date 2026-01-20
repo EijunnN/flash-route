@@ -5,8 +5,8 @@ import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
 import {
   type AssignmentValidationResult,
   validateDriverAssignment,
-} from "@/lib/driver-assignment";
-import { setTenantContext } from "@/lib/tenant";
+} from "@/lib/routing/driver-assignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type ValidateDriverAssignmentSchema,
   validateDriverAssignmentSchema,

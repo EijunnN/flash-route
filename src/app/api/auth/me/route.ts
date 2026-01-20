@@ -6,8 +6,8 @@ import {
   extractTokenFromAuthHeader,
   getCurrentUser,
   verifyToken,
-} from "@/lib/auth";
-import { getUserPermissionsFromDB } from "@/lib/authorization";
+} from "@/lib/auth/auth";
+import { getUserPermissionsFromDB } from "@/lib/auth/authorization";
 import { AUTH_ERRORS } from "@/lib/validations/auth";
 
 /**

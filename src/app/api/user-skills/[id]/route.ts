@@ -4,8 +4,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userSkills, users, vehicleSkills } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   isExpired,
   isExpiringSoon,

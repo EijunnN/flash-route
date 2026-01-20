@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { LRUCache } from "lru-cache";
 import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/auth/auth";
 
 /**
  * React.cache() wrapped function for per-request deduplication.

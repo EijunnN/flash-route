@@ -2,13 +2,13 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { permissions } from "@/db/schema";
-import { Action, EntityType } from "@/lib/authorization";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import {
   checkPermissionOrError,
   handleError,
   setupAuthContext,
   unauthorizedResponse,
-} from "@/lib/route-helpers";
+} from "@/lib/routing/route-helpers";
 import { permissionQuerySchema } from "@/lib/validations/permission";
 
 // GET /api/permissions - List all available permissions (system catalog)

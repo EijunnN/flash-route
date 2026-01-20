@@ -8,8 +8,8 @@ import {
   vehicleFleets,
   vehicles,
 } from "@/db/schema";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { updateVehicleSchema } from "@/lib/validations/vehicle";
 
 function extractTenantContext(request: NextRequest) {

@@ -9,8 +9,8 @@ import {
   users,
   vehicles,
 } from "@/db/schema";
-import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/driver-assignment";
-import { setTenantContext } from "@/lib/tenant";
+import { DEFAULT_ASSIGNMENT_CONFIG } from "@/lib/routing/driver-assignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type AssignmentSuggestionsSchema,
   assignmentSuggestionsSchema,

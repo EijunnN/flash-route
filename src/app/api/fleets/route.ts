@@ -9,8 +9,8 @@ import {
   vehicles,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logCreate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { fleetQuerySchema, fleetSchema } from "@/lib/validations/fleet";
 
 function extractTenantContext(request: NextRequest) {

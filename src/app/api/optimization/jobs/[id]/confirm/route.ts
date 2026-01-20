@@ -2,18 +2,18 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
-import { createAuditLog } from "@/lib/audit";
-import type { OptimizationResult } from "@/lib/optimization-runner";
+import { createAuditLog } from "@/lib/infra/audit";
+import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import {
   calculateComparisonMetrics,
   calculatePlanMetrics,
   savePlanMetrics,
-} from "@/lib/plan-metrics";
+} from "@/lib/optimization/plan-metrics";
 import {
   canConfirmPlan,
   validatePlanForConfirmation,
-} from "@/lib/plan-validation";
-import { setTenantContext } from "@/lib/tenant";
+} from "@/lib/optimization/plan-validation";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type PlanConfirmationSchema,
   planConfirmationSchema,

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getReassignmentHistory } from "@/lib/reassignment";
-import { setTenantContext } from "@/lib/tenant";
+import { getReassignmentHistory } from "@/lib/routing/reassignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type ReassignmentHistoryQuerySchema,
   reassignmentHistoryQuerySchema,

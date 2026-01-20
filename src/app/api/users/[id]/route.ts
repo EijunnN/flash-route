@@ -5,8 +5,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, users } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { isExpired, updateUserSchema } from "@/lib/validations/user";
 
 function extractTenantContext(request: NextRequest) {

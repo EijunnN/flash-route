@@ -3,13 +3,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companies } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { Action, EntityType } from "@/lib/authorization";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import {
   checkPermissionOrError,
   handleError,
   setupAuthContext,
   unauthorizedResponse,
-} from "@/lib/route-helpers";
+} from "@/lib/routing/route-helpers";
 import { companyQuerySchema, companySchema } from "@/lib/validations/company";
 
 export async function GET(request: NextRequest) {

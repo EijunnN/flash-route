@@ -41,7 +41,7 @@ export type {
   OptimizationResult,
   OptimizationRoute,
   OptimizationStop,
-} from "@/lib/optimization-runner";
+} from "@/lib/optimization/optimization-runner";
 
 interface OptimizationResultsProps {
   jobId?: string;

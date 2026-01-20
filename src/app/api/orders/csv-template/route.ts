@@ -2,13 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { companyOptimizationProfiles } from "@/db/schema";
-import { parseProfile } from "@/lib/capacity-mapper";
+import { parseProfile } from "@/lib/optimization/capacity-mapper";
 import {
   generateCsvTemplate,
   getFieldDocumentation,
   CSV_TEMPLATES,
-} from "@/lib/dynamic-csv-fields";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/orders/dynamic-csv-fields";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

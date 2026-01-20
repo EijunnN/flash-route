@@ -17,7 +17,7 @@ import {
   type DriverAssignmentRequest,
   type DriverAssignmentResult,
   getAssignmentQualityMetrics,
-} from "./driver-assignment";
+} from "../routing/driver-assignment";
 import {
   calculateInputHash,
   cancelJob,
@@ -29,7 +29,7 @@ import {
   registerJob,
   setJobTimeout,
   updateJobProgress,
-} from "./job-queue";
+} from "../infra/job-queue";
 import {
   type DepotConfig,
   type OrderForOptimization,
@@ -43,7 +43,7 @@ import {
   type DayOfWeek,
   type VehicleZoneAssignment,
   type ZoneData,
-} from "./zone-utils";
+} from "../geo/zone-utils";
 
 // Type for grouped orders (multiple orders at same location)
 interface GroupedOrder {

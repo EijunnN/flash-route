@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleSkills } from "@/db/schema";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { updateVehicleSkillSchema } from "@/lib/validations/vehicle-skill";
 
 function extractTenantContext(request: NextRequest) {

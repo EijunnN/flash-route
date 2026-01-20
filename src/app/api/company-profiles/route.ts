@@ -8,8 +8,8 @@ import {
   PROFILE_TEMPLATES,
   validateProfile,
   parseProfile,
-} from "@/lib/capacity-mapper";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/optimization/capacity-mapper";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

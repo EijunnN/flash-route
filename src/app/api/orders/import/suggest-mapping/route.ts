@@ -5,8 +5,8 @@ import { csvColumnMappingTemplates } from "@/db/schema";
 import {
   suggestColumnMapping,
   validateRequiredFieldsMapped,
-} from "@/lib/csv-column-mapping";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/orders/csv-column-mapping";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { columnMappingSuggestionRequestSchema } from "@/lib/validations/csv-column-mapping";
 
 function extractTenantContext(request: NextRequest) {

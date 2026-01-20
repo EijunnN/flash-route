@@ -11,11 +11,11 @@ import {
 import {
   batchInsertOrders,
   updateTableStatistics,
-} from "@/lib/batch-operations";
-import { parseProfile, type CompanyOptimizationProfile } from "@/lib/capacity-mapper";
-import { mapCSVRow, suggestColumnMapping } from "@/lib/csv-column-mapping";
-import { validateCsvRow, getCsvFieldsForProfile } from "@/lib/dynamic-csv-fields";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/orders/batch-operations";
+import { parseProfile, type CompanyOptimizationProfile } from "@/lib/optimization/capacity-mapper";
+import { mapCSVRow, suggestColumnMapping } from "@/lib/orders/csv-column-mapping";
+import { validateCsvRow, getCsvFieldsForProfile } from "@/lib/orders/dynamic-csv-fields";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { orderSchema } from "@/lib/validations/order";
 
 // CSV import request schema (updated to support templates)
@@ -295,7 +295,7 @@ const DEFAULT_COLUMN_MAPPING: Record<string, string> = {
 
 /**
  * Map CSV row to order input (legacy function for backward compatibility)
- * @deprecated Use mapCSVRow from @/lib/csv-column-mapping instead
+ * @deprecated Use mapCSVRow from @/lib/orders/csv-column-mapping instead
  */
 function mapCSVRowToOrder(
   row: CSVRow,

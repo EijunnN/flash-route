@@ -3,8 +3,8 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { logCreate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logCreate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   createUserSchema,
   isExpired,

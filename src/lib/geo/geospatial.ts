@@ -5,7 +5,7 @@
  * Falls back to JavaScript calculation when PostGIS is not available.
  */
 
-import { CACHE_TTL, cacheGet, cacheSet } from "./cache";
+import { CACHE_TTL, cacheGet, cacheSet } from "../infra/cache";
 
 // Distance result in meters and seconds
 export interface DistanceResult {

@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   calculateReassignmentImpact,
   getAffectedRoutesForAbsentDriver,
-} from "@/lib/reassignment";
-import { setTenantContext } from "@/lib/tenant";
+} from "@/lib/routing/reassignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type ReassignmentImpactRequestSchema,
   reassignmentImpactRequestSchema,

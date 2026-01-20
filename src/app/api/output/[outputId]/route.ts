@@ -14,13 +14,13 @@ import {
   formatOutputForDisplay,
   generatePlanOutput,
   getOutputById,
-} from "@/lib/output-generator";
+} from "@/lib/routing/output-generator";
 import type {
   DriverRouteOutput,
   PlanOutput,
   RouteStopOutput,
-} from "@/lib/output-generator-types";
-import { getTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/routing/output-generator-types";
+import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 interface RouteParams {
   params: Promise<{ outputId: string }>;

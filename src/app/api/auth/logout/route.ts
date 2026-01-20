@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { clearAuthCookies } from "@/lib/auth";
+import { clearAuthCookies } from "@/lib/auth/auth";
 
 /**
  * POST /api/auth/logout

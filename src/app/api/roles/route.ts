@@ -2,14 +2,14 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { roles, rolePermissions, permissions } from "@/db/schema";
-import { requireTenantContext } from "@/lib/tenant";
-import { Action, EntityType } from "@/lib/authorization";
+import { requireTenantContext } from "@/lib/infra/tenant";
+import { Action, EntityType } from "@/lib/auth/authorization";
 import {
   checkPermissionOrError,
   handleError,
   setupAuthContext,
   unauthorizedResponse,
-} from "@/lib/route-helpers";
+} from "@/lib/routing/route-helpers";
 import { roleSchema, roleQuerySchema } from "@/lib/validations/role";
 
 // GET /api/roles - List all roles for the company

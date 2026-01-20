@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { exportPlanToExcel } from "@/lib/export-plan-excel";
+import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
 
 interface RouteStop {
   trackingId: string;

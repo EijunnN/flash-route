@@ -10,7 +10,7 @@
 import {
   type Coordinates,
   calculateDistance as haversineDistance,
-} from "./geospatial";
+} from "../geo/geospatial";
 
 // Configuration
 const OSRM_URL = process.env.OSRM_URL || "http://localhost:5001";

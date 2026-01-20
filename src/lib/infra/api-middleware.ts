@@ -7,14 +7,14 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { logCreate, logDelete, logUpdate } from "./audit";
-import { type AuthenticatedUser, getAuthenticatedUser } from "./auth-api";
+import { type AuthenticatedUser, getAuthenticatedUser } from "../auth/auth-api";
 import {
   Action,
   checkPermission,
   type EntityType,
   type PermissionCheckResult,
   requirePermission,
-} from "./authorization";
+} from "../auth/authorization";
 
 /**
  * Middleware result type

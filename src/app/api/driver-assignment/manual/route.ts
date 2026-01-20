@@ -3,12 +3,12 @@ import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, USER_ROLES, users, vehicles } from "@/db/schema";
-import { logCreate } from "@/lib/audit";
+import { logCreate } from "@/lib/infra/audit";
 import {
   type AssignmentValidationResult,
   validateDriverAssignment,
-} from "@/lib/driver-assignment";
-import { setTenantContext } from "@/lib/tenant";
+} from "@/lib/routing/driver-assignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type ManualDriverAssignmentSchema,
   manualDriverAssignmentSchema,

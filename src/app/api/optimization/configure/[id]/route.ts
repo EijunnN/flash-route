@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { optimizationConfigUpdateSchema } from "@/lib/validations/optimization-config";
 
 function extractTenantContext(request: NextRequest) {

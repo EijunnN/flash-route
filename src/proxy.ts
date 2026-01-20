@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { extractTokenFromAuthHeader, verifyToken } from "./lib/auth";
-import { setTenantContext } from "./lib/tenant";
+import { extractTokenFromAuthHeader, verifyToken } from "./lib/auth/auth";
+import { setTenantContext } from "./lib/infra/tenant";
 import { AUTH_ERRORS } from "./lib/validations/auth";
 
 const PUBLIC_API_ROUTES = [

@@ -1,5 +1,5 @@
 import { and, eq, type SQL } from "drizzle-orm";
-import { requireTenantContext } from "../lib/tenant";
+import { requireTenantContext } from "../lib/infra/tenant";
 import { companies, users } from "./schema";
 
 export class TenantAccessDeniedError extends Error {

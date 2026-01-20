@@ -46,7 +46,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { exportPlanToExcel } from "@/lib/export-plan-excel";
+import { exportPlanToExcel } from "@/lib/export/export-plan-excel";
 import { DriverAssignmentDisplay } from "./driver-assignment-quality";
 import { PencilSelectOverlay } from "./pencil-select-overlay";
 import { PlanConfirmationDialog } from "./plan-confirmation-dialog";

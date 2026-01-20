@@ -5,8 +5,8 @@
  * optimization profile, ensuring users only see relevant fields for their business type.
  */
 
-import type { CompanyOptimizationProfile } from "./capacity-mapper";
-import { DEFAULT_PROFILE } from "./capacity-mapper";
+import type { CompanyOptimizationProfile } from "../optimization/capacity-mapper";
+import { DEFAULT_PROFILE } from "../optimization/capacity-mapper";
 
 // CSV field definition
 export interface CsvFieldDefinition {

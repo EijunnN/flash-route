@@ -11,7 +11,7 @@ import {
   vehicleSkills,
   vehicles,
 } from "@/db/schema";
-import { calculateRouteDistance } from "./geospatial";
+import { calculateRouteDistance } from "../geo/geospatial";
 
 /**
  * Reassignment strategy options

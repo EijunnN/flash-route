@@ -3,13 +3,13 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { generateTokenPair, setAuthCookies, verifyToken } from "@/lib/auth";
+import { generateTokenPair, setAuthCookies, verifyToken } from "@/lib/auth/auth";
 import {
   checkRateLimit,
   getClientIp,
   getRateLimitHeaders,
   RATE_LIMITS,
-} from "@/lib/rate-limit";
+} from "@/lib/infra/rate-limit";
 import { AUTH_ERRORS, loginSchema } from "@/lib/validations/auth";
 
 /**

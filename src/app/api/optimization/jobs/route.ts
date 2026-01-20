@@ -4,9 +4,9 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate } from "@/lib/audit";
-import { createAndExecuteJob } from "@/lib/optimization-runner";
-import { setTenantContext } from "@/lib/tenant";
+import { logCreate } from "@/lib/infra/audit";
+import { createAndExecuteJob } from "@/lib/optimization/optimization-runner";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   optimizationJobCreateSchema,
   optimizationJobQuerySchema,

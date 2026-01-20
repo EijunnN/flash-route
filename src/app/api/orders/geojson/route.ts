@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { setTenantContext } from "@/lib/tenant";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { ORDER_STATUS } from "@/lib/validations/order";
 
 /**

@@ -3,7 +3,7 @@ import { getTenantContext } from "@/db/tenant-aware";
 import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
-} from "@/lib/plan-metrics";
+} from "@/lib/optimization/plan-metrics";
 
 /**
  * GET /api/metrics/history

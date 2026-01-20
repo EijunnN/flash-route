@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate } from "@/lib/audit";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { logCreate } from "@/lib/infra/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import {
   timeWindowPresetQuerySchema,
   timeWindowPresetSchema,

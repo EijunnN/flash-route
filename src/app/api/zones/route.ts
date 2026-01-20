@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicles, zones, zoneVehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logCreate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logCreate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { zoneQuerySchema, zoneSchema } from "@/lib/validations/zone";
 
 function extractTenantContext(request: NextRequest) {

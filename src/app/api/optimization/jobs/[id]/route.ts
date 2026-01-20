@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { cancelJob as cancelJobQueue } from "@/lib/job-queue";
-import { setTenantContext } from "@/lib/tenant";
+import { cancelJob as cancelJobQueue } from "@/lib/infra/job-queue";
+import { setTenantContext } from "@/lib/infra/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

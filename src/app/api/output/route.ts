@@ -4,8 +4,8 @@ import {
   canGenerateOutput,
   convertOutputToCSV,
   generatePlanOutput,
-} from "@/lib/output-generator";
-import { getTenantContext, setTenantContext } from "@/lib/tenant";
+} from "@/lib/routing/output-generator";
+import { getTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 /**
  * POST /api/output
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
     setTenantContext({ companyId, userId: "" });
 
     // Get output history
-    const { getOutputHistory } = await import("@/lib/output-generator");
+    const { getOutputHistory } = await import("@/lib/routing/output-generator");
     const outputs = await getOutputHistory(companyId, { jobId, limit, offset });
 
     return NextResponse.json({

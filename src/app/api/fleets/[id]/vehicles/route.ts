@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { fleets, vehicleFleets, vehicles } from "@/db/schema";
 import { TenantAccessDeniedError, withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/tenant";
+import { setTenantContext } from "@/lib/infra/tenant";
 import { vehicleQuerySchema } from "@/lib/validations/vehicle";
 
 function extractTenantContext(request: NextRequest) {

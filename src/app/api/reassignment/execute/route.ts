@@ -2,9 +2,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { reassignmentsHistory, USER_ROLES, users } from "@/db/schema";
-import { createAuditLog } from "@/lib/audit";
-import { executeReassignment } from "@/lib/reassignment";
-import { setTenantContext } from "@/lib/tenant";
+import { createAuditLog } from "@/lib/infra/audit";
+import { executeReassignment } from "@/lib/routing/reassignment";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type ExecuteReassignmentSchema,
   executeReassignmentSchema,

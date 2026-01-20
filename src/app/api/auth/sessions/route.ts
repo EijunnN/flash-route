@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser } from "@/lib/auth-api";
-import { getUserSessions } from "@/lib/session";
+import { getAuthenticatedUser } from "@/lib/auth/auth-api";
+import { getUserSessions } from "@/lib/auth/session";
 
 /**
  * GET /api/auth/sessions

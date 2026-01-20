@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { vehicleStatusHistory, vehicles } from "@/db/schema";
-import { logUpdate } from "@/lib/audit";
-import { setTenantContext } from "@/lib/tenant";
+import { logUpdate } from "@/lib/infra/audit";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   requiresActiveRouteCheck,
   STATUS_DISPLAY_NAMES,

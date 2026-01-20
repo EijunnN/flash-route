@@ -9,10 +9,10 @@
  */
 
 import { NextResponse } from "next/server";
-import type { AuthenticatedRequest } from "@/lib/api-middleware";
-import { withAuthAndAudit } from "@/lib/api-middleware";
-import { Action, EntityType, isAdmin } from "@/lib/authorization";
-import { getCacheStats, invalidateAllCache, warmupCache } from "@/lib/cache";
+import type { AuthenticatedRequest } from "@/lib/infra/api-middleware";
+import { withAuthAndAudit } from "@/lib/infra/api-middleware";
+import { Action, EntityType, isAdmin } from "@/lib/auth/authorization";
+import { getCacheStats, invalidateAllCache, warmupCache } from "@/lib/infra/cache";
 
 /**
  * GET /api/admin/cache

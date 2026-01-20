@@ -11,7 +11,7 @@ import {
   type Coordinates,
   calculateDistance,
   calculateRouteDistance,
-} from "./geospatial";
+} from "../geo/geospatial";
 import {
   createVroomJob,
   createVroomVehicle,

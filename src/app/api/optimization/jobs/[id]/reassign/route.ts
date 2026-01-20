@@ -3,13 +3,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationJobs, orders, vehicles } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { setTenantContext } from "@/lib/tenant";
+import { setTenantContext } from "@/lib/infra/tenant";
 import {
   type DepotConfig,
   type OrderForOptimization,
   type VehicleForOptimization,
   optimizeRoutes as vroomOptimizeRoutes,
-} from "@/lib/vroom-optimizer";
+} from "@/lib/optimization/vroom-optimizer";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

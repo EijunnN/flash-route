@@ -5,7 +5,7 @@
  * (VROOM, PyVRP, etc.) while maintaining a consistent API.
  */
 
-import type { CompanyOptimizationProfile } from "../capacity-mapper";
+import type { CompanyOptimizationProfile } from "./capacity-mapper";
 
 // ============================================
 // INPUT TYPES

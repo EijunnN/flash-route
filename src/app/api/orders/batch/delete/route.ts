@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");

@@ -1,5 +1,5 @@
 import type { TIME_WINDOW_STRICTNESS } from "@/db/schema";
-import type { TimeWindowValidationResult } from "./validations/order";
+import type { TimeWindowValidationResult } from "../validations/order";
 
 /**
  * Calculate penalty factor for SOFT mode time window violations

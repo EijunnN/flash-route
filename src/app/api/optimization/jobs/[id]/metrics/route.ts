@@ -4,7 +4,7 @@ import {
   getHistoricalMetrics,
   getMetricsSummaryStats,
   getPlanMetrics,
-} from "@/lib/plan-metrics";
+} from "@/lib/optimization/plan-metrics";
 
 /**
  * GET /api/optimization/jobs/[id]/metrics

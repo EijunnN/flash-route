@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/card";
 import { db } from "@/db";
 import { orders, USER_ROLES, users, vehicles } from "@/db/schema";
-import { getCompanyId } from "@/lib/server-cache";
+import { getCompanyId } from "@/lib/infra/server-cache";
 
 interface MetricCardProps {
   title: string;

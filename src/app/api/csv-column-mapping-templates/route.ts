@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { csvColumnMappingTemplates } from "@/db/schema";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { csvColumnMappingTemplateSchema } from "@/lib/validations/csv-column-mapping";
 
 function extractTenantContext(request: NextRequest) {

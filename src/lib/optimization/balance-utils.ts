@@ -7,7 +7,7 @@
  * - Measuring balance quality
  */
 
-import { calculateDistance, type Coordinates } from "./geospatial";
+import { calculateDistance, type Coordinates } from "../geo/geospatial";
 
 // Generic route interface for balancing
 export interface BalanceableRoute {

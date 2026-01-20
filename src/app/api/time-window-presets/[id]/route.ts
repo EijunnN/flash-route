@@ -3,8 +3,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { timeWindowPresets } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
-import { logDelete, logUpdate } from "@/lib/audit";
-import { requireTenantContext, setTenantContext } from "@/lib/tenant";
+import { logDelete, logUpdate } from "@/lib/infra/audit";
+import { requireTenantContext, setTenantContext } from "@/lib/infra/tenant";
 import { updateTimeWindowPresetSchema } from "@/lib/validations/time-window-preset";
 
 function extractTenantContext(request: NextRequest) {

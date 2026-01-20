@@ -11,8 +11,8 @@ import {
   type OrderForOptimization,
   type VehicleForOptimization,
   type OptimizationConfig as VroomConfig,
-} from "../vroom-optimizer";
-import { isVroomAvailable } from "../vroom-client";
+} from "./vroom-optimizer";
+import { isVroomAvailable } from "./vroom-client";
 import type {
   IOptimizer,
   OptimizerCapabilities,

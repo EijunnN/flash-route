@@ -6,13 +6,13 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { type AuthenticatedUser, getAuthenticatedUser } from "./auth-api";
+import { type AuthenticatedUser, getAuthenticatedUser } from "../auth/auth-api";
 import {
   type Action,
   type EntityType,
   requirePermission,
-} from "./authorization";
-import { setTenantContext } from "./tenant";
+} from "../auth/authorization";
+import { setTenantContext } from "../infra/tenant";
 
 /**
  * Extract user context from request headers or JWT token

@@ -2,14 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
-import type { OptimizationResult } from "@/lib/optimization-runner";
+import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import {
   getIssuesByCategory,
   getIssuesBySeverity,
   getValidationSummaryText,
   validatePlanForConfirmation,
-} from "@/lib/plan-validation";
-import { setTenantContext } from "@/lib/tenant";
+} from "@/lib/optimization/plan-validation";
+import { setTenantContext } from "@/lib/infra/tenant";
 import type { PlanValidationRequestSchema } from "@/lib/validations/plan-confirmation";
 
 function extractTenantContext(request: NextRequest) {
