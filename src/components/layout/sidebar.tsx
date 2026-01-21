@@ -15,9 +15,11 @@ import {
   Route,
   Settings,
   Settings2,
+  Shield,
   Sun,
   Truck,
   Users,
+  Warehouse,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,32 +34,48 @@ interface NavItem {
   badge?: number;
 }
 
-const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
-  { title: "Pedidos", href: "/orders", icon: Package },
-  { title: "Planificación", href: "/planificacion", icon: Route },
-  { title: "Monitoreo", href: "/monitoring", icon: MapIcon },
-  { title: "Usuarios", href: "/users", icon: Users },
-  { title: "Vehículos", href: "/vehicles", icon: Truck },
-  { title: "Flotas", href: "/fleets", icon: Building2 },
-  { title: "Zonas", href: "/zones", icon: MapPin },
-  { title: "Empresas", href: "/companies", icon: Building2 },
-];
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
 
-const configItems: NavItem[] = [
+const navSections: NavSection[] = [
   {
-    title: "Perfil Empresa",
-    href: "/configuracion",
-    icon: Settings,
+    title: "Operaciones",
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
+      { title: "Pedidos", href: "/orders", icon: Package },
+      { title: "Planificación", href: "/planificacion", icon: Route },
+      { title: "Monitoreo", href: "/monitoring", icon: MapIcon },
+    ],
   },
   {
-    title: "Presets Optimización",
-    href: "/optimization-presets",
-    icon: Settings2,
+    title: "Recursos",
+    items: [
+      { title: "Conductores", href: "/drivers", icon: Users },
+      { title: "Vehículos", href: "/vehicles", icon: Truck },
+      { title: "Flotas", href: "/fleets", icon: Warehouse },
+      { title: "Zonas", href: "/zones", icon: MapPin },
+    ],
   },
-  { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
-  { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
-  { title: "Habilidades Usuarios", href: "/user-skills", icon: Award },
+  {
+    title: "Administración",
+    items: [
+      { title: "Usuarios", href: "/users", icon: Users },
+      { title: "Roles", href: "/roles", icon: Shield },
+      { title: "Empresas", href: "/companies", icon: Building2 },
+    ],
+  },
+  {
+    title: "Configuración",
+    items: [
+      { title: "Perfil Empresa", href: "/configuracion", icon: Settings },
+      { title: "Presets Optimización", href: "/optimization-presets", icon: Settings2 },
+      { title: "Ventanas de Tiempo", href: "/time-window-presets", icon: Clock },
+      { title: "Habilidades Vehículos", href: "/vehicle-skills", icon: Award },
+      { title: "Habilidades Conductores", href: "/driver-skills", icon: Award },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -131,60 +149,37 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        <div className="space-y-1">
-          {!collapsed && (
-            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-              Principal
-            </p>
-          )}
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive(item.href)
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                collapsed && "justify-center px-2",
-              )}
-              title={collapsed ? item.title : undefined}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
-              {!collapsed && item.badge && (
-                <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-
-        <div className="space-y-1 pt-4">
-          {!collapsed && (
-            <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-              Configuración
-            </p>
-          )}
-          {configItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive(item.href)
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                collapsed && "justify-center px-2",
-              )}
-              title={collapsed ? item.title : undefined}
-            >
-              <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.title}</span>}
-            </Link>
-          ))}
-        </div>
+        {navSections.map((section, sectionIndex) => (
+          <div key={section.title} className={cn("space-y-1", sectionIndex > 0 && "pt-4")}>
+            {!collapsed && (
+              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                {section.title}
+              </p>
+            )}
+            {section.items.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive(item.href)
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  collapsed && "justify-center px-2",
+                )}
+                title={collapsed ? item.title : undefined}
+              >
+                <item.icon className="h-5 w-5 shrink-0" />
+                {!collapsed && <span>{item.title}</span>}
+                {!collapsed && item.badge && (
+                  <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
