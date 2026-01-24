@@ -181,32 +181,36 @@ export async function findPreviousJobForComparison(
   currentJobId: string,
   configurationId?: string,
 ): Promise<string | null> {
-  const query = db
+  // First, get the current job's createdAt timestamp
+  const [currentJob] = await db
+    .select({ createdAt: optimizationJobs.createdAt })
+    .from(optimizationJobs)
+    .where(eq(optimizationJobs.id, currentJobId))
+    .limit(1);
+
+  if (!currentJob?.createdAt) {
+    return null;
+  }
+
+  // Then find the previous job created before this one
+  const conditions = [
+    eq(optimizationJobs.companyId, companyId),
+    eq(optimizationJobs.status, "COMPLETED"),
+    lt(optimizationJobs.createdAt, currentJob.createdAt),
+  ];
+
+  // Optionally filter by configurationId
+  if (configurationId) {
+    conditions.push(eq(optimizationJobs.configurationId, configurationId));
+  }
+
+  const [previousJob] = await db
     .select({ id: optimizationJobs.id })
     .from(optimizationJobs)
-    .where(
-      and(
-        eq(optimizationJobs.companyId, companyId),
-        eq(optimizationJobs.status, "COMPLETED"),
-        // Use configurationId to compare similar plans
-        configurationId
-          ? eq(optimizationJobs.configurationId, configurationId)
-          : undefined,
-        // Exclude current job
-        lt(
-          optimizationJobs.createdAt,
-          db
-            .select({ createdAt: optimizationJobs.createdAt })
-            .from(optimizationJobs)
-            .where(eq(optimizationJobs.id, currentJobId))
-            .as("current_job_created"),
-        ),
-      ),
-    )
+    .where(and(...conditions))
     .orderBy(desc(optimizationJobs.createdAt))
     .limit(1);
 
-  const [previousJob] = await query;
   return previousJob?.id || null;
 }
 

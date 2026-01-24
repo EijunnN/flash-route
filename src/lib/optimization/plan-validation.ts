@@ -317,7 +317,32 @@ async function validateDriverLicensesAndSkills(
 
   for (const driver of driversData) {
     if (config.checkLicenseExpiry && driver.licenseExpiry) {
-      const expiryDate = new Date(driver.licenseExpiry);
+      // Safely convert license expiry to Date
+      let expiryDate: Date;
+      try {
+        const licenseValue = driver.licenseExpiry;
+        if (licenseValue instanceof Date) {
+          expiryDate = licenseValue;
+        } else if (typeof licenseValue === "string") {
+          expiryDate = new Date(licenseValue);
+        } else {
+          // Try to convert whatever it is
+          expiryDate = new Date(String(licenseValue));
+        }
+      } catch {
+        continue; // Skip if we can't parse the date
+      }
+
+      // Skip if invalid date
+      if (isNaN(expiryDate.getTime())) continue;
+
+      // Format date safely
+      let formattedDate: string;
+      try {
+        formattedDate = expiryDate.toISOString().split("T")[0];
+      } catch {
+        formattedDate = "unknown";
+      }
 
       if (expiryDate < now) {
         // License expired - this is a blocking error
@@ -326,7 +351,7 @@ async function validateDriverLicensesAndSkills(
           issues.push({
             severity: ValidationSeverity.ERROR,
             category: "license_expiry",
-            message: `Driver ${driver.name} has an expired license (${expiryDate.toISOString().split("T")[0]})`,
+            message: `Driver ${driver.name} has an expired license (${formattedDate})`,
             driverId: driver.id,
             routeId: route.routeId,
             vehicleId: route.vehicleId,

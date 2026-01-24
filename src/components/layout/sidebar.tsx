@@ -52,7 +52,6 @@ const navSections: NavSection[] = [
   {
     title: "Recursos",
     items: [
-      { title: "Conductores", href: "/drivers", icon: Users },
       { title: "Vehículos", href: "/vehicles", icon: Truck },
       { title: "Flotas", href: "/fleets", icon: Warehouse },
       { title: "Zonas", href: "/zones", icon: MapPin },
@@ -127,7 +126,7 @@ export function Sidebar() {
               <Route className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sidebar-foreground">
-              Planeamiento
+              BetterRoute
             </span>
           </Link>
         )}

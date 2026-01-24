@@ -8,6 +8,7 @@ import {
   Clock,
   Eye,
   EyeOff,
+  History,
   Loader2,
   MapPin,
   Package,
@@ -15,6 +16,7 @@ import {
   Route,
   Search,
   Settings2,
+  Trash2,
   Truck,
   Upload,
   User,
@@ -22,6 +24,7 @@ import {
   Zap,
   Target,
 } from "lucide-react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ProtectedPage } from "@/components/auth/protected-page";
@@ -214,6 +217,7 @@ function PlanificacionPageContent() {
   const [optimizerType, setOptimizerType] = useState("VROOM");
   const [optimizers, setOptimizers] = useState<OptimizerEngine[]>([]);
   const [optimizersLoading, setOptimizersLoading] = useState(true);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
 
   // Zones state
   const [zones, setZones] = useState<Zone[]>([]);
@@ -1226,13 +1230,6 @@ function PlanificacionPageContent() {
               Optimiza las rutas de entrega para tu flota
             </p>
           </div>
-          <CompanySelector
-            companies={companies}
-            selectedCompanyId={selectedCompanyId}
-            authCompanyId={authCompanyId}
-            onCompanyChange={setSelectedCompanyId}
-            isSystemAdmin={isSystemAdmin}
-          />
 
           {/* Step indicator */}
           <div className="flex items-center gap-2">
@@ -1268,6 +1265,23 @@ function PlanificacionPageContent() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/planificacion/historial" className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                <span>Historial</span>
+              </Link>
+            </Button>
+            <CompanySelector
+              companies={companies}
+              selectedCompanyId={selectedCompanyId}
+              authCompanyId={authCompanyId}
+              onCompanyChange={setSelectedCompanyId}
+              isSystemAdmin={isSystemAdmin}
+            />
           </div>
         </div>
       </div>
@@ -1599,19 +1613,58 @@ function PlanificacionPageContent() {
                                 </span>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="shrink-0 h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                openEditOrder(order);
-                              }}
-                              title="Editar"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openEditOrder(order);
+                                }}
+                                title="Editar coordenadas"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-red-500 hover:bg-destructive hover:text-destructive-foreground"
+                                disabled={deletingOrderId === order.id}
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!companyId) return;
+                                  setDeletingOrderId(order.id);
+                                  try {
+                                    const res = await fetch(`/api/orders/${order.id}`, {
+                                      method: "DELETE",
+                                      headers: { "x-company-id": companyId },
+                                    });
+                                    if (res.ok) {
+                                      setOrders((prev) =>
+                                        prev.filter((o) => o.id !== order.id)
+                                      );
+                                      setSelectedOrderIds((prev) =>
+                                        prev.filter((id) => id !== order.id)
+                                      );
+                                    }
+                                  } catch {
+                                    // Silent fail
+                                  } finally {
+                                    setDeletingOrderId(null);
+                                  }
+                                }}
+                                title="Eliminar pedido"
+                              >
+                                {deletingOrderId === order.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </label>
                       );

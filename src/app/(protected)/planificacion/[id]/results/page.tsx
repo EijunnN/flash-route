@@ -258,10 +258,41 @@ function ResultsPageContent() {
     router.push(`/planificacion/${configId}/results?reoptimize=true`);
   };
 
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const handleConfirm = async () => {
-    // TODO: Implement plan confirmation
-    console.log("Confirming plan with result:", result);
-    alert("Plan confirmation will be implemented in Story 9.3");
+    if (!jobId || !companyId) return;
+
+    setIsConfirming(true);
+    try {
+      const response = await fetch(`/api/optimization/jobs/${jobId}/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId,
+        },
+        body: JSON.stringify({ overrideWarnings: true }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Error al confirmar el plan");
+        return;
+      }
+
+      alert(
+        `Plan confirmado exitosamente.\n${data.ordersAssigned} pedidos asignados.`
+      );
+
+      // Redirect to history or dashboard
+      router.push("/planificacion/historial");
+    } catch (error) {
+      console.error("Error confirming plan:", error);
+      alert("Error al confirmar el plan. Intente nuevamente.");
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   if (!isReady || isStartingJob) {

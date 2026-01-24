@@ -173,6 +173,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     // Drivers have limited access - mainly to view their assigned routes
     `${EntityType.ROUTE}:${Action.READ}`,
     `${EntityType.ROUTE_STOP}:${Action.READ}`,
+    `${EntityType.ROUTE_STOP}:${Action.UPDATE}`, // Para marcar entregas como completadas/fallidas
     `${EntityType.ORDER}:${Action.READ}`,
   ],
 };

@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { optimizationConfigurations, optimizationJobs } from "@/db/schema";
+import { optimizationConfigurations, optimizationJobs, orders, routeStops } from "@/db/schema";
 import { createAuditLog } from "@/lib/infra/audit";
 import type { OptimizationResult } from "@/lib/optimization/optimization-runner";
 import {
@@ -18,6 +18,42 @@ import {
   type PlanConfirmationSchema,
   planConfirmationSchema,
 } from "@/lib/validations/plan-confirmation";
+
+/**
+ * Safely converts a date-like value to ISO string or returns a fallback
+ */
+function safeToISOString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  // If it's already a string, return it
+  if (typeof value === "string") {
+    return value;
+  }
+
+  // If it's a Date object
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) {
+      return null; // Invalid date
+    }
+    return value.toISOString();
+  }
+
+  // If it has a toISOString method (duck typing)
+  if (typeof value === "object" && value !== null && "toISOString" in value) {
+    try {
+      const isoValue = (value as { toISOString: () => string }).toISOString();
+      return typeof isoValue === "string" ? isoValue : null;
+    } catch {
+      // toISOString failed, try to convert to string
+      return String(value);
+    }
+  }
+
+  // Fallback: convert to string
+  return String(value);
+}
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -204,7 +240,7 @@ export async function POST(
       );
     }
 
-    // Confirm the plan - update configuration status
+    // Confirm the plan - update configuration status AND job status
     const now = new Date();
     const [updatedConfiguration] = await db
       .update(optimizationConfigurations)
@@ -216,6 +252,142 @@ export async function POST(
       })
       .where(eq(optimizationConfigurations.id, job.configurationId))
       .returning();
+
+    // Also update the job status to CONFIRMED so mobile app can find it
+    await db
+      .update(optimizationJobs)
+      .set({
+        status: "CONFIRMED",
+        updatedAt: now,
+      })
+      .where(eq(optimizationJobs.id, job.id));
+
+    // Update orders status to ASSIGNED for all orders in routes
+    // Extract all order IDs from routes (including grouped orders)
+    const assignedOrderIds: string[] = [];
+    for (const route of result.routes) {
+      for (const stop of route.stops) {
+        // Check if this stop has grouped orders
+        if (stop.groupedOrderIds && stop.groupedOrderIds.length > 0) {
+          // Add all grouped order IDs
+          assignedOrderIds.push(...stop.groupedOrderIds);
+        } else {
+          // Single order stop
+          assignedOrderIds.push(stop.orderId);
+        }
+      }
+    }
+
+    // Update orders status to ASSIGNED
+    let ordersUpdatedCount = 0;
+    if (assignedOrderIds.length > 0) {
+      await db
+        .update(orders)
+        .set({
+          status: "ASSIGNED",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            inArray(orders.id, assignedOrderIds),
+            eq(orders.companyId, tenantContext.companyId),
+          ),
+        );
+      ordersUpdatedCount = assignedOrderIds.length;
+      console.log(
+        `[Confirm Plan] Updated ${ordersUpdatedCount} orders to ASSIGNED status`,
+      );
+    }
+
+    // Create route_stops for each stop in the routes
+    // This enables the mobile app to show the driver's route
+    const routeStopsToCreate: Array<{
+      companyId: string;
+      jobId: string;
+      routeId: string;
+      userId: string;
+      vehicleId: string;
+      orderId: string;
+      sequence: number;
+      address: string;
+      latitude: string;
+      longitude: string;
+      estimatedArrival: Date | null;
+      estimatedServiceTime: number | null;
+      timeWindowStart: Date | null;
+      timeWindowEnd: Date | null;
+      status: "PENDING";
+    }> = [];
+
+    for (const route of result.routes) {
+      // Skip routes without driver assigned
+      if (!route.driverId) continue;
+
+      for (const stop of route.stops) {
+        // Parse time window dates if available
+        let timeWindowStart: Date | null = null;
+        let timeWindowEnd: Date | null = null;
+        let estimatedArrival: Date | null = null;
+
+        if (stop.timeWindow?.start) {
+          try {
+            timeWindowStart = new Date(stop.timeWindow.start);
+          } catch {
+            // Ignore invalid date
+          }
+        }
+        if (stop.timeWindow?.end) {
+          try {
+            timeWindowEnd = new Date(stop.timeWindow.end);
+          } catch {
+            // Ignore invalid date
+          }
+        }
+        if (stop.estimatedArrival) {
+          try {
+            estimatedArrival = new Date(stop.estimatedArrival);
+          } catch {
+            // Ignore invalid date
+          }
+        }
+
+        // Handle grouped orders (same location, multiple orders)
+        const orderIds =
+          stop.groupedOrderIds && stop.groupedOrderIds.length > 0
+            ? stop.groupedOrderIds
+            : [stop.orderId];
+
+        for (const orderId of orderIds) {
+          routeStopsToCreate.push({
+            companyId: tenantContext.companyId,
+            jobId: job.id,
+            routeId: route.routeId,
+            userId: route.driverId,
+            vehicleId: route.vehicleId,
+            orderId,
+            sequence: stop.sequence,
+            address: stop.address,
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            estimatedArrival,
+            estimatedServiceTime: 600, // Default 10 minutes
+            timeWindowStart,
+            timeWindowEnd,
+            status: "PENDING",
+          });
+        }
+      }
+    }
+
+    // Insert route stops
+    let routeStopsCreatedCount = 0;
+    if (routeStopsToCreate.length > 0) {
+      await db.insert(routeStops).values(routeStopsToCreate);
+      routeStopsCreatedCount = routeStopsToCreate.length;
+      console.log(
+        `[Confirm Plan] Created ${routeStopsCreatedCount} route stops`,
+      );
+    }
 
     // Generate and save plan metrics
     const planMetricsData = calculatePlanMetrics(
@@ -236,27 +408,74 @@ export async function POST(
     // Save metrics to database
     const metricsId = await savePlanMetrics(planMetricsData, comparisonMetrics);
 
-    // Create audit log
-    await createAuditLog({
-      entityType: "optimization_configuration",
-      entityId: job.configurationId,
-      action: "CONFIRM_PLAN",
-      changes: JSON.stringify({
-        jobId: job.id,
-        previousStatus: job.configuration.status,
-        newStatus: "CONFIRMED",
-        validationSummary: validationResult.summary,
-        overrideWarnings: data.overrideWarnings,
-        confirmationNote: data.confirmationNote || null,
-        metricsId,
-        comparisonMetrics,
-      }),
-    });
+    // Create audit log with safe serialization
+    // Note: All values here should be primitives or simple objects
+    const auditChanges = {
+      jobId: job.id,
+      previousStatus: job.configuration.status,
+      newStatus: "CONFIRMED",
+      validationSummary: validationResult.summary,
+      overrideWarnings: data.overrideWarnings,
+      confirmationNote: data.confirmationNote || null,
+      metricsId,
+      ordersAssigned: ordersUpdatedCount,
+      routeStopsCreated: routeStopsCreatedCount,
+      comparisonMetrics: comparisonMetrics
+        ? {
+            comparedToJobId: comparisonMetrics.comparedToJobId ?? null,
+            distanceChangePercent: comparisonMetrics.distanceChangePercent ?? null,
+            durationChangePercent: comparisonMetrics.durationChangePercent ?? null,
+            complianceChangePercent: comparisonMetrics.complianceChangePercent ?? null,
+          }
+        : null,
+    };
 
-    return NextResponse.json({
+    try {
+      await createAuditLog({
+        entityType: "optimization_configuration",
+        entityId: job.configurationId,
+        action: "CONFIRM_PLAN",
+        changes: JSON.stringify(auditChanges),
+      });
+    } catch (auditError) {
+      // Log but don't fail the confirmation if audit fails
+      console.error("Failed to create audit log:", auditError);
+    }
+
+    // Serialize configuration with safe date handling
+    // Create explicit object to avoid any hidden date-like fields from Drizzle
+    const safeConfiguration = {
+      id: updatedConfiguration.id,
+      companyId: updatedConfiguration.companyId,
+      name: updatedConfiguration.name,
+      depotLatitude: updatedConfiguration.depotLatitude,
+      depotLongitude: updatedConfiguration.depotLongitude,
+      depotAddress: updatedConfiguration.depotAddress,
+      selectedVehicleIds: updatedConfiguration.selectedVehicleIds,
+      selectedDriverIds: updatedConfiguration.selectedDriverIds,
+      objective: updatedConfiguration.objective,
+      capacityEnabled: updatedConfiguration.capacityEnabled,
+      workWindowStart: String(updatedConfiguration.workWindowStart),
+      workWindowEnd: String(updatedConfiguration.workWindowEnd),
+      serviceTimeMinutes: updatedConfiguration.serviceTimeMinutes,
+      timeWindowStrictness: updatedConfiguration.timeWindowStrictness,
+      penaltyFactor: updatedConfiguration.penaltyFactor,
+      maxRoutes: updatedConfiguration.maxRoutes,
+      status: updatedConfiguration.status,
+      confirmedAt: safeToISOString(updatedConfiguration.confirmedAt),
+      confirmedBy: updatedConfiguration.confirmedBy,
+      active: updatedConfiguration.active,
+      createdAt: safeToISOString(updatedConfiguration.createdAt),
+      updatedAt: safeToISOString(updatedConfiguration.updatedAt),
+    };
+
+    // Build response object with all primitives to avoid serialization issues
+    const responseData = {
       success: true,
       message: "Plan confirmed successfully",
-      configuration: updatedConfiguration,
+      ordersAssigned: ordersUpdatedCount,
+      routeStopsCreated: routeStopsCreatedCount,
+      configuration: safeConfiguration,
       validationResult: {
         isValid: validationResult.isValid,
         summary: validationResult.summary,
@@ -264,14 +483,53 @@ export async function POST(
       },
       planMetrics: {
         id: metricsId,
-        ...planMetricsData,
-        comparison: comparisonMetrics,
+        companyId: planMetricsData.companyId,
+        jobId: planMetricsData.jobId,
+        configurationId: planMetricsData.configurationId,
+        totalRoutes: planMetricsData.totalRoutes,
+        totalStops: planMetricsData.totalStops,
+        totalDistance: planMetricsData.totalDistance,
+        totalDuration: planMetricsData.totalDuration,
+        averageUtilizationRate: planMetricsData.averageUtilizationRate,
+        maxUtilizationRate: planMetricsData.maxUtilizationRate,
+        minUtilizationRate: planMetricsData.minUtilizationRate,
+        timeWindowComplianceRate: planMetricsData.timeWindowComplianceRate,
+        totalTimeWindowViolations: planMetricsData.totalTimeWindowViolations,
+        driverAssignmentCoverage: planMetricsData.driverAssignmentCoverage,
+        averageAssignmentQuality: planMetricsData.averageAssignmentQuality,
+        assignmentsWithWarnings: planMetricsData.assignmentsWithWarnings,
+        assignmentsWithErrors: planMetricsData.assignmentsWithErrors,
+        skillCoverage: planMetricsData.skillCoverage,
+        licenseCompliance: planMetricsData.licenseCompliance,
+        fleetAlignment: planMetricsData.fleetAlignment,
+        workloadBalance: planMetricsData.workloadBalance,
+        unassignedOrders: planMetricsData.unassignedOrders,
+        objective: planMetricsData.objective,
+        processingTimeMs: planMetricsData.processingTimeMs,
+        comparison: comparisonMetrics
+          ? {
+              comparedToJobId: comparisonMetrics.comparedToJobId ?? null,
+              distanceChangePercent: comparisonMetrics.distanceChangePercent ?? null,
+              durationChangePercent: comparisonMetrics.durationChangePercent ?? null,
+              complianceChangePercent: comparisonMetrics.complianceChangePercent ?? null,
+            }
+          : null,
       },
-    });
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
+    // Enhanced error logging to identify the exact location of the error
     console.error("Error confirming plan:", error);
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack);
+    }
     return NextResponse.json(
-      { error: "Internal server error", message: String(error) },
+      {
+        error: "Internal server error",
+        message: String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      },
       { status: 500 },
     );
   }
@@ -336,7 +594,7 @@ export async function GET(
       jobId: job.id,
       configurationId: job.configurationId,
       isConfirmed: job.configuration.status === "CONFIRMED",
-      confirmedAt: job.configuration.confirmedAt,
+      confirmedAt: safeToISOString(job.configuration.confirmedAt),
       confirmedBy: job.configuration.confirmedBy,
     });
   } catch (error) {

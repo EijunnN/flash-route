@@ -8,9 +8,11 @@ import {
   STOP_STATUS_TRANSITIONS,
   DELIVERY_FAILURE_REASONS,
   DELIVERY_FAILURE_LABELS,
+  USER_ROLES,
 } from "@/db/schema";
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
+import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -139,6 +141,19 @@ export async function PATCH(
     if (!currentStop) {
       return NextResponse.json({ error: "Stop not found" }, { status: 404 });
     }
+
+    // Security validation: Conductors can only modify their own stops
+    const authUser = await getOptionalUser(request);
+    if (authUser && authUser.role === USER_ROLES.CONDUCTOR) {
+      // CONDUCTOR can only modify stops assigned to them
+      if (currentStop.userId !== authUser.userId) {
+        return NextResponse.json(
+          { error: "No tiene permiso para modificar esta parada. Solo puede modificar paradas asignadas a usted." },
+          { status: 403 },
+        );
+      }
+    }
+    // ADMIN_SISTEMA, PLANIFICADOR, ADMIN_FLOTA, and MONITOR can modify any stop (if they have permission)
 
     // Validate status transition
     const validTransitions =
