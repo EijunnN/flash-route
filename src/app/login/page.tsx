@@ -115,7 +115,7 @@ export default function LoginPage() {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-foreground">
-              Planeamiento
+              BetterRoute
             </CardTitle>
             <CardDescription>Sistema de Gestión de Rutas</CardDescription>
           </div>

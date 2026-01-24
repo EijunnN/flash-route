@@ -132,7 +132,6 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   "/users": "users:VIEW",
   "/orders": "orders:VIEW",
   "/vehicles": "vehicles:VIEW",
-  "/drivers": "drivers:VIEW",
   "/fleets": "fleets:VIEW",
   "/zones": "zones:VIEW",
   "/alerts": "alerts:VIEW",

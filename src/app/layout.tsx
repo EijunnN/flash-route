@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Planeamiento",
-  description: "Aplicación de planeamiento estratégico",
+  title: "BetterRoute",
+  description: "Aplicación de planificación de rutas",
 };
 
 // Script que se ejecuta antes del renderizado para evitar flash de tema incorrecto
