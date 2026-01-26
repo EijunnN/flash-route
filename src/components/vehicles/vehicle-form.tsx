@@ -1,7 +1,8 @@
 "use client";
 
-import { Box, DollarSign, Info, Package, Scale } from "lucide-react";
+import { Box, DollarSign, Info, Package, Scale, Wrench } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,15 +29,32 @@ interface CompanyProfile {
   enableVolume?: boolean;
 }
 
+interface VehicleSkill {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  description?: string | null;
+}
+
 interface VehicleFormProps {
-  onSubmit: (data: VehicleInput) => Promise<void>;
+  onSubmit: (data: VehicleInput, skillIds?: string[]) => Promise<void>;
   initialData?: Partial<VehicleInput>;
   fleets: Array<{ id: string; name: string }>;
   drivers: Array<{ id: string; name: string }>;
+  availableSkills?: VehicleSkill[];
+  initialSkillIds?: string[];
   submitLabel?: string;
   onCancel?: () => void;
   companyProfile?: CompanyProfile;
 }
+
+const SKILL_CATEGORY_LABELS: Record<string, string> = {
+  EQUIPMENT: "Equipamiento",
+  TEMPERATURE: "Temperatura",
+  CERTIFICATIONS: "Certificaciones",
+  SPECIAL: "Especial",
+};
 
 const LOAD_TYPES = [
   { value: "LIGHT", label: "Liviano" },
@@ -55,6 +73,8 @@ export function VehicleForm({
   initialData,
   fleets,
   drivers,
+  availableSkills = [],
+  initialSkillIds = [],
   submitLabel = "Guardar",
   onCancel,
   companyProfile,
@@ -100,6 +120,9 @@ export function VehicleForm({
   const [selectedFleetIds, setSelectedFleetIds] = useState<string[]>(
     initialData?.fleetIds ?? [],
   );
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(
+    initialSkillIds,
+  );
   const [activeTab, setActiveTab] = useState("general");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +156,7 @@ export function VehicleForm({
     };
 
     try {
-      await onSubmit(submitData);
+      await onSubmit(submitData, selectedSkillIds);
     } catch (error: unknown) {
       const err = error as {
         details?: Array<{ path?: string[]; field?: string; message: string }>;
@@ -177,6 +200,29 @@ export function VehicleForm({
       }
     });
   };
+
+  const toggleSkillSelection = (skillId: string) => {
+    setSelectedSkillIds((prev) => {
+      if (prev.includes(skillId)) {
+        return prev.filter((id) => id !== skillId);
+      } else {
+        return [...prev, skillId];
+      }
+    });
+  };
+
+  // Group skills by category
+  const skillsByCategory = availableSkills.reduce(
+    (acc, skill) => {
+      const category = skill.category || "SPECIAL";
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(skill);
+      return acc;
+    },
+    {} as Record<string, VehicleSkill[]>,
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -751,6 +797,86 @@ export function VehicleForm({
               </div>
             </CardContent>
           </Card>
+
+          {/* Habilidades del Vehículo */}
+          {availableSkills.length > 0 && (
+            <Card>
+              <CardContent className="pt-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="font-medium text-sm">Habilidades del Vehículo</h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecciona las capacidades especiales de este vehículo
+                </p>
+
+                {/* Selected skills badges */}
+                {selectedSkillIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pb-2">
+                    {selectedSkillIds.map((skillId) => {
+                      const skill = availableSkills.find((s) => s.id === skillId);
+                      return skill ? (
+                        <Badge
+                          key={skillId}
+                          variant="secondary"
+                          className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => toggleSkillSelection(skillId)}
+                        >
+                          {skill.name}
+                          <span className="ml-1">&times;</span>
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+
+                {/* Skills grouped by category */}
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {Object.entries(skillsByCategory).map(([category, skills]) => (
+                    <div key={category}>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                        {SKILL_CATEGORY_LABELS[category] || category}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {skills.map((skill) => (
+                          <label
+                            key={skill.id}
+                            htmlFor={`skill-${skill.id}`}
+                            className="flex items-center gap-2 p-2 rounded border text-sm hover:bg-accent/50 cursor-pointer"
+                          >
+                            <Checkbox
+                              id={`skill-${skill.id}`}
+                              checked={selectedSkillIds.includes(skill.id)}
+                              onCheckedChange={() => toggleSkillSelection(skill.id)}
+                              disabled={isSubmitting}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-normal">
+                                {skill.name}
+                              </span>
+                              {skill.description && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {skill.description}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {availableSkills.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    No hay habilidades configuradas.
+                    <br />
+                    Configúralas en Configuración → Habilidades de Vehículos
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 

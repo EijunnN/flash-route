@@ -241,6 +241,7 @@ export const vehiclesRelations = relations(vehicles, ({ one, many }) => ({
   vehicleFleets: many(vehicleFleets),
   fleetHistory: many(vehicleFleetHistory),
   statusHistory: many(vehicleStatusHistory),
+  skillAssignments: many(vehicleSkillAssignments),
 }));
 
 // Vehicle-Fleet many-to-many relationship
@@ -370,6 +371,7 @@ export const vehicleSkillsRelations = relations(
       references: [companies.id],
     }),
     userSkills: many(userSkills),
+    vehicleAssignments: many(vehicleSkillAssignments),
   }),
 );
 
@@ -406,6 +408,41 @@ export const userSkillsRelations = relations(userSkills, ({ one }) => ({
     references: [vehicleSkills.id],
   }),
 }));
+
+// Vehicle Skill Assignments - junction table for vehicle-skill relationship
+export const vehicleSkillAssignments = pgTable("vehicle_skill_assignments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id")
+    .notNull()
+    .references(() => companies.id, { onDelete: "restrict" }),
+  vehicleId: uuid("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  skillId: uuid("skill_id")
+    .notNull()
+    .references(() => vehicleSkills.id, { onDelete: "cascade" }),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const vehicleSkillAssignmentsRelations = relations(
+  vehicleSkillAssignments,
+  ({ one }) => ({
+    company: one(companies, {
+      fields: [vehicleSkillAssignments.companyId],
+      references: [companies.id],
+    }),
+    vehicle: one(vehicles, {
+      fields: [vehicleSkillAssignments.vehicleId],
+      references: [vehicles.id],
+    }),
+    skill: one(vehicleSkills, {
+      fields: [vehicleSkillAssignments.skillId],
+      references: [vehicleSkills.id],
+    }),
+  }),
+);
 
 // Vehicle fleet history for tracking fleet changes
 export const vehicleFleetHistory = pgTable("vehicle_fleet_history", {

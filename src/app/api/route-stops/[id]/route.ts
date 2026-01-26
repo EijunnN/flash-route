@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import {
+  orders,
   routeStopHistory,
   routeStops,
   STOP_STATUS_TRANSITIONS,
@@ -13,6 +14,15 @@ import {
 import { withTenantFilter } from "@/db/tenant-aware";
 import { setTenantContext } from "@/lib/infra/tenant";
 import { getAuthenticatedUser, getOptionalUser } from "@/lib/auth/auth-api";
+
+// Map route_stop status to order status
+const STOP_TO_ORDER_STATUS: Record<string, string> = {
+  PENDING: "ASSIGNED", // Order stays assigned until stop starts
+  IN_PROGRESS: "IN_TRANSIT", // Order is in transit
+  COMPLETED: "DELIVERED", // Order was delivered
+  FAILED: "FAILED", // Order delivery failed
+  SKIPPED: "FAILED", // Order was skipped (treat as failed)
+};
 
 function extractTenantContext(request: NextRequest) {
   const companyId = request.headers.get("x-company-id");
@@ -223,6 +233,18 @@ export async function PATCH(
       .set(updateData)
       .where(eq(routeStops.id, stopId))
       .returning();
+
+    // Sync order status if the stop has an associated order
+    if (currentStop.orderId && STOP_TO_ORDER_STATUS[status]) {
+      const newOrderStatus = STOP_TO_ORDER_STATUS[status];
+      await db
+        .update(orders)
+        .set({
+          status: newOrderStatus as typeof orders.$inferInsert.status,
+          updatedAt: now,
+        })
+        .where(eq(orders.id, currentStop.orderId));
+    }
 
     // Create history entry with evidence metadata
     const historyMetadata =

@@ -91,6 +91,14 @@ interface Driver {
   name: string;
 }
 
+interface VehicleSkill {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  description: string | null;
+}
+
 const VEHICLE_STATUS_LABELS: Record<string, string> = {
   AVAILABLE: "Disponible",
   IN_MAINTENANCE: "En Mantenimiento",
@@ -120,6 +128,8 @@ function VehiclesPageContent() {
     null,
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [availableSkills, setAvailableSkills] = useState<VehicleSkill[]>([]);
+  const [editingVehicleSkillIds, setEditingVehicleSkillIds] = useState<string[]>([]);
 
   const fetchVehicles = useCallback(async () => {
     if (!companyId) return;
@@ -217,14 +227,62 @@ function VehiclesPageContent() {
     }
   }, [companyId]);
 
+  const fetchAvailableSkills = useCallback(async () => {
+    if (!companyId) return;
+    try {
+      const response = await fetch("/api/vehicle-skills?active=true", {
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
+      const data = await response.json();
+      setAvailableSkills(data.data || []);
+    } catch (error) {
+      console.error("Error fetching vehicle skills:", error);
+    }
+  }, [companyId]);
+
+  const fetchVehicleSkills = useCallback(async (vehicleId: string) => {
+    if (!companyId) return [];
+    try {
+      const response = await fetch(`/api/vehicles/${vehicleId}/skills`, {
+        headers: {
+          "x-company-id": companyId ?? "",
+        },
+      });
+      const data = await response.json();
+      return data.skillIds || [];
+    } catch (error) {
+      console.error("Error fetching vehicle skills:", error);
+      return [];
+    }
+  }, [companyId]);
+
+  const saveVehicleSkills = useCallback(async (vehicleId: string, skillIds: string[]) => {
+    if (!companyId) return;
+    try {
+      await fetch(`/api/vehicles/${vehicleId}/skills`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-company-id": companyId ?? "",
+        },
+        body: JSON.stringify({ skillIds }),
+      });
+    } catch (error) {
+      console.error("Error saving vehicle skills:", error);
+    }
+  }, [companyId]);
+
   useEffect(() => {
     fetchVehicles();
     fetchFleets();
     fetchDrivers();
     fetchCompanyProfile();
-  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles, fetchCompanyProfile]);
+    fetchAvailableSkills();
+  }, [companyId, fetchDrivers, fetchFleets, fetchVehicles, fetchCompanyProfile, fetchAvailableSkills]);
 
-  const handleCreate = async (data: VehicleInput) => {
+  const handleCreate = async (data: VehicleInput, skillIds?: string[]) => {
     try {
       const response = await fetch("/api/vehicles", {
         method: "POST",
@@ -238,6 +296,13 @@ function VehiclesPageContent() {
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Error al crear vehículo");
+      }
+
+      const result = await response.json();
+
+      // Save skills if provided
+      if (skillIds && skillIds.length > 0 && result.id) {
+        await saveVehicleSkills(result.id, skillIds);
       }
 
       await fetchVehicles();
@@ -257,7 +322,7 @@ function VehiclesPageContent() {
     }
   };
 
-  const handleUpdate = async (data: VehicleInput) => {
+  const handleUpdate = async (data: VehicleInput, skillIds?: string[]) => {
     if (!editingVehicle) return;
 
     try {
@@ -275,8 +340,14 @@ function VehiclesPageContent() {
         throw new Error(error.error || "Error al actualizar vehículo");
       }
 
+      // Save skills
+      if (skillIds !== undefined) {
+        await saveVehicleSkills(editingVehicle.id, skillIds);
+      }
+
       await fetchVehicles();
       setEditingVehicle(null);
+      setEditingVehicleSkillIds([]);
       toast({
         title: "Vehículo actualizado",
         description: `El vehículo "${data.name}" ha sido actualizado exitosamente.`,
@@ -290,6 +361,13 @@ function VehiclesPageContent() {
       });
       throw err;
     }
+  };
+
+  const handleEditVehicle = async (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    // Load vehicle skills
+    const skillIds = await fetchVehicleSkills(vehicle.id);
+    setEditingVehicleSkillIds(skillIds);
   };
 
   const handleDelete = async (id: string) => {
@@ -427,11 +505,14 @@ function VehiclesPageContent() {
               }
               fleets={fleets}
               drivers={drivers}
+              availableSkills={availableSkills}
+              initialSkillIds={editingVehicle ? editingVehicleSkillIds : []}
               companyProfile={companyProfile ?? undefined}
               submitLabel={editingVehicle ? "Actualizar" : "Crear"}
               onCancel={() => {
                 setShowForm(false);
                 setEditingVehicle(null);
+                setEditingVehicleSkillIds([]);
               }}
             />
           </CardContent>
@@ -538,7 +619,7 @@ function VehiclesPageContent() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setEditingVehicle(vehicle)}
+                      onClick={() => handleEditVehicle(vehicle)}
                       disabled={deletingId === vehicle.id}
                     >
                       Editar

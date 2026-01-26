@@ -116,9 +116,9 @@ function formatDateInput(dateStr?: string): string {
   }
 }
 
-function formatDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}HRS`;
 }
 
@@ -142,7 +142,6 @@ export function PlanConfirmationDialog({
   const [planName, setPlanName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [weekStart, setWeekStart] = useState("Lunes");
   const [error, setError] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [driverAssignments, setDriverAssignments] = useState<
@@ -375,7 +374,7 @@ export function PlanConfirmationDialog({
               </div>
 
               {/* Date Fields */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label
                     htmlFor="start-date"
@@ -407,28 +406,6 @@ export function PlanConfirmationDialog({
                       onChange={(e) => setEndDate(e.target.value)}
                     />
                   </div>
-                </div>
-                <div>
-                  <Label
-                    htmlFor="week-start"
-                    className="text-xs text-muted-foreground uppercase"
-                  >
-                    Inicio de semana
-                  </Label>
-                  <Select value={weekStart} onValueChange={setWeekStart}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Lunes">Lunes</SelectItem>
-                      <SelectItem value="Martes">Martes</SelectItem>
-                      <SelectItem value="Miércoles">Miércoles</SelectItem>
-                      <SelectItem value="Jueves">Jueves</SelectItem>
-                      <SelectItem value="Viernes">Viernes</SelectItem>
-                      <SelectItem value="Sábado">Sábado</SelectItem>
-                      <SelectItem value="Domingo">Domingo</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>
@@ -463,28 +440,48 @@ export function PlanConfirmationDialog({
                   </div>
                 )}
                 {hasWarnings && (
-                  <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                    <div className="flex-1 flex items-center justify-between">
-                      <p className="text-sm text-yellow-800 dark:text-yellow-400">
-                        {validationResult.summary.warningCount} advertencia(s)
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="override-warnings"
-                          checked={overrideWarnings}
-                          onCheckedChange={(checked) =>
-                            setOverrideWarnings(checked as boolean)
-                          }
-                        />
-                        <Label
-                          htmlFor="override-warnings"
-                          className="text-xs cursor-pointer text-yellow-700 dark:text-yellow-500"
-                        >
-                          Aceptar
-                        </Label>
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-900">
+                    <div className="flex items-center gap-3 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                      <div className="flex-1 flex items-center justify-between">
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+                          {validationResult.summary.warningCount} advertencia(s)
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="override-warnings"
+                            checked={overrideWarnings}
+                            onCheckedChange={(checked) =>
+                              setOverrideWarnings(checked as boolean)
+                            }
+                          />
+                          <Label
+                            htmlFor="override-warnings"
+                            className="text-xs cursor-pointer text-yellow-700 dark:text-yellow-500"
+                          >
+                            Aceptar
+                          </Label>
+                        </div>
                       </div>
                     </div>
+                    {/* Mostrar detalles de advertencias */}
+                    {validationResult.issues && validationResult.issues.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-xs text-yellow-700 dark:text-yellow-500 pl-7">
+                        {validationResult.issues
+                          .filter((issue) => issue.severity === "WARNING")
+                          .slice(0, 5)
+                          .map((issue, idx) => (
+                            <li key={idx} className="list-disc">
+                              {issue.message}
+                            </li>
+                          ))}
+                        {validationResult.issues.filter((i) => i.severity === "WARNING").length > 5 && (
+                          <li className="text-yellow-600 italic">
+                            ... y {validationResult.issues.filter((i) => i.severity === "WARNING").length - 5} más
+                          </li>
+                        )}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

@@ -12,7 +12,16 @@ import { OptimizationResultsDashboard } from "@/components/optimization/optimiza
 import { useFullScreenLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCompanyContext } from "@/hooks/use-company-context";
+import { useToast } from "@/hooks/use-toast";
 
 interface OptimizationResult {
   routes: Array<{
@@ -259,6 +268,11 @@ function ResultsPageContent() {
   };
 
   const [isConfirming, setIsConfirming] = useState(false);
+  const [showPostConfirmDialog, setShowPostConfirmDialog] = useState(false);
+  const [confirmationData, setConfirmationData] = useState<{
+    ordersAssigned: number;
+  } | null>(null);
+  const { toast } = useToast();
 
   const handleConfirm = async () => {
     if (!jobId || !companyId) return;
@@ -277,21 +291,46 @@ function ResultsPageContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Error al confirmar el plan");
+        toast({
+          title: "Error al confirmar",
+          description: data.error || "No se pudo confirmar el plan",
+          variant: "destructive",
+        });
         return;
       }
 
-      alert(
-        `Plan confirmado exitosamente.\n${data.ordersAssigned} pedidos asignados.`
-      );
+      // Show success toast and post-confirm dialog
+      toast({
+        title: "Plan confirmado",
+        description: `${data.ordersAssigned} pedidos asignados exitosamente`,
+      });
 
-      // Redirect to history or dashboard
-      router.push("/planificacion/historial");
+      setConfirmationData({ ordersAssigned: data.ordersAssigned });
+      setShowPostConfirmDialog(true);
     } catch (error) {
       console.error("Error confirming plan:", error);
-      alert("Error al confirmar el plan. Intente nuevamente.");
+      toast({
+        title: "Error",
+        description: "Error al confirmar el plan. Intente nuevamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handlePostConfirmAction = (action: "monitor" | "new" | "history") => {
+    setShowPostConfirmDialog(false);
+    switch (action) {
+      case "monitor":
+        router.push("/monitoreo");
+        break;
+      case "new":
+        router.push("/planificacion");
+        break;
+      case "history":
+        router.push("/planificacion/historial");
+        break;
     }
   };
 
@@ -386,16 +425,58 @@ function ResultsPageContent() {
   // Show results dashboard
   if (result) {
     return (
-      <OptimizationResultsDashboard
-        jobId={jobId || undefined}
-        result={result}
-        isPartial={result.isPartial}
-        jobStatus={jobData?.status}
-        onReoptimize={handleReoptimize}
-        onConfirm={handleConfirm}
-        onBack={() => router.push("/planificacion")}
-        onResultUpdate={handleResultUpdate}
-      />
+      <>
+        <OptimizationResultsDashboard
+          jobId={jobId || undefined}
+          result={result}
+          isPartial={result.isPartial}
+          jobStatus={jobData?.status}
+          onReoptimize={handleReoptimize}
+          onConfirm={handleConfirm}
+          onBack={() => router.push("/planificacion")}
+          onResultUpdate={handleResultUpdate}
+        />
+
+        {/* Dialog post-confirmación */}
+        <Dialog open={showPostConfirmDialog} onOpenChange={setShowPostConfirmDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-green-600 flex items-center gap-2">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Plan confirmado exitosamente
+              </DialogTitle>
+              <DialogDescription>
+                Se asignaron {confirmationData?.ordersAssigned || 0} pedidos a las rutas.
+                ¿Qué deseas hacer ahora?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button
+                className="w-full"
+                onClick={() => handlePostConfirmAction("monitor")}
+              >
+                Ir al monitoreo
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handlePostConfirmAction("new")}
+              >
+                Crear nueva planificación
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => handlePostConfirmAction("history")}
+              >
+                Ver historial de planes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 

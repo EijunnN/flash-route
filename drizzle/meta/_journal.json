@@ -36,6 +36,13 @@
       "when": 1768975266348,
       "tag": "0004_kind_post",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1769406203947,
+      "tag": "0005_add-vehicle-skill-assignments",
+      "breakpoints": true
     }
   ]
 }
