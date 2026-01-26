@@ -8,7 +8,6 @@ import {
   Clock,
   Eye,
   EyeOff,
-  History,
   Loader2,
   MapPin,
   Package,
@@ -24,7 +23,6 @@ import {
   Zap,
   Target,
 } from "lucide-react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ProtectedPage } from "@/components/auth/protected-page";
@@ -1269,12 +1267,6 @@ function PlanificacionPageContent() {
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/planificacion/historial" className="flex items-center gap-2">
-                <History className="w-4 h-4" />
-                <span>Historial</span>
-              </Link>
-            </Button>
             <CompanySelector
               companies={companies}
               selectedCompanyId={selectedCompanyId}

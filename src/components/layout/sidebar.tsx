@@ -4,14 +4,17 @@ import {
   Award,
   BarChart3,
   Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
+  History,
   LogOut,
   Map as MapIcon,
   MapPin,
   Moon,
   Package,
+  PlusCircle,
   Route,
   Settings,
   Settings2,
@@ -32,6 +35,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   badge?: number;
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -45,7 +49,15 @@ const navSections: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: BarChart3 },
       { title: "Pedidos", href: "/orders", icon: Package },
-      { title: "Planificación", href: "/planificacion", icon: Route },
+      {
+        title: "Planificación",
+        href: "/planificacion",
+        icon: Route,
+        children: [
+          { title: "Nueva Planificación", href: "/planificacion", icon: PlusCircle },
+          { title: "Historial", href: "/planificacion/historial", icon: History },
+        ],
+      },
       { title: "Monitoreo", href: "/monitoring", icon: MapIcon },
     ],
   },
@@ -80,6 +92,19 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (href: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) {
+        next.delete(href);
+      } else {
+        next.add(href);
+      }
+      return next;
+    });
+  };
 
   // Load saved theme on mount
   useEffect(() => {
@@ -104,12 +129,26 @@ export function Sidebar() {
     document.documentElement.classList.toggle("dark");
   };
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, exact?: boolean) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard" || pathname === "/";
     }
+    if (exact) {
+      return pathname === href;
+    }
     return pathname.startsWith(href);
   };
+
+  // Auto-expand items that have active children
+  useEffect(() => {
+    navSections.forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.children && pathname.startsWith(item.href)) {
+          setExpandedItems((prev) => new Set([...prev, item.href]));
+        }
+      });
+    });
+  }, [pathname]);
 
   return (
     <aside
@@ -154,28 +193,84 @@ export function Sidebar() {
                 {section.title}
               </p>
             )}
-            {section.items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  isActive(item.href)
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  collapsed && "justify-center px-2",
-                )}
-                title={collapsed ? item.title : undefined}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
-                {!collapsed && item.badge && (
-                  <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
+            {section.items.map((item) => {
+              const hasChildren = item.children && item.children.length > 0;
+              const isExpanded = expandedItems.has(item.href);
+              const isItemActive = isActive(item.href);
+
+              if (hasChildren) {
+                return (
+                  <div key={item.href} className="space-y-1">
+                    <button
+                      onClick={() => toggleExpanded(item.href)}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        isItemActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        collapsed && "justify-center px-2",
+                      )}
+                      title={collapsed ? item.title : undefined}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-left">{item.title}</span>
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 shrink-0 transition-transform",
+                              isExpanded && "rotate-180"
+                            )}
+                          />
+                        </>
+                      )}
+                    </button>
+                    {!collapsed && isExpanded && (
+                      <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
+                        {item.children!.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                              isActive(child.href, true)
+                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            )}
+                          >
+                            <child.icon className="h-4 w-4 shrink-0" />
+                            <span>{child.title}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isItemActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    collapsed && "justify-center px-2",
+                  )}
+                  title={collapsed ? item.title : undefined}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span>{item.title}</span>}
+                  {!collapsed && item.badge && (
+                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
