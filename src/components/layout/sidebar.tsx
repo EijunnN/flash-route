@@ -25,25 +25,18 @@ import {
   Warehouse,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTheme } from "./theme-context";
+import {
+  SidebarProvider,
+  useSidebar,
+  type NavItem,
+  type NavSection,
+} from "./sidebar-context";
 
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ElementType;
-  badge?: number;
-  children?: NavItem[];
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-const navSections: NavSection[] = [
+// Default navigation sections
+const defaultNavSections: NavSection[] = [
   {
     title: "Operaciones",
     items: [
@@ -88,228 +81,296 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+// Compound Components
 
-  const toggleExpanded = (href: string) => {
-    setExpandedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(href)) {
-        next.delete(href);
-      } else {
-        next.add(href);
-      }
-      return next;
-    });
-  };
-
-  // Load saved theme on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)",
-    ).matches;
-    const shouldBeDark = savedTheme === "dark" || (!savedTheme && prefersDark);
-
-    setIsDark(shouldBeDark);
-    if (shouldBeDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    localStorage.setItem("theme", newIsDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark");
-  };
-
-  const isActive = (href: string, exact?: boolean) => {
-    if (href === "/dashboard") {
-      return pathname === "/dashboard" || pathname === "/";
-    }
-    if (exact) {
-      return pathname === href;
-    }
-    return pathname.startsWith(href);
-  };
-
-  // Auto-expand items that have active children
-  useEffect(() => {
-    navSections.forEach((section) => {
-      section.items.forEach((item) => {
-        if (item.children && pathname.startsWith(item.href)) {
-          setExpandedItems((prev) => new Set([...prev, item.href]));
-        }
-      });
-    });
-  }, [pathname]);
+function SidebarFrame({ children }: { children: React.ReactNode }) {
+  const { state } = useSidebar();
 
   return (
     <aside
       className={cn(
         "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300",
-        collapsed ? "w-16" : "w-64",
+        state.collapsed ? "w-16" : "w-64"
       )}
     >
-      {/* Logo */}
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Route className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-sidebar-foreground">
-              BetterRoute
-            </span>
-          </Link>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
-          aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {navSections.map((section, sectionIndex) => (
-          <div key={section.title} className={cn("space-y-1", sectionIndex > 0 && "pt-4")}>
-            {!collapsed && (
-              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
-                {section.title}
-              </p>
-            )}
-            {section.items.map((item) => {
-              const hasChildren = item.children && item.children.length > 0;
-              const isExpanded = expandedItems.has(item.href);
-              const isItemActive = isActive(item.href);
-
-              if (hasChildren) {
-                return (
-                  <div key={item.href} className="space-y-1">
-                    <button
-                      onClick={() => toggleExpanded(item.href)}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        isItemActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                        collapsed && "justify-center px-2",
-                      )}
-                      title={collapsed ? item.title : undefined}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1 text-left">{item.title}</span>
-                          <ChevronDown
-                            className={cn(
-                              "h-4 w-4 shrink-0 transition-transform",
-                              isExpanded && "rotate-180"
-                            )}
-                          />
-                        </>
-                      )}
-                    </button>
-                    {!collapsed && isExpanded && (
-                      <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
-                        {item.children!.map((child) => (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                              isActive(child.href, true)
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                            )}
-                          >
-                            <child.icon className="h-4 w-4 shrink-0" />
-                            <span>{child.title}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isItemActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    collapsed && "justify-center px-2",
-                  )}
-                  title={collapsed ? item.title : undefined}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span>{item.title}</span>}
-                  {!collapsed && item.badge && (
-                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-2 space-y-1">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            collapsed && "justify-center px-2",
-          )}
-          onClick={toggleTheme}
-          title={
-            collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined
-          }
-        >
-          {isDark ? (
-            <Sun className="h-5 w-5 shrink-0" />
-          ) : (
-            <Moon className="h-5 w-5 shrink-0" />
-          )}
-          {!collapsed && <span>{isDark ? "Modo Claro" : "Modo Oscuro"}</span>}
-        </Button>
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            collapsed && "justify-center px-2",
-          )}
-          onClick={() => {
-            // Logout logic
-            window.location.href = "/login";
-          }}
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Cerrar Sesión</span>}
-        </Button>
-      </div>
+      {children}
     </aside>
   );
 }
+
+function SidebarLogo() {
+  const { state } = useSidebar();
+
+  if (state.collapsed) return null;
+
+  return (
+    <Link href="/dashboard" className="flex items-center gap-2">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+        <Route className="h-5 w-5 text-primary-foreground" />
+      </div>
+      <span className="font-semibold text-sidebar-foreground">BetterRoute</span>
+    </Link>
+  );
+}
+
+function SidebarCollapseButton() {
+  const { state, actions } = useSidebar();
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={actions.toggleCollapse}
+      className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent"
+      aria-label={state.collapsed ? "Expandir menú" : "Colapsar menú"}
+    >
+      {state.collapsed ? (
+        <ChevronRight className="h-4 w-4" />
+      ) : (
+        <ChevronLeft className="h-4 w-4" />
+      )}
+    </Button>
+  );
+}
+
+function SidebarHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+      {children}
+    </div>
+  );
+}
+
+function SidebarNavigation({ children }: { children?: React.ReactNode }) {
+  const { meta } = useSidebar();
+
+  return (
+    <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+      {children ||
+        meta.navSections.map((section, sectionIndex) => (
+          <SidebarSection key={section.title} section={section} isFirst={sectionIndex === 0} />
+        ))}
+    </nav>
+  );
+}
+
+function SidebarSection({
+  section,
+  isFirst = false,
+}: {
+  section: NavSection;
+  isFirst?: boolean;
+}) {
+  const { state } = useSidebar();
+
+  return (
+    <div className={cn("space-y-1", !isFirst && "pt-4")}>
+      {!state.collapsed && (
+        <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+          {section.title}
+        </p>
+      )}
+      {section.items.map((item) => (
+        <SidebarNavItem key={item.href} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function SidebarNavItem({ item }: { item: NavItem }) {
+  const { state, actions } = useSidebar();
+  const hasChildren = item.children && item.children.length > 0;
+  const isExpanded = state.expandedItems.has(item.href);
+  const isItemActive = actions.isActive(item.href);
+
+  if (hasChildren) {
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => actions.toggleExpanded(item.href)}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            isItemActive
+              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            state.collapsed && "justify-center px-2"
+          )}
+          title={state.collapsed ? item.title : undefined}
+        >
+          <item.icon className="h-5 w-5 shrink-0" />
+          {!state.collapsed && (
+            <>
+              <span className="flex-1 text-left">{item.title}</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 transition-transform",
+                  isExpanded && "rotate-180"
+                )}
+              />
+            </>
+          )}
+        </button>
+        {!state.collapsed && isExpanded && (
+          <div className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
+            {item.children!.map((child) => (
+              <SidebarNavLink key={child.href} item={child} isChild />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return <SidebarNavLink item={item} />;
+}
+
+function SidebarNavLink({
+  item,
+  isChild = false,
+}: {
+  item: NavItem;
+  isChild?: boolean;
+}) {
+  const { state, actions } = useSidebar();
+  const isItemActive = actions.isActive(item.href, isChild);
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        isItemActive
+          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        state.collapsed && "justify-center px-2"
+      )}
+      title={state.collapsed ? item.title : undefined}
+    >
+      <item.icon className={cn("shrink-0", isChild ? "h-4 w-4" : "h-5 w-5")} />
+      {!state.collapsed && <span>{item.title}</span>}
+      {!state.collapsed && item.badge && (
+        <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+          {item.badge}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+function SidebarFooter({ children }: { children: React.ReactNode }) {
+  return <div className="border-t border-sidebar-border p-2 space-y-1">{children}</div>;
+}
+
+function SidebarThemeToggle() {
+  const { state } = useSidebar();
+  const { isDark, toggleTheme } = useTheme();
+
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        state.collapsed && "justify-center px-2"
+      )}
+      onClick={toggleTheme}
+      title={state.collapsed ? (isDark ? "Modo claro" : "Modo oscuro") : undefined}
+    >
+      {isDark ? (
+        <Sun className="h-5 w-5 shrink-0" />
+      ) : (
+        <Moon className="h-5 w-5 shrink-0" />
+      )}
+      {!state.collapsed && <span>{isDark ? "Modo Claro" : "Modo Oscuro"}</span>}
+    </Button>
+  );
+}
+
+function SidebarLogoutButton() {
+  const { state } = useSidebar();
+
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        "w-full justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        state.collapsed && "justify-center px-2"
+      )}
+      onClick={() => {
+        window.location.href = "/login";
+      }}
+    >
+      <LogOut className="h-5 w-5 shrink-0" />
+      {!state.collapsed && <span>Cerrar Sesión</span>}
+    </Button>
+  );
+}
+
+// Default Sidebar Content (for simple usage)
+function SidebarContent() {
+  return (
+    <SidebarFrame>
+      <SidebarHeader>
+        <SidebarLogo />
+        <SidebarCollapseButton />
+      </SidebarHeader>
+      <SidebarNavigation />
+      <SidebarFooter>
+        <SidebarThemeToggle />
+        <SidebarLogoutButton />
+      </SidebarFooter>
+    </SidebarFrame>
+  );
+}
+
+/**
+ * Sidebar - Compound Component Pattern
+ *
+ * Can be used in two ways:
+ *
+ * 1. Simple usage (default layout):
+ * ```tsx
+ * <Sidebar />
+ * ```
+ *
+ * 2. Compound usage (custom layout):
+ * ```tsx
+ * <Sidebar.Provider navSections={customSections}>
+ *   <Sidebar.Frame>
+ *     <Sidebar.Header>
+ *       <Sidebar.Logo />
+ *       <Sidebar.CollapseButton />
+ *     </Sidebar.Header>
+ *     <Sidebar.Navigation />
+ *     <Sidebar.Footer>
+ *       <Sidebar.ThemeToggle />
+ *       <Sidebar.LogoutButton />
+ *     </Sidebar.Footer>
+ *   </Sidebar.Frame>
+ * </Sidebar.Provider>
+ * ```
+ */
+export function Sidebar() {
+  return (
+    <SidebarProvider navSections={defaultNavSections}>
+      <SidebarContent />
+    </SidebarProvider>
+  );
+}
+
+// Compound component exports
+Sidebar.Provider = SidebarProvider;
+Sidebar.Frame = SidebarFrame;
+Sidebar.Header = SidebarHeader;
+Sidebar.Logo = SidebarLogo;
+Sidebar.CollapseButton = SidebarCollapseButton;
+Sidebar.Navigation = SidebarNavigation;
+Sidebar.Section = SidebarSection;
+Sidebar.NavItem = SidebarNavItem;
+Sidebar.NavLink = SidebarNavLink;
+Sidebar.Footer = SidebarFooter;
+Sidebar.ThemeToggle = SidebarThemeToggle;
+Sidebar.LogoutButton = SidebarLogoutButton;
+
+// Hook export for custom implementations
+export { useSidebar } from "./sidebar-context";
+export type { NavItem, NavSection } from "./sidebar-context";

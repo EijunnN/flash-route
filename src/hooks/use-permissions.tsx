@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, type ReactNode } from "react";
+import { createContext, useCallback, use, type ReactNode } from "react";
 import { useAuth } from "./use-auth";
 
 interface PermissionsContextValue {
@@ -59,9 +59,9 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <PermissionsContext.Provider value={value}>
+    <PermissionsContext value={value}>
       {children}
-    </PermissionsContext.Provider>
+    </PermissionsContext>
   );
 }
 
@@ -70,7 +70,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
  * Falls back to useAuth if no provider exists
  */
 export function usePermissions(): PermissionsContextValue {
-  const context = useContext(PermissionsContext);
+  const context = use(PermissionsContext);
 
   // If context exists, use it
   if (context) {

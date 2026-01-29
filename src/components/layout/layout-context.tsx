@@ -2,7 +2,7 @@
 
 import {
   createContext,
-  useContext,
+  use,
   useEffect,
   useState,
   type ReactNode,
@@ -22,16 +22,14 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
   const [fullWidth, setFullWidth] = useState(false);
 
   return (
-    <LayoutContext.Provider
-      value={{ hideHeader, setHideHeader, fullWidth, setFullWidth }}
-    >
+    <LayoutContext value={{ hideHeader, setHideHeader, fullWidth, setFullWidth }}>
       {children}
-    </LayoutContext.Provider>
+    </LayoutContext>
   );
 }
 
 export function useLayoutContext() {
-  const context = useContext(LayoutContext);
+  const context = use(LayoutContext);
   if (context === undefined) {
     throw new Error("useLayoutContext must be used within a LayoutProvider");
   }

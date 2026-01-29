@@ -1,10 +1,11 @@
-import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const Progress = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { value?: number }
->(({ className, value = 0, ...props }, ref) => {
+interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+  value?: number;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function Progress({ className, value = 0, ref, ...props }: ProgressProps) {
   return (
     <div
       ref={ref}
@@ -20,7 +21,6 @@ const Progress = React.forwardRef<
       />
     </div>
   );
-});
-Progress.displayName = "Progress";
+}
 
 export { Progress };

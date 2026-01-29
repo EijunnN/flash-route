@@ -5,4 +5,6 @@ export {
   useFullScreenLayout,
   useLayoutContext,
 } from "./layout-context";
-export { Sidebar } from "./sidebar";
+export { Sidebar, useSidebar, type NavItem, type NavSection } from "./sidebar";
+export { SidebarProvider } from "./sidebar-context";
+export { ThemeProvider, useTheme } from "./theme-context";

@@ -5,6 +5,7 @@ import { PermissionsProvider } from "@/hooks/use-permissions";
 import { Header } from "./header";
 import { LayoutProvider, useLayoutContext } from "./layout-context";
 import { Sidebar } from "./sidebar";
+import { ThemeProvider } from "./theme-context";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -34,10 +35,12 @@ function AppShellContent({ children, title }: AppShellProps) {
 
 export function AppShell({ children, title }: AppShellProps) {
   return (
-    <PermissionsProvider>
-      <LayoutProvider>
-        <AppShellContent title={title}>{children}</AppShellContent>
-      </LayoutProvider>
-    </PermissionsProvider>
+    <ThemeProvider>
+      <PermissionsProvider>
+        <LayoutProvider>
+          <AppShellContent title={title}>{children}</AppShellContent>
+        </LayoutProvider>
+      </PermissionsProvider>
+    </ThemeProvider>
   );
 }
