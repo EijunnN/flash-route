@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface DriverProgress {
   completedStops: number;
@@ -28,27 +29,29 @@ interface DriverListItemProps {
   progress: DriverProgress;
   alerts: string[];
   onClick: () => void;
+  isSelected?: boolean;
+  compact?: boolean;
 }
 
 const STATUS_CONFIG = {
   AVAILABLE: {
-    label: "Available",
+    label: "Disponible",
     color: "bg-emerald-500",
     icon: CheckCircle2,
   },
-  ASSIGNED: { label: "Assigned", color: "bg-blue-500", icon: User },
-  IN_ROUTE: { label: "In Route", color: "bg-green-500", icon: CheckCircle2 },
-  ON_PAUSE: { label: "On Pause", color: "bg-amber-500", icon: Clock },
+  ASSIGNED: { label: "Asignado", color: "bg-blue-500", icon: User },
+  IN_ROUTE: { label: "En Ruta", color: "bg-green-500", icon: CheckCircle2 },
+  ON_PAUSE: { label: "En Pausa", color: "bg-amber-500", icon: Clock },
   COMPLETED: {
-    label: "Completed",
+    label: "Completado",
     color: "bg-emerald-500",
     icon: CheckCircle2,
   },
-  UNAVAILABLE: { label: "Unavailable", color: "bg-gray-500", icon: User },
-  ABSENT: { label: "Absent", color: "bg-red-500", icon: AlertTriangle },
+  UNAVAILABLE: { label: "No Disponible", color: "bg-gray-500", icon: User },
+  ABSENT: { label: "Ausente", color: "bg-red-500", icon: AlertTriangle },
 };
 
-// Memoized to prevent re-renders when parent state changes (rerender-memo rule)
+// Memoized to prevent re-renders when parent state changes
 export const DriverListItem = memo(function DriverListItem({
   id: _id,
   name,
@@ -59,15 +62,79 @@ export const DriverListItem = memo(function DriverListItem({
   progress,
   alerts,
   onClick,
+  isSelected = false,
+  compact = false,
 }: DriverListItemProps) {
   const statusConfig =
     STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ||
     STATUS_CONFIG.UNAVAILABLE;
   const StatusIcon = statusConfig.icon;
 
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          "p-2.5 rounded-lg cursor-pointer transition-all",
+          isSelected
+            ? "bg-primary/10 ring-1 ring-primary"
+            : "hover:bg-accent/50"
+        )}
+        onClick={onClick}
+      >
+        <div className="flex items-center gap-2">
+          {/* Status dot */}
+          <div className={cn("w-2 h-2 rounded-full shrink-0", statusConfig.color)} />
+
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-sm truncate">{name}</span>
+              {vehiclePlate && (
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {vehiclePlate}
+                </span>
+              )}
+            </div>
+
+            {/* Progress bar for drivers with routes */}
+            {hasRoute && progress.totalStops > 0 && (
+              <div className="flex items-center gap-2 mt-1">
+                <Progress value={progress.percentage} className="h-1 flex-1" />
+                <span className="text-xs text-muted-foreground shrink-0">
+                  {progress.completedStops}/{progress.totalStops}
+                </span>
+              </div>
+            )}
+
+            {/* Show status if no route */}
+            {!hasRoute && (
+              <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                <StatusIcon className="w-3 h-3" />
+                <span>{statusConfig.label}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Alert indicator */}
+          {alerts.length > 0 && (
+            <div className="shrink-0">
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Full version
   return (
     <Card
-      className="hover:bg-accent/50 transition-colors cursor-pointer"
+      className={cn(
+        "transition-all cursor-pointer",
+        isSelected
+          ? "ring-2 ring-primary bg-primary/5"
+          : "hover:bg-accent/50"
+      )}
       onClick={onClick}
     >
       <div className="p-4">
@@ -76,7 +143,7 @@ export const DriverListItem = memo(function DriverListItem({
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {/* Status Indicator */}
             <div
-              className={`mt-1 w-2 h-2 rounded-full ${statusConfig.color} flex-shrink-0`}
+              className={cn("mt-1 w-2 h-2 rounded-full flex-shrink-0", statusConfig.color)}
             />
 
             {/* Driver Details */}
@@ -100,7 +167,7 @@ export const DriverListItem = memo(function DriverListItem({
               {hasRoute && progress.totalStops > 0 && (
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Progress</span>
+                    <span>Progreso</span>
                     <span>
                       {progress.completedStops} / {progress.totalStops}
                     </span>

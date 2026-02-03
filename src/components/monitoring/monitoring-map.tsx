@@ -2,7 +2,6 @@
 
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MonitoringMapProps {
@@ -11,6 +10,8 @@ interface MonitoringMapProps {
   selectedDriverId: string | null;
   onDriverSelect?: (driverId: string) => void;
 }
+
+const REFRESH_INTERVAL = 15000; // 15 seconds
 
 export function MonitoringMap({
   jobId: _jobId,
@@ -22,8 +23,9 @@ export function MonitoringMap({
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshInterval = useRef<NodeJS.Timeout | null>(null);
 
-  const loadMapData = useCallback(async () => {
+  const loadMapData = useCallback(async (fitBounds = false) => {
     if (!map.current || !companyId) return;
 
     try {
@@ -35,47 +37,23 @@ export function MonitoringMap({
 
       const geojson = await response.json();
 
-      // Clear existing layers and sources
-      const existingSources = map.current.getStyle()?.sources;
-      if (existingSources) {
-        Object.keys(existingSources).forEach((sourceId) => {
-          if (sourceId !== "osm-tiles") {
-            if (map.current?.getSource(sourceId)) {
-              map.current?.removeSource(sourceId);
-            }
-          }
+      // Update existing source if it exists, otherwise create new
+      const source = map.current.getSource("monitoring-data") as maplibregl.GeoJSONSource;
+
+      if (source) {
+        source.setData(geojson.data);
+      } else {
+        // First load - add source and layers
+        if (geojson.data.features.length === 0) {
+          return;
+        }
+
+        map.current.addSource("monitoring-data", {
+          type: "geojson",
+          data: geojson.data,
         });
-      }
 
-      const existingLayers = map.current.getStyle()?.layers;
-      if (existingLayers) {
-        existingLayers.forEach((layer: { id: string }) => {
-          if (layer.id !== "osm-tiles" && map.current?.getLayer(layer.id)) {
-            map.current?.removeLayer(layer.id);
-          }
-        });
-      }
-
-      if (geojson.data.features.length === 0) {
-        return;
-      }
-
-      // Add GeoJSON source
-      map.current.addSource("monitoring-data", {
-        type: "geojson",
-        data: geojson.data,
-      });
-
-      // Separate routes and stops
-      const routes = geojson.data.features.filter(
-        (f: GeoJSON.Feature) => f.properties?.type === "route",
-      );
-      const stops = geojson.data.features.filter(
-        (f: GeoJSON.Feature) => f.properties?.type === "stop",
-      );
-
-      // Add route lines
-      if (routes.length > 0) {
+        // Add route lines layer
         map.current.addLayer({
           id: "route-lines",
           type: "line",
@@ -88,50 +66,41 @@ export function MonitoringMap({
           paint: {
             "line-color": ["get", "color"],
             "line-width": 3,
-            "line-opacity": 0.7,
+            "line-opacity": 0.6,
           },
         });
 
-        // Highlight selected driver's route
-        if (selectedDriverId) {
-          map.current.addLayer({
-            id: "route-lines-selected",
-            type: "line",
-            source: "monitoring-data",
-            filter: [
-              "all",
-              ["==", ["get", "type"], "route"],
-              ["==", ["get", "driverId"], selectedDriverId],
-            ],
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": ["get", "color"],
-              "line-width": 5,
-              "line-opacity": 1,
-            },
-          });
-        }
-      }
-
-      // Add stop points
-      if (stops.length > 0) {
+        // Add stop points layer
         map.current.addLayer({
           id: "stop-points",
           type: "circle",
           source: "monitoring-data",
           filter: ["==", ["get", "type"], "stop"],
           paint: {
-            "circle-radius": 8,
-            "circle-color": ["get", "color"],
+            "circle-radius": [
+              "case",
+              ["==", ["get", "status"], "COMPLETED"], 6,
+              ["==", ["get", "status"], "FAILED"], 6,
+              8
+            ],
+            "circle-color": [
+              "case",
+              ["==", ["get", "status"], "COMPLETED"], "#22c55e",
+              ["==", ["get", "status"], "FAILED"], "#ef4444",
+              ["get", "color"]
+            ],
             "circle-stroke-width": 2,
             "circle-stroke-color": "#ffffff",
+            "circle-opacity": [
+              "case",
+              ["==", ["get", "status"], "COMPLETED"], 0.7,
+              ["==", ["get", "status"], "FAILED"], 0.7,
+              1
+            ],
           },
         });
 
-        // Add stop numbers
+        // Add stop numbers layer
         map.current.addLayer({
           id: "stop-labels",
           type: "symbol",
@@ -140,72 +109,161 @@ export function MonitoringMap({
           layout: {
             "text-field": ["get", "sequence"],
             "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-            "text-size": 12,
+            "text-size": 11,
             "text-anchor": "center",
-            "text-offset": [0, 0],
           },
           paint: {
             "text-color": "#ffffff",
           },
         });
+
+        // Add driver locations layer - larger and more visible
+        map.current.addLayer({
+          id: "driver-locations",
+          type: "circle",
+          source: "monitoring-data",
+          filter: ["==", ["get", "type"], "driver_location"],
+          paint: {
+            "circle-radius": 12,
+            "circle-color": [
+              "case",
+              ["==", ["get", "isRecent"], true], ["get", "color"],
+              "#6b7280" // Gray for stale locations
+            ],
+            "circle-stroke-width": 3,
+            "circle-stroke-color": "#ffffff",
+          },
+        });
+
+        // Add driver location pulse animation (outer ring)
+        map.current.addLayer({
+          id: "driver-locations-pulse",
+          type: "circle",
+          source: "monitoring-data",
+          filter: [
+            "all",
+            ["==", ["get", "type"], "driver_location"],
+            ["==", ["get", "isRecent"], true],
+          ],
+          paint: {
+            "circle-radius": 18,
+            "circle-color": ["get", "color"],
+            "circle-opacity": 0.3,
+            "circle-stroke-width": 0,
+          },
+        });
+
+        // Add driver icon/label
+        map.current.addLayer({
+          id: "driver-labels",
+          type: "symbol",
+          source: "monitoring-data",
+          filter: ["==", ["get", "type"], "driver_location"],
+          layout: {
+            "text-field": "🚗",
+            "text-size": 16,
+            "text-anchor": "center",
+          },
+        });
+
+        // Add click handlers
+        map.current.on("click", "stop-points", (e) => {
+          const features = map.current?.queryRenderedFeatures(e.point, {
+            layers: ["stop-points"],
+          });
+
+          if (features && features.length > 0) {
+            const props = features[0].properties as { driverId?: string } | null;
+            if (props?.driverId) onDriverSelect?.(props.driverId);
+          }
+        });
+
+        map.current.on("click", "driver-locations", (e) => {
+          const features = map.current?.queryRenderedFeatures(e.point, {
+            layers: ["driver-locations"],
+          });
+
+          if (features && features.length > 0) {
+            const props = features[0].properties as { driverId?: string } | null;
+            if (props?.driverId) onDriverSelect?.(props.driverId);
+          }
+        });
+
+        // Change cursor on hover
+        const setCursorPointer = () => {
+          const canvas = map.current?.getCanvas();
+          if (canvas) canvas.style.cursor = "pointer";
+        };
+
+        const setCursorDefault = () => {
+          const canvas = map.current?.getCanvas();
+          if (canvas) canvas.style.cursor = "";
+        };
+
+        map.current.on("mouseenter", "stop-points", setCursorPointer);
+        map.current.on("mouseleave", "stop-points", setCursorDefault);
+        map.current.on("mouseenter", "driver-locations", setCursorPointer);
+        map.current.on("mouseleave", "driver-locations", setCursorDefault);
       }
 
-      // Fit map to show all features
-      const maplibreglModule = await import("maplibre-gl");
-      const bounds = new maplibreglModule.LngLatBounds();
-      geojson.data.features.forEach((feature: GeoJSON.Feature) => {
-        if (feature.geometry.type === "Point") {
-          bounds.extend(feature.geometry.coordinates as [number, number]);
-        } else if (feature.geometry.type === "LineString") {
-          (feature.geometry.coordinates as [number, number][]).forEach(
-            (coord) => {
+      // Update selected driver highlight
+      if (map.current.getLayer("route-lines-selected")) {
+        map.current.removeLayer("route-lines-selected");
+      }
+
+      if (selectedDriverId) {
+        map.current.addLayer({
+          id: "route-lines-selected",
+          type: "line",
+          source: "monitoring-data",
+          filter: [
+            "all",
+            ["==", ["get", "type"], "route"],
+            ["==", ["get", "driverId"], selectedDriverId],
+          ],
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 5,
+            "line-opacity": 1,
+          },
+        });
+      }
+
+      // Fit bounds on first load
+      if (fitBounds && geojson.data.features.length > 0) {
+        const maplibreglModule = await import("maplibre-gl");
+        const bounds = new maplibreglModule.LngLatBounds();
+
+        geojson.data.features.forEach((feature: GeoJSON.Feature) => {
+          if (feature.geometry.type === "Point") {
+            bounds.extend(feature.geometry.coordinates as [number, number]);
+          } else if (feature.geometry.type === "LineString") {
+            (feature.geometry.coordinates as [number, number][]).forEach((coord) => {
               bounds.extend(coord);
-            },
-          );
-        }
-      });
-
-      if (!bounds.isEmpty()) {
-        map.current.fitBounds(bounds, {
-          padding: 50,
-          maxZoom: 15,
+            });
+          }
         });
+
+        if (!bounds.isEmpty()) {
+          map.current.fitBounds(bounds, {
+            padding: { top: 100, bottom: 50, left: 350, right: 50 },
+            maxZoom: 15,
+          });
+        }
       }
 
-      // Add click handlers
-      map.current.on("click", "stop-points", (e) => {
-        const features = map.current?.queryRenderedFeatures(e.point, {
-          layers: ["stop-points"],
-        });
-
-        if (features && features.length > 0) {
-          const props = features[0].properties as {
-            driverId?: string;
-          } | null;
-          if (props?.driverId) onDriverSelect?.(props.driverId);
-        }
-      });
-
-      // Change cursor on hover
-      map.current.on("mouseenter", "stop-points", () => {
-        const canvas = map.current?.getCanvas();
-        if (canvas) {
-          canvas.style.cursor = "pointer";
-        }
-      });
-
-      map.current.on("mouseleave", "stop-points", () => {
-        const canvas = map.current?.getCanvas();
-        if (canvas) {
-          canvas.style.cursor = "";
-        }
-      });
+      setError(null);
     } catch (err) {
       console.error("Failed to load map data:", err);
-      setError("Failed to load monitoring data");
+      setError("Error al cargar datos del mapa");
     }
   }, [companyId, selectedDriverId, onDriverSelect]);
 
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -213,7 +271,6 @@ export function MonitoringMap({
       try {
         const maplibregl = await import("maplibre-gl");
 
-        // Create map instance
         if (!mapContainer.current) return;
 
         map.current = new maplibregl.Map({
@@ -238,23 +295,23 @@ export function MonitoringMap({
               },
             ],
           },
-          center: [-58.4, -34.6], // Default to Buenos Aires
+          center: [-77.03, -12.04], // Lima, Peru
           zoom: 12,
         });
 
         map.current.on("load", () => {
           setIsLoading(false);
-          loadMapData();
+          loadMapData(true); // Fit bounds on first load
         });
 
         map.current.on("error", (e) => {
           console.error("Map error:", e);
-          setError("Failed to load map");
+          setError("Error al cargar el mapa");
           setIsLoading(false);
         });
       } catch (err) {
         console.error("Failed to initialize map:", err);
-        setError("Failed to initialize map");
+        setError("Error al inicializar el mapa");
         setIsLoading(false);
       }
     };
@@ -262,37 +319,64 @@ export function MonitoringMap({
     initMap();
 
     return () => {
+      if (refreshInterval.current) {
+        clearInterval(refreshInterval.current);
+      }
       map.current?.remove();
     };
   }, [loadMapData]);
 
+  // Auto-refresh data
   useEffect(() => {
-    if (map.current && !isLoading) {
-      loadMapData();
-    }
+    if (!map.current || isLoading) return;
+
+    // Initial load without fitting bounds (already done in map.on('load'))
+    // Start refresh interval
+    refreshInterval.current = setInterval(() => {
+      loadMapData(false); // Don't fit bounds on refresh
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      if (refreshInterval.current) {
+        clearInterval(refreshInterval.current);
+      }
+    };
   }, [isLoading, loadMapData]);
 
+  // Update data when selectedDriverId changes
+  useEffect(() => {
+    if (map.current && !isLoading) {
+      loadMapData(false);
+    }
+  }, [selectedDriverId, loadMapData, isLoading]);
+
   return (
-    <Card className="h-full">
-      <CardContent className="p-0 h-full">
-        <div
-          ref={mapContainer}
-          className="w-full h-full min-h-[400px] relative"
-        >
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10">
-              <div className="text-center text-muted-foreground">
-                <p>{error}</p>
-              </div>
-            </div>
-          )}
+    <div className="h-full w-full relative">
+      <div ref={mapContainer} className="w-full h-full" />
+
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-10">
+          <div className="text-center text-muted-foreground">
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Refresh indicator */}
+      {!isLoading && !error && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <div className="bg-background/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs text-muted-foreground flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            Auto-refresh: 15s
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
