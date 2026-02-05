@@ -240,6 +240,30 @@ export function UserFormProvider({
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrors({});
+
+      const validationErrors: Record<string, string> = {};
+      if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+      if (!formData.email.trim()) {
+        validationErrors.email = "Email es requerido";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        validationErrors.email = "Formato de email inválido";
+      }
+      if (!formData.username.trim()) {
+        validationErrors.username = "Username es requerido";
+      } else if (formData.username.trim().length < 3) {
+        validationErrors.username = "Username debe tener al menos 3 caracteres";
+      }
+      if (!isEditing && !formData.password) {
+        validationErrors.password = "Contraseña es requerida";
+      } else if (!isEditing && formData.password.length < 8) {
+        validationErrors.password = "Contraseña debe tener al menos 8 caracteres";
+      }
+      if (!formData.role) validationErrors.role = "Rol es requerido";
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
+
       setIsSubmitting(true);
 
       const emptyToNull = (value: string | null | undefined): string | null => {

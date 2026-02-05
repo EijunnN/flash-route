@@ -156,6 +156,15 @@ export function VehicleFormProvider({
     async (e: React.FormEvent) => {
       e.preventDefault();
       setErrors({});
+
+      const validationErrors: Record<string, string> = {};
+      if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+      if (!formData.useNameAsPlate && !formData.plate?.trim()) validationErrors.plate = "Placa es requerida";
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
+
       setIsSubmitting(true);
 
       const emptyToNull = <T,>(val: T): T | null => (val === "" ? null : val);

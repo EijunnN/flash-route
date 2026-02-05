@@ -52,6 +52,15 @@ export function DriverSkillForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!formData.driverId) validationErrors.driverId = "Conductor es requerido";
+    if (!formData.skillId) validationErrors.skillId = "Habilidad es requerida";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

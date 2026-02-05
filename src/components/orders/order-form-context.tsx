@@ -275,8 +275,19 @@ export function OrderFormProvider({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setIsSubmitting(true);
       setErrors({});
+
+      const validationErrors: Record<string, string> = {};
+      if (!formData.trackingId.trim()) validationErrors.trackingId = "Tracking ID es requerido";
+      if (!formData.address.trim()) validationErrors.address = "Dirección es requerida";
+      if (!formData.latitude.trim()) validationErrors.latitude = "Latitud es requerida";
+      if (!formData.longitude.trim()) validationErrors.longitude = "Longitud es requerida";
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
+
+      setIsSubmitting(true);
 
       try {
         await onSubmit(formData);

@@ -62,6 +62,15 @@ export function UserSkillForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!formData.userId) validationErrors.userId = "Usuario es requerido";
+    if (!formData.skillId) validationErrors.skillId = "Habilidad es requerida";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

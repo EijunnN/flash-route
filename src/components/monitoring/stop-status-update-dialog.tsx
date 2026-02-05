@@ -102,6 +102,7 @@ export function StopStatusUpdateDialog({
   );
   const [notes, setNotes] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Reset state when stop changes
   if (stop && selectedStatus !== stop.status) {
@@ -120,12 +121,14 @@ export function StopStatusUpdateDialog({
     if (!stop) return;
 
     setUpdating(true);
+    setError(null);
     try {
       await onUpdate(stop.id, selectedStatus, notes || undefined);
       onOpenChange(false);
       setNotes("");
-    } catch (error) {
-      console.error("Failed to update stop status:", error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Error al actualizar el estado de la parada";
+      setError(message);
     } finally {
       setUpdating(false);
     }
@@ -247,6 +250,14 @@ export function StopStatusUpdateDialog({
                 rows={3}
               />
             </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <XCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
 
             {/* Warning for terminal states */}
             {(selectedStatus === "FAILED" || selectedStatus === "SKIPPED") && (

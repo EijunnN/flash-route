@@ -131,8 +131,23 @@ export function TimeWindowPresetForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!formData.name.trim()) validationErrors.name = "Nombre es requerido";
+    if (formData.type === "SHIFT" || formData.type === "RANGE") {
+      if (!formData.startTime) validationErrors.startTime = "Hora de inicio es requerida";
+      if (!formData.endTime) validationErrors.endTime = "Hora de fin es requerida";
+    }
+    if (formData.type === "EXACT") {
+      if (!formData.exactTime) validationErrors.exactTime = "Hora exacta es requerida";
+    }
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       await onSubmit(formData);

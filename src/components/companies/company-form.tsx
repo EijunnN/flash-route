@@ -76,6 +76,21 @@ export function CompanyForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    const validationErrors: Record<string, string> = {};
+    if (!formData.legalName.trim()) validationErrors.legalName = "Nombre legal es requerido";
+    if (!formData.commercialName.trim()) validationErrors.commercialName = "Nombre comercial es requerido";
+    if (!formData.email.trim()) {
+      validationErrors.email = "Email es requerido";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      validationErrors.email = "Formato de email inválido";
+    }
+    if (!formData.country.trim()) validationErrors.country = "País es requerido";
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
