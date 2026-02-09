@@ -23,34 +23,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CompanySelector } from "@/components/company-selector";
 import { useHistorial, type OptimizationJob, type JobStatus } from "./historial-context";
 
 // Status Configuration
 const STATUS_CONFIG = {
   COMPLETED: {
     label: "Completado",
-    color: "bg-green-500/10 text-green-700 border-green-500/20",
+    color: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
     icon: "check-circle",
   },
   FAILED: {
     label: "Fallido",
-    color: "bg-red-500/10 text-red-700 border-red-500/20",
+    color: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
     icon: "x-circle",
   },
   CANCELLED: {
     label: "Cancelado",
-    color: "bg-orange-500/10 text-orange-700 border-orange-500/20",
+    color: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
     icon: "x-circle",
   },
   RUNNING: {
     label: "Ejecutando",
-    color: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+    color: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
     icon: "clock",
   },
   PENDING: {
     label: "Pendiente",
-    color: "bg-gray-500/10 text-gray-700 border-gray-500/20",
+    color: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
     icon: "clock",
   },
 } as const;
@@ -178,19 +177,6 @@ export function HistorialHeader() {
   );
 }
 
-export function HistorialCompanySelector() {
-  const { meta } = useHistorial();
-
-  return (
-    <CompanySelector
-      companies={meta.companies as Array<{ id: string; commercialName: string }>}
-      selectedCompanyId={meta.selectedCompanyId}
-      authCompanyId={meta.authCompanyId}
-      onCompanyChange={meta.setSelectedCompanyId}
-      isSystemAdmin={meta.isSystemAdmin}
-    />
-  );
-}
 
 export function HistorialFilters() {
   const { state, actions } = useHistorial();
@@ -284,7 +270,7 @@ function JobMetricsColumn({ job }: { job: OptimizationJob }) {
       {result.unassignedOrders.length > 0 && (
         <div className="flex justify-between">
           <span className="text-muted-foreground">Sin asignar:</span>
-          <span className="font-medium text-orange-600">{result.unassignedOrders.length}</span>
+          <span className="font-medium text-orange-600 dark:text-orange-400">{result.unassignedOrders.length}</span>
         </div>
       )}
     </div>
@@ -461,7 +447,7 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
             </Badge>
 
             {job.result?.isPartial && (
-              <Badge variant="outline" className="text-orange-600 border-orange-600">
+              <Badge variant="outline" className="text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-500">
                 Parcial
               </Badge>
             )}
@@ -496,7 +482,7 @@ export function HistorialJobCard({ job }: { job: OptimizationJob }) {
                 {job.result.unassignedOrders.length > 0 && (
                   <div className="text-center">
                     <p className="text-muted-foreground">Sin asignar</p>
-                    <p className="font-medium text-orange-600">
+                    <p className="font-medium text-orange-600 dark:text-orange-400">
                       {job.result.unassignedOrders.length}
                     </p>
                   </div>

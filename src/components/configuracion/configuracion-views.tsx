@@ -1,7 +1,6 @@
 "use client";
 
 import { Box, Download, FileSpreadsheet, Info, Loader2, Package, Save, Scale, Settings, Tag, Truck, Weight } from "lucide-react";
-import { CompanySelector } from "@/components/company-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +23,7 @@ const TEMPLATE_INFO: Record<string, { name: string; description: string }> = {
 };
 
 export function ConfiguracionView() {
-  const { state, actions, meta } = useConfiguracion();
+  const { state, actions } = useConfiguracion();
 
   return (
     <div className="p-6 space-y-6">
@@ -37,15 +36,8 @@ export function ConfiguracionView() {
           <p className="text-muted-foreground mt-1">Define las dimensiones y restricciones de capacidad para tu empresa</p>
         </div>
         <div className="flex items-center gap-3">
-          <CompanySelector
-            companies={meta.companies as Array<{ id: string; commercialName: string }>}
-            selectedCompanyId={meta.selectedCompanyId}
-            authCompanyId={meta.authCompanyId}
-            onCompanyChange={meta.setSelectedCompanyId}
-            isSystemAdmin={meta.isSystemAdmin}
-          />
           {state.hasChanges && (
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700">
               Cambios sin guardar
             </Badge>
           )}

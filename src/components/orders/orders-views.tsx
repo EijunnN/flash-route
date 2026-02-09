@@ -14,7 +14,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { CompanySelector } from "@/components/company-selector";
 import { OrderForm } from "./order-form";
 import { useOrders, type Order } from "./orders-context";
 
@@ -38,13 +37,6 @@ export function OrdersListView() {
           <p className="text-muted-foreground mt-1">Gestiona los pedidos de entrega con restricciones de ventana de tiempo</p>
         </div>
         <div className="flex items-center gap-4">
-          <CompanySelector
-            companies={meta.companies as Array<{ id: string; commercialName: string }>}
-            selectedCompanyId={meta.selectedCompanyId}
-            authCompanyId={meta.authCompanyId}
-            onCompanyChange={meta.setSelectedCompanyId}
-            isSystemAdmin={meta.isSystemAdmin}
-          />
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={state.totalOrders === 0}>

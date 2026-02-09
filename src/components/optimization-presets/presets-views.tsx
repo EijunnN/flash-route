@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { CompanySelector } from "@/components/company-selector";
 import { usePresets, ROUTE_END_MODES, type OptimizationPreset } from "./presets-context";
 
 const OPTIMIZATION_OPTIONS = [
@@ -62,13 +61,6 @@ export function PresetsListView() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <CompanySelector
-            companies={meta.companies as Array<{ id: string; commercialName: string }>}
-            selectedCompanyId={meta.selectedCompanyId}
-            authCompanyId={meta.authCompanyId}
-            onCompanyChange={meta.setSelectedCompanyId}
-            isSystemAdmin={meta.isSystemAdmin}
-          />
           <Button onClick={actions.handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Preset

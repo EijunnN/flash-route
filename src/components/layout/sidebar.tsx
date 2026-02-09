@@ -4,9 +4,11 @@ import {
   Award,
   BarChart3,
   Building2,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   Clock,
   History,
   LogOut,
@@ -26,7 +28,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useGlobalCompany } from "./company-context";
 import { useTheme } from "./theme-context";
 import {
   SidebarProvider,
@@ -333,6 +341,107 @@ function SidebarLogoutButton() {
   );
 }
 
+function SidebarCompanySwitcher() {
+  const { state } = useSidebar();
+  const {
+    isSystemAdmin,
+    companies,
+    selectedCompanyId,
+    setSelectedCompanyId,
+    isLoadingCompanies,
+  } = useGlobalCompany();
+
+  if (!isSystemAdmin || companies.length === 0) return null;
+
+  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+
+  if (state.collapsed) {
+    return (
+      <div className="border-b border-sidebar-border px-2 py-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className="flex h-9 w-full items-center justify-center rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              title={selectedCompany?.commercialName || "Seleccionar empresa"}
+            >
+              <Building2 className="h-5 w-5 shrink-0" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="right" align="start" className="w-56 p-1">
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              Cambiar empresa
+            </div>
+            {companies.map((company) => (
+              <button
+                key={company.id}
+                onClick={() => setSelectedCompanyId(company.id)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
+                  company.id === selectedCompanyId && "bg-accent"
+                )}
+              >
+                <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span className="flex-1 truncate text-left">{company.commercialName}</span>
+                {company.id === selectedCompanyId && (
+                  <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                )}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b border-sidebar-border px-2 py-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-sidebar-border bg-sidebar-accent/50">
+              <Building2 className="h-3.5 w-3.5" />
+            </div>
+            <span className="flex-1 truncate text-left font-medium">
+              {isLoadingCompanies
+                ? "Cargando..."
+                : selectedCompany?.commercialName || "Empresa"}
+            </span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-sidebar-foreground/50" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="right" align="start" className="w-64 p-1">
+          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+            Cambiar empresa
+          </div>
+          {companies.map((company) => (
+            <button
+              key={company.id}
+              onClick={() => setSelectedCompanyId(company.id)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
+                company.id === selectedCompanyId && "bg-accent"
+              )}
+            >
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded border bg-muted">
+                <Building2 className="h-3 w-3 text-muted-foreground" />
+              </div>
+              <span className="flex-1 truncate text-left">{company.commercialName}</span>
+              {company.id === selectedCompanyId && (
+                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+              )}
+            </button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 // Default Sidebar Content (for simple usage)
 function SidebarContent() {
   return (
@@ -341,6 +450,7 @@ function SidebarContent() {
         <SidebarLogo />
         <SidebarCollapseButton />
       </SidebarHeader>
+      <SidebarCompanySwitcher />
       <SidebarNavigation />
       <SidebarFooter>
         <SidebarThemeToggle />
@@ -396,6 +506,7 @@ Sidebar.Section = SidebarSection;
 Sidebar.NavItem = SidebarNavItem;
 Sidebar.NavLink = SidebarNavLink;
 Sidebar.Footer = SidebarFooter;
+Sidebar.CompanySwitcher = SidebarCompanySwitcher;
 Sidebar.ThemeToggle = SidebarThemeToggle;
 Sidebar.LogoutButton = SidebarLogoutButton;
 

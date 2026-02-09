@@ -27,7 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CompanySelector } from "@/components/company-selector";
 import { ZoneForm } from "@/components/zones/zone-form";
 import { ZONE_TYPE_LABELS, type ZoneInput } from "@/lib/validations/zone";
 import { useZones, DAY_LABELS } from "./zones-context";
@@ -62,7 +61,7 @@ const ZoneFormPreview = dynamicImport(
 );
 
 export function ZonesListView() {
-  const { state, actions, meta, derived } = useZones();
+  const { state, actions, derived } = useZones();
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -76,13 +75,6 @@ export function ZonesListView() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <CompanySelector
-              companies={meta.companies as Array<{ id: string; commercialName: string }>}
-              selectedCompanyId={meta.selectedCompanyId}
-              authCompanyId={meta.authCompanyId}
-              onCompanyChange={meta.setSelectedCompanyId}
-              isSystemAdmin={meta.isSystemAdmin}
-            />
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500" />

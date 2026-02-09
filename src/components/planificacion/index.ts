@@ -12,7 +12,6 @@ export type {
 
 export {
   HistorialHeader,
-  HistorialCompanySelector,
   HistorialFilters,
   HistorialError,
   HistorialContent,

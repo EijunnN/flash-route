@@ -1,12 +1,12 @@
 "use client";
 
-import { AlertCircle, Bell, ChevronLeft, ChevronRight, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
+import { AlertCircle, Bell, ChevronLeft, ChevronRight, History, Loader2, MapPin, RefreshCw, Search, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { AlertPanel } from "@/components/alerts/alert-panel";
-import { CompanySelector } from "@/components/company-selector";
 import { DriverListItem } from "./driver-list-item";
 import { DriverRouteDetail } from "./driver-route-detail";
+import { RecentEventsPanel } from "./recent-events-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useMonitoring } from "./monitoring-context";
+
+// Map ref type for flyTo
+export interface MapRef {
+  flyTo: (lat: number, lng: number, zoom?: number) => void;
+}
 
 const MonitoringMap = dynamic(() => import("./monitoring-map").then((mod) => mod.MonitoringMap), {
   ssr: false,
@@ -29,6 +34,8 @@ export function MonitoringDashboardView() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [showEvents, setShowEvents] = useState(false);
+  const mapRef = useRef<MapRef | null>(null);
 
   // Filter drivers based on search and status
   const filteredDrivers = useMemo(() => {
@@ -55,6 +62,11 @@ export function MonitoringDashboardView() {
     OFF_DUTY: "Fuera de Servicio",
     BUSY: "Ocupado",
   };
+
+  // Handle locate on map
+  const handleLocateOnMap = useCallback((lat: number, lng: number) => {
+    mapRef.current?.flyTo(lat, lng, 16);
+  }, []);
 
   if (state.error && !state.monitoringData) {
     return (
@@ -142,16 +154,6 @@ export function MonitoringDashboardView() {
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
           <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg px-2 py-1 flex items-center gap-2">
-            <CompanySelector
-              companies={meta.companies as Array<{ id: string; commercialName: string }>}
-              selectedCompanyId={meta.selectedCompanyId}
-              authCompanyId={meta.authCompanyId}
-              onCompanyChange={meta.setSelectedCompanyId}
-              isSystemAdmin={meta.isSystemAdmin}
-            />
-
-            <div className="h-6 w-px bg-border" />
-
             <Badge variant="outline" className="text-xs bg-background">
               <RefreshCw className="w-3 h-3 mr-1" />
               {actions.formatLastUpdate(state.lastUpdate)}
@@ -161,10 +163,27 @@ export function MonitoringDashboardView() {
               <RefreshCw className="w-4 h-4" />
             </Button>
 
+            {/* Events toggle */}
+            <Button
+              variant={showEvents ? "default" : "ghost"}
+              size="sm"
+              onClick={() => {
+                setShowEvents(!showEvents);
+                if (!showEvents) actions.setShowAlerts(false);
+              }}
+              className="h-8"
+            >
+              <History className="w-4 h-4" />
+            </Button>
+
+            {/* Alerts toggle */}
             <Button
               variant={state.alertsCount > 0 ? "destructive" : "ghost"}
               size="sm"
-              onClick={() => actions.setShowAlerts(!state.showAlerts)}
+              onClick={() => {
+                actions.setShowAlerts(!state.showAlerts);
+                if (!state.showAlerts) setShowEvents(false);
+              }}
               className="h-8"
             >
               <Bell className="w-4 h-4" />
@@ -305,11 +324,18 @@ export function MonitoringDashboardView() {
         </Card>
       </div>
 
-      {/* Alerts Panel - Floating Right */}
-      {state.showAlerts && meta.companyId && (
+      {/* Right Panel - Events or Alerts */}
+      {(showEvents || state.showAlerts) && meta.companyId && (
         <div className="absolute top-20 bottom-4 right-4 w-80 z-10">
           <Card className="h-full bg-background/95 backdrop-blur-sm shadow-lg overflow-hidden">
-            <AlertPanel companyId={meta.companyId} />
+            {showEvents ? (
+              <RecentEventsPanel
+                companyId={meta.companyId}
+                onLocateOnMap={handleLocateOnMap}
+              />
+            ) : (
+              <AlertPanel companyId={meta.companyId} />
+            )}
           </Card>
         </div>
       )}
@@ -317,6 +343,7 @@ export function MonitoringDashboardView() {
       {/* Map - Full screen background */}
       <div className="absolute inset-0">
         <MonitoringMap
+          ref={mapRef}
           jobId={state.monitoringData?.jobId || null}
           companyId={meta.companyId!}
           selectedDriverId={state.selectedDriverId}

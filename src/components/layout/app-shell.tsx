@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { PermissionsProvider } from "@/hooks/use-permissions";
+import { CompanyProvider } from "./company-context";
 import { Header } from "./header";
 import { LayoutProvider, useLayoutContext } from "./layout-context";
 import { Sidebar } from "./sidebar";
@@ -37,9 +38,11 @@ export function AppShell({ children, title }: AppShellProps) {
   return (
     <ThemeProvider>
       <PermissionsProvider>
-        <LayoutProvider>
-          <AppShellContent title={title}>{children}</AppShellContent>
-        </LayoutProvider>
+        <CompanyProvider>
+          <LayoutProvider>
+            <AppShellContent title={title}>{children}</AppShellContent>
+          </LayoutProvider>
+        </CompanyProvider>
       </PermissionsProvider>
     </ThemeProvider>
   );

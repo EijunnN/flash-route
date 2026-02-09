@@ -13,13 +13,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { CompanySelector } from "@/components/company-selector";
 import { FleetForm } from "./fleet-form";
 import { useFleets, type Fleet } from "./fleets-context";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 export function FleetsListView() {
-  const { state, actions, meta } = useFleets();
+  const { state, actions } = useFleets();
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -31,14 +30,6 @@ export function FleetsListView() {
           </div>
           <Button onClick={() => actions.setShowForm(true)}>Nueva Flota</Button>
         </div>
-
-        <CompanySelector
-          companies={meta.companies as Array<{ id: string; commercialName: string }>}
-          selectedCompanyId={meta.selectedCompanyId}
-          authCompanyId={meta.authCompanyId}
-          onCompanyChange={meta.setSelectedCompanyId}
-          isSystemAdmin={meta.isSystemAdmin}
-        />
 
         {state.isLoading ? (
           <div className="flex justify-center py-12">

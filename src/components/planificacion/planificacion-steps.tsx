@@ -33,7 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CompanySelector } from "@/components/company-selector";
 import { usePlanificacion } from "./planificacion-context";
 import { OBJECTIVES, type StepId } from "./planificacion-types";
 
@@ -44,7 +43,7 @@ const STEPS: Array<{ id: StepId; label: string; icon: React.ElementType }> = [
 ];
 
 export function PlanificacionHeader() {
-  const { state, actions, meta } = usePlanificacion();
+  const { state, actions } = usePlanificacion();
 
   return (
     <div className="border-b bg-background px-6 py-4">
@@ -91,15 +90,7 @@ export function PlanificacionHeader() {
           })}
         </div>
 
-        <div className="flex items-center gap-3">
-          <CompanySelector
-            companies={meta.companies as Array<{ id: string; commercialName: string }>}
-            selectedCompanyId={meta.selectedCompanyId}
-            authCompanyId={meta.authCompanyId}
-            onCompanyChange={meta.setSelectedCompanyId}
-            isSystemAdmin={meta.isSystemAdmin}
-          />
-        </div>
+        <div className="flex items-center gap-3" />
       </div>
     </div>
   );

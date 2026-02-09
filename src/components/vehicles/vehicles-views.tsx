@@ -18,12 +18,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { VehicleStatusModal } from "@/components/vehicles/vehicle-status-modal";
-import { CompanySelector } from "@/components/company-selector";
 import type { VehicleInput } from "@/lib/validations/vehicle";
 import { useVehicles, VEHICLE_STATUS_LABELS, type Vehicle } from "./vehicles-context";
 
 export function VehiclesListView() {
-  const { state, actions, meta } = useVehicles();
+  const { state, actions } = useVehicles();
 
   return (
     <div className="space-y-6">
@@ -34,14 +33,6 @@ export function VehiclesListView() {
         </div>
         <Button onClick={() => actions.setShowForm(true)}>Nuevo Vehículo</Button>
       </div>
-
-      <CompanySelector
-        companies={meta.companies as Array<{ id: string; commercialName: string }>}
-        selectedCompanyId={meta.selectedCompanyId}
-        authCompanyId={meta.authCompanyId}
-        onCompanyChange={meta.setSelectedCompanyId}
-        isSystemAdmin={meta.isSystemAdmin}
-      />
 
       {state.isLoading ? (
         <Card>
