@@ -114,8 +114,19 @@ export function OrderFormLocation() {
           <Input
             id="latitude"
             value={formData.latitude}
-            onChange={(e) => handleChange("latitude", e.target.value)}
-            placeholder="Ej: -12.0464"
+            onChange={(e) => {
+              const value = e.target.value;
+              const coordsMatch = value.match(
+                /^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/,
+              );
+              if (coordsMatch) {
+                handleChange("latitude", coordsMatch[1]);
+                handleChange("longitude", coordsMatch[2]);
+              } else {
+                handleChange("latitude", value);
+              }
+            }}
+            placeholder="Ej: -12.0464 o pega lat, lng"
             step="any"
           />
           {errors.latitude && (
@@ -288,7 +299,7 @@ export function OrderFormCapacity() {
               onChange={(e) =>
                 handleChange("orderValue", parseInt(e.target.value, 10) || 0)
               }
-              placeholder="Ej: 15000 = $150.00"
+              placeholder="Ej: 15000"
             />
           </div>
         )}

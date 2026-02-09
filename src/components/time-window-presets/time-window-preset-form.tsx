@@ -150,7 +150,18 @@ export function TimeWindowPresetForm({
     setIsSubmitting(true);
 
     try {
-      await onSubmit(formData);
+      // Limpiar campos vacíos para que Zod los trate como undefined/optional
+      const cleanedData: TimeWindowPresetFormData = {
+        name: formData.name.trim(),
+        type: formData.type,
+        strictness: formData.strictness,
+        ...(formData.startTime ? { startTime: formData.startTime } : {}),
+        ...(formData.endTime ? { endTime: formData.endTime } : {}),
+        ...(formData.exactTime ? { exactTime: formData.exactTime } : {}),
+        ...(formData.toleranceMinutes !== undefined ? { toleranceMinutes: formData.toleranceMinutes } : {}),
+        ...(formData.active !== undefined ? { active: formData.active } : {}),
+      };
+      await onSubmit(cleanedData);
     } catch (error: unknown) {
       const err = error as {
         details?: Array<{ path?: string[]; field?: string; message: string }>;
