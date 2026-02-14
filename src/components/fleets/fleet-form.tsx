@@ -4,11 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Truck, Users, Building2 } from "lucide-react";
+import { Search, Truck, Users } from "lucide-react";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 interface VehicleWithFleets {
@@ -31,6 +30,7 @@ interface FleetFormProps {
   vehicles: VehicleWithFleets[];
   users: UserWithFleets[];
   submitLabel?: string;
+  onCancel?: () => void;
 }
 
 export function FleetForm({
@@ -39,6 +39,7 @@ export function FleetForm({
   vehicles,
   users,
   submitLabel = "Guardar",
+  onCancel,
 }: FleetFormProps) {
   const defaultData: FleetInput = {
     name: initialData?.name ?? "",
@@ -153,284 +154,268 @@ export function FleetForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="h-full flex flex-col min-h-0 gap-3">
       {errors.form && (
-        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {errors.form}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Fleet Info & Vehicles */}
-        <div className="space-y-6">
-          {/* Fleet Information */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Información de la Flota
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => updateField("name", e.target.value)}
-                  disabled={isSubmitting}
-                  className={errors.name ? "border-destructive" : ""}
-                  placeholder="Ej: Flota Norte - Express"
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <textarea
-                  id="description"
-                  value={formData.description ?? ""}
-                  onChange={(e) =>
-                    updateField("description", e.target.value || null)
-                  }
-                  disabled={isSubmitting}
-                  rows={3}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                  placeholder="Descripción de la flota..."
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Checkbox
-                  id="active"
-                  checked={formData.active}
-                  onCheckedChange={(checked) =>
-                    updateField("active", checked === true)
-                  }
-                  disabled={isSubmitting}
-                />
-                <Label htmlFor="active" className="cursor-pointer text-sm">
-                  Flota activa
-                </Label>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vehicles */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Vehículos
-                </CardTitle>
-                <Badge variant="secondary">
-                  {selectedVehicleIds.length} seleccionados
-                </Badge>
-              </div>
-              <CardDescription>
-                Vehículos asignados a esta flota
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar vehículo..."
-                  value={vehicleSearch}
-                  onChange={(e) => setVehicleSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedVehicleIds(vehicles.map((v) => v.id))}
-                  disabled={isSubmitting}
-                >
-                  Todos
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedVehicleIds([])}
-                  disabled={isSubmitting}
-                >
-                  Ninguno
-                </Button>
-              </div>
-              <ScrollArea className="h-[280px] rounded-md border">
-                <div className="p-2 space-y-1">
-                  {filteredVehicles.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-4 text-center">
-                      {vehicleSearch ? "Sin resultados" : "No hay vehículos"}
-                    </p>
-                  ) : (
-                    filteredVehicles.map((vehicle) => (
-                      <div
-                        key={vehicle.id}
-                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
-                          selectedVehicleIds.includes(vehicle.id)
-                            ? "bg-primary/10 border border-primary/30"
-                            : "hover:bg-muted/50"
-                        }`}
-                        onClick={() => toggleVehicleSelection(vehicle.id)}
-                      >
-                        <Checkbox
-                          checked={selectedVehicleIds.includes(vehicle.id)}
-                          onCheckedChange={() => toggleVehicleSelection(vehicle.id)}
-                          disabled={isSubmitting}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {vehicle.name}
-                          </p>
-                          {vehicle.plate && (
-                            <p className="text-xs text-muted-foreground">
-                              {vehicle.plate}
-                            </p>
-                          )}
-                        </div>
-                        {vehicle.fleets.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {vehicle.fleets.slice(0, 2).map((fleet) => (
-                              <Badge
-                                key={fleet.id}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {fleet.name}
-                              </Badge>
-                            ))}
-                            {vehicle.fleets.length > 2 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                +{vehicle.fleets.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+      {/* Fleet info — compact row */}
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-3">
+        <div className="flex-1 min-w-[200px] space-y-1">
+          <Label htmlFor="name" className="text-xs">Nombre *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            disabled={isSubmitting}
+            className={errors.name ? "border-destructive h-8 text-sm" : "h-8 text-sm"}
+            placeholder="Ej: Flota Norte - Express"
+          />
+          {errors.name && (
+            <p className="text-xs text-destructive">{errors.name}</p>
+          )}
         </div>
-
-        {/* Right Column - Users with Access */}
-        <div className="space-y-6">
-          <Card className="h-full">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Usuarios con Acceso
-                </CardTitle>
-                <Badge variant="secondary">
-                  {selectedUserIds.length} seleccionados
-                </Badge>
-              </div>
-              <CardDescription>
-                Usuarios que pueden ver esta flota en monitoreo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar usuario..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedUserIds(users.map((u) => u.id))}
-                  disabled={isSubmitting}
-                >
-                  Todos
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedUserIds([])}
-                  disabled={isSubmitting}
-                >
-                  Ninguno
-                </Button>
-              </div>
-              <ScrollArea className="h-[500px] rounded-md border">
-                <div className="p-2 space-y-1">
-                  {filteredUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-4 text-center">
-                      {userSearch ? "Sin resultados" : "No hay usuarios"}
-                    </p>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <div
-                        key={user.id}
-                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
-                          selectedUserIds.includes(user.id)
-                            ? "bg-primary/10 border border-primary/30"
-                            : "hover:bg-muted/50"
-                        }`}
-                        onClick={() => toggleUserSelection(user.id)}
-                      >
-                        <Checkbox
-                          checked={selectedUserIds.includes(user.id)}
-                          onCheckedChange={() => toggleUserSelection(user.id)}
-                          disabled={isSubmitting}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {roleLabels[user.role] || user.role}
-                          </p>
-                        </div>
-                        {user.fleets.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {user.fleets.slice(0, 2).map((fleet) => (
-                              <Badge
-                                key={fleet.id}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {fleet.name}
-                              </Badge>
-                            ))}
-                            {user.fleets.length > 2 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                +{user.fleets.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+        <div className="flex-1 min-w-[200px] space-y-1">
+          <Label htmlFor="description" className="text-xs">Descripción</Label>
+          <Input
+            id="description"
+            value={formData.description ?? ""}
+            onChange={(e) => updateField("description", e.target.value || null)}
+            disabled={isSubmitting}
+            className="h-8 text-sm"
+            placeholder="Descripción de la flota..."
+          />
+        </div>
+        <div className="flex items-center gap-2 h-8">
+          <Checkbox
+            id="active"
+            checked={formData.active}
+            onCheckedChange={(checked) => updateField("active", checked === true)}
+            disabled={isSubmitting}
+          />
+          <Label htmlFor="active" className="cursor-pointer text-xs whitespace-nowrap">
+            Activa
+          </Label>
         </div>
       </div>
 
-      {/* Submit Button */}
-      <div className="flex justify-end gap-4 pt-4">
-        <Button type="submit" disabled={isSubmitting} size="lg">
+      {/* Two-column lists — fill remaining height */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
+        {/* Vehicles */}
+        <div className="flex flex-col min-h-0 rounded-lg border bg-card">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              Vehículos
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {selectedVehicleIds.length}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 px-3 pb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={vehicleSearch}
+                onChange={(e) => setVehicleSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setSelectedVehicleIds(vehicles.map((v) => v.id))}
+              disabled={isSubmitting}
+            >
+              Todos
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setSelectedVehicleIds([])}
+              disabled={isSubmitting}
+            >
+              Ninguno
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 min-h-0 border-t">
+            <div className="p-1">
+              {filteredVehicles.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-4 text-center">
+                  {vehicleSearch ? "Sin resultados" : "No hay vehículos"}
+                </p>
+              ) : (
+                filteredVehicles.map((vehicle) => (
+                  <div
+                    key={vehicle.id}
+                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer transition-colors ${
+                      selectedVehicleIds.includes(vehicle.id)
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={(e) => {
+                      if (!e.nativeEvent.isTrusted) return;
+                      toggleVehicleSelection(vehicle.id);
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedVehicleIds.includes(vehicle.id)}
+                      onCheckedChange={() => toggleVehicleSelection(vehicle.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={isSubmitting}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {vehicle.name}
+                      </p>
+                      {vehicle.plate && (
+                        <p className="text-xs text-muted-foreground">
+                          {vehicle.plate}
+                        </p>
+                      )}
+                    </div>
+                    {vehicle.fleets.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {vehicle.fleets.slice(0, 2).map((fleet) => (
+                          <Badge
+                            key={fleet.id}
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {fleet.name}
+                          </Badge>
+                        ))}
+                        {vehicle.fleets.length > 2 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            +{vehicle.fleets.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Users */}
+        <div className="flex flex-col min-h-0 rounded-lg border bg-card">
+          <div className="flex items-center justify-between px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              Usuarios con Acceso
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              {selectedUserIds.length}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2 px-3 pb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setSelectedUserIds(users.map((u) => u.id))}
+              disabled={isSubmitting}
+            >
+              Todos
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setSelectedUserIds([])}
+              disabled={isSubmitting}
+            >
+              Ninguno
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 min-h-0 border-t">
+            <div className="p-1">
+              {filteredUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground p-4 text-center">
+                  {userSearch ? "Sin resultados" : "No hay usuarios"}
+                </p>
+              ) : (
+                filteredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer transition-colors ${
+                      selectedUserIds.includes(user.id)
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={(e) => {
+                      if (!e.nativeEvent.isTrusted) return;
+                      toggleUserSelection(user.id);
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedUserIds.includes(user.id)}
+                      onCheckedChange={() => toggleUserSelection(user.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={isSubmitting}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {roleLabels[user.role] || user.role}
+                      </p>
+                    </div>
+                    {user.fleets.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {user.fleets.slice(0, 2).map((fleet) => (
+                          <Badge
+                            key={fleet.id}
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {fleet.name}
+                          </Badge>
+                        ))}
+                        {user.fleets.length > 2 && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            +{user.fleets.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        {onCancel && (
+          <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" size="sm" disabled={isSubmitting}>
           {isSubmitting ? "Guardando..." : submitLabel}
         </Button>
       </div>

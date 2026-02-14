@@ -21,7 +21,7 @@ export function FleetsListView() {
   const { state, actions } = useFleets();
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="flex-1 bg-background p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -126,32 +126,28 @@ export function FleetsFormView() {
   const { state, actions } = useFleets();
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">{state.editingFleet ? "Editar Flota" : "Nueva Flota"}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <div className="flex-1 flex flex-col overflow-hidden bg-background p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">{state.editingFleet ? "Editar Flota" : "Nueva Flota"}</h1>
+          <p className="text-xs text-muted-foreground">
             {state.editingFleet ? "Actualice la información de la flota" : "Complete el formulario para crear una nueva flota"}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <FleetForm
-            onSubmit={state.editingFleet ? actions.handleUpdate : actions.handleCreate}
-            initialData={
-              state.editingFleet
-                ? { ...state.editingFleet, type: (state.editingFleet.type as FleetInput["type"]) || null }
-                : undefined
-            }
-            vehicles={state.vehicles}
-            users={state.users}
-            submitLabel={state.editingFleet ? "Actualizar" : "Crear"}
-          />
-          <div className="mt-4">
-            <Button type="button" variant="outline" onClick={actions.cancelForm}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
+      </div>
+      <div className="flex-1 min-h-0">
+        <FleetForm
+          onSubmit={state.editingFleet ? actions.handleUpdate : actions.handleCreate}
+          initialData={
+            state.editingFleet
+              ? { ...state.editingFleet, type: (state.editingFleet.type as FleetInput["type"]) || null }
+              : undefined
+          }
+          vehicles={state.vehicles}
+          users={state.users}
+          submitLabel={state.editingFleet ? "Actualizar" : "Crear"}
+          onCancel={actions.cancelForm}
+        />
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ export function DriverSkillsListView() {
   const { state, actions } = useDriverSkills();
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="flex-1 bg-background p-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -208,7 +208,7 @@ export function DriverSkillsFormView() {
   const { state, actions } = useDriverSkills();
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="flex-1 bg-background p-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">
