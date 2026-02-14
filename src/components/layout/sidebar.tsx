@@ -144,8 +144,13 @@ function SidebarCollapseButton() {
 }
 
 function SidebarHeader({ children }: { children: React.ReactNode }) {
+  const { state } = useSidebar();
+
   return (
-    <div className="flex h-12 items-center justify-between border-b border-sidebar-border px-3">
+    <div className={cn(
+      "flex h-12 items-center border-b border-sidebar-border px-3",
+      state.collapsed ? "justify-center" : "justify-between"
+    )}>
       {children}
     </div>
   );
