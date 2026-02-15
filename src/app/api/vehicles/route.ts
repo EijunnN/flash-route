@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
           and(
             eq(vehicleFleets.fleetId, query.fleetId),
             eq(vehicleFleets.companyId, tenantCtx.companyId),
+            eq(vehicleFleets.active, true),
           ),
         );
       vehicleIdsInFleet = vehiclesInFleet.map((v) => v.vehicleId);
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       offset: query.offset,
       with: {
         vehicleFleets: {
+          where: (vf, { eq }) => eq(vf.active, true),
           with: {
             fleet: true,
           },

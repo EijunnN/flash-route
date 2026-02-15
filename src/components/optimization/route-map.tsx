@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useTheme } from "@/components/layout/theme-context";
+import { getMapStyle } from "@/lib/map-styles";
 
 interface RouteStop {
   orderId: string;
@@ -158,11 +160,13 @@ export function RouteMap({
   onMapReady,
   highlightedOrderIds = [],
 }: RouteMapProps) {
+  const { isDark } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mapThemeRef = useRef(isDark);
 
   // Update route visibility when selection changes
   useEffect(() => {
@@ -282,33 +286,11 @@ export function RouteMap({
           centerLng = avgLng;
         }
 
-        // Dark map style using CartoDB Dark Matter
+        const style = getMapStyle(isDark);
         map.current = new maplibregl.Map({
           container: mapContainer.current,
           style: {
-            version: 8,
-            sources: {
-              "carto-dark": {
-                type: "raster",
-                tiles: [
-                  "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-                  "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-                  "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-                ],
-                tileSize: 256,
-                attribution:
-                  '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-              },
-            },
-            layers: [
-              {
-                id: "carto-dark-layer",
-                type: "raster",
-                source: "carto-dark",
-                minzoom: 0,
-                maxzoom: 20,
-              },
-            ],
+            ...style,
             glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
           },
           center: [centerLng, centerLat],
@@ -906,6 +888,18 @@ export function RouteMap({
       map.current = null;
     };
   }, [routes, depot, showDepot, unassignedOrders, vehiclesWithoutRoutes]);
+
+  // React to theme changes
+  useEffect(() => {
+    if (!map.current || isLoading) return;
+    if (mapThemeRef.current === isDark) return;
+    mapThemeRef.current = isDark;
+    const style = getMapStyle(isDark);
+    map.current.setStyle({
+      ...style,
+      glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+    });
+  }, [isDark, isLoading]);
 
   // Render zones as polygon layers
   useEffect(() => {

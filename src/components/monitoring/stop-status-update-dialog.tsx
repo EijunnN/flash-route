@@ -46,8 +46,8 @@ export interface StopStatusUpdateDialogProps {
 const STOP_STATUS_OPTIONS = [
   {
     value: "PENDING",
-    label: "Pending",
-    description: "Stop is waiting to be started",
+    label: "PENDING",
+    description: "La parada está en espera de ser iniciada",
     icon: Clock,
     color: "text-gray-500",
     bgColor: "bg-gray-500/10",
@@ -55,8 +55,8 @@ const STOP_STATUS_OPTIONS = [
   },
   {
     value: "IN_PROGRESS",
-    label: "In Progress",
-    description: "Driver is currently at this stop",
+    label: "IN_PROGRESS",
+    description: "El conductor está actualmente en esta parada",
     icon: Loader2,
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
@@ -64,8 +64,8 @@ const STOP_STATUS_OPTIONS = [
   },
   {
     value: "COMPLETED",
-    label: "Completed",
-    description: "Stop was successfully completed",
+    label: "COMPLETED",
+    description: "La parada fue completada exitosamente",
     icon: CheckCircle2,
     color: "text-green-500",
     bgColor: "bg-green-500/10",
@@ -73,8 +73,8 @@ const STOP_STATUS_OPTIONS = [
   },
   {
     value: "FAILED",
-    label: "Failed",
-    description: "Stop could not be completed",
+    label: "FAILED",
+    description: "La parada no pudo ser completada",
     icon: XCircle,
     color: "text-red-500",
     bgColor: "bg-red-500/10",
@@ -82,8 +82,8 @@ const STOP_STATUS_OPTIONS = [
   },
   {
     value: "SKIPPED",
-    label: "Skipped",
-    description: "Stop was intentionally skipped",
+    label: "SKIPPED",
+    description: "La parada fue omitida intencionalmente",
     icon: SkipForward,
     color: "text-gray-400",
     bgColor: "bg-gray-400/10",
@@ -148,10 +148,10 @@ export function StopStatusUpdateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Update Stop Status</DialogTitle>
+          <DialogTitle>Actualizar estado de parada</DialogTitle>
           <DialogDescription>
-            Update the status for this delivery stop. This change will be
-            recorded in the audit log.
+            Actualiza el estado de esta parada de entrega. Este cambio quedará
+            registrado en el log de auditoría.
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +182,7 @@ export function StopStatusUpdateDialog({
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />
                     <span>
-                      Window: {formatTime(stop.timeWindowStart)} -{" "}
+                      Ventana: {formatTime(stop.timeWindowStart)} -{" "}
                       {formatTime(stop.timeWindowEnd)}
                     </span>
                   </div>
@@ -192,7 +192,7 @@ export function StopStatusUpdateDialog({
 
             {/* Status Selection */}
             <div className="space-y-2">
-              <Label>Select New Status</Label>
+              <Label>Seleccionar nuevo estado</Label>
               <div className="grid grid-cols-1 gap-2">
                 {STOP_STATUS_OPTIONS.map((option) => {
                   const Icon = option.icon;
@@ -225,7 +225,7 @@ export function StopStatusUpdateDialog({
                           </span>
                           {isCurrent && (
                             <Badge variant="outline" className="text-xs">
-                              Current
+                              Actual
                             </Badge>
                           )}
                         </div>
@@ -241,10 +241,10 @@ export function StopStatusUpdateDialog({
 
             {/* Notes (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Label htmlFor="notes">Notas (Opcional)</Label>
               <Textarea
                 id="notes"
-                placeholder="Add any relevant notes about this status change..."
+                placeholder="Agrega notas relevantes sobre este cambio de estado..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -264,11 +264,11 @@ export function StopStatusUpdateDialog({
               <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 dark:bg-amber-900/20 dark:border-amber-700/50">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-amber-700 dark:text-amber-300">
-                  <p className="font-medium">Important Note</p>
+                  <p className="font-medium">Nota importante</p>
                   <p className="mt-1">
                     {selectedStatus === "FAILED"
-                      ? "This stop will be marked as failed and an alert will be created. You can retry this stop later by changing its status back to PENDING."
-                      : "This stop will be marked as skipped and an alert will be created. This action cannot be undone."}
+                      ? "Esta parada será marcada como fallida y se creará una alerta. Puedes reintentar esta parada más tarde cambiando su estado a PENDING."
+                      : "Esta parada será marcada como omitida y se creará una alerta. Esta acción no se puede deshacer."}
                   </p>
                 </div>
               </div>
@@ -283,7 +283,7 @@ export function StopStatusUpdateDialog({
             onClick={() => onOpenChange(false)}
             disabled={updating}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             type="button"
@@ -291,7 +291,7 @@ export function StopStatusUpdateDialog({
             disabled={updating || !stop || selectedStatus === stop.status}
           >
             {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Update Status
+            Actualizar estado
           </Button>
         </DialogFooter>
       </DialogContent>

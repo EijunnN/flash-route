@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Truck, Users } from "lucide-react";
+import { Loader2, Search, Truck, Users } from "lucide-react";
 import type { FleetInput } from "@/lib/validations/fleet";
 
 interface VehicleWithFleets {
@@ -416,7 +416,8 @@ export function FleetForm({
           </Button>
         )}
         <Button type="submit" size="sm" disabled={isSubmitting}>
-          {isSubmitting ? "Guardando..." : submitLabel}
+          {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isSubmitting ? "Guardando" : submitLabel}
         </Button>
       </div>
     </form>

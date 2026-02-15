@@ -156,7 +156,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
           const error = await response.json();
           throw new Error(error.error || "Error al crear flota");
         }
-        await fetchFleets();
+        await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
         setShowForm(false);
         toast({ title: "Flota creada", description: `La flota "${data.name}" ha sido creada exitosamente.` });
       } catch (err) {
@@ -168,7 +168,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [companyId, fetchFleets, toast]
+    [companyId, fetchFleets, fetchVehiclesAndUsers, toast]
   );
 
   const handleUpdate = useCallback(
@@ -184,7 +184,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
           const error = await response.json();
           throw new Error(error.error || "Error al actualizar flota");
         }
-        await fetchFleets();
+        await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
         setEditingFleet(null);
         toast({ title: "Flota actualizada", description: `La flota "${data.name}" ha sido actualizada exitosamente.` });
       } catch (err) {
@@ -196,7 +196,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         throw err;
       }
     },
-    [editingFleet, companyId, fetchFleets, toast]
+    [editingFleet, companyId, fetchFleets, fetchVehiclesAndUsers, toast]
   );
 
   const handleDelete = useCallback(
@@ -212,7 +212,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
           const error = await response.json();
           throw new Error(error.error || error.details || "Error al desactivar la flota");
         }
-        await fetchFleets();
+        await Promise.all([fetchFleets(), fetchVehiclesAndUsers()]);
         toast({
           title: "Flota desactivada",
           description: fleet ? `La flota "${fleet.name}" ha sido desactivada.` : "La flota ha sido desactivada.",
@@ -227,7 +227,7 @@ export function FleetsProvider({ children }: { children: ReactNode }) {
         setDeletingId(null);
       }
     },
-    [companyId, fleets, fetchFleets, toast]
+    [companyId, fleets, fetchFleets, fetchVehiclesAndUsers, toast]
   );
 
   const cancelForm = useCallback(() => {

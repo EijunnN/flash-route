@@ -3,6 +3,8 @@
 import { Loader2 } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { useTheme } from "@/components/layout/theme-context";
+import { getMapStyle, DEFAULT_MAP_CENTER } from "@/lib/map-styles";
 
 interface MonitoringMapProps {
   jobId: string | null;
@@ -23,11 +25,15 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
   selectedDriverId,
   onDriverSelect,
 }, ref) {
+  const { isDark } = useTheme();
+  const isDarkRef = useRef(isDark);
+  isDarkRef.current = isDark;
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshInterval = useRef<NodeJS.Timeout | null>(null);
+  const mapThemeRef = useRef<boolean | null>(null);
 
   // Expose flyTo method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -292,29 +298,11 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
 
         if (!mapContainer.current) return;
 
+        mapThemeRef.current = isDarkRef.current;
         map.current = new maplibregl.Map({
           container: mapContainer.current,
-          style: {
-            version: 8,
-            sources: {
-              "osm-tiles": {
-                type: "raster",
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                attribution: "&copy; OpenStreetMap Contributors",
-              },
-            },
-            layers: [
-              {
-                id: "osm-tiles",
-                type: "raster",
-                source: "osm-tiles",
-                minzoom: 0,
-                maxzoom: 19,
-              },
-            ],
-          },
-          center: [-77.03, -12.04], // Lima, Peru
+          style: getMapStyle(isDarkRef.current),
+          center: DEFAULT_MAP_CENTER,
           zoom: 12,
           attributionControl: false,
         });
@@ -369,6 +357,17 @@ export const MonitoringMap = forwardRef<MonitoringMapRef, MonitoringMapProps>(fu
       loadMapData(false);
     }
   }, [selectedDriverId, loadMapData, isLoading]);
+
+  // React to theme changes
+  useEffect(() => {
+    if (!map.current || isLoading) return;
+    if (mapThemeRef.current === isDark) return; // Already correct style
+    mapThemeRef.current = isDark;
+    map.current.once("style.load", () => {
+      loadMapData(false);
+    });
+    map.current.setStyle(getMapStyle(isDark));
+  }, [isDark, isLoading, loadMapData]);
 
   return (
     <div className="h-full w-full relative">

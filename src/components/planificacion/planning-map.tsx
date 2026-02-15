@@ -3,6 +3,8 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@/components/layout/theme-context";
+import { getMapStyle } from "@/lib/map-styles";
 
 interface Vehicle {
   id: string;
@@ -47,34 +49,6 @@ interface PlanningMapProps {
   showOrders?: boolean;
   selectedVehicleIds?: string[];
 }
-
-// Dark elegant map style using CartoDB Dark Matter
-const MAP_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    carto: {
-      type: "raster",
-      tiles: [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-      ],
-      tileSize: 256,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    },
-  },
-  layers: [
-    {
-      id: "carto-dark",
-      type: "raster",
-      source: "carto",
-      minzoom: 0,
-      maxzoom: 20,
-    },
-  ],
-  glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
-};
 
 // Popup styles injected into the document
 const POPUP_STYLES = `
@@ -169,10 +143,12 @@ export function PlanningMap({
   showOrders = true,
   selectedVehicleIds,
 }: PlanningMapProps) {
+  const { isDark } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const mapThemeRef = useRef(isDark);
 
   // Inject popup styles
   useEffect(() => {
@@ -189,9 +165,13 @@ export function PlanningMap({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
+    const mapStyle = getMapStyle(isDark);
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: MAP_STYLE,
+      style: {
+        ...mapStyle,
+        glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+      },
       center: [-77.0428, -12.0464], // Lima, Peru default
       zoom: 11,
       attributionControl: false,
@@ -205,11 +185,25 @@ export function PlanningMap({
       setIsLoaded(true);
     });
 
+    mapThemeRef.current = isDark;
+
     return () => {
       map.current?.remove();
       map.current = null;
     };
   }, []);
+
+  // React to theme changes
+  useEffect(() => {
+    if (!map.current || !isLoaded) return;
+    if (mapThemeRef.current === isDark) return;
+    mapThemeRef.current = isDark;
+    const style = getMapStyle(isDark);
+    map.current.setStyle({
+      ...style,
+      glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+    });
+  }, [isDark, isLoaded]);
 
   // Update markers when data changes
   useEffect(() => {
